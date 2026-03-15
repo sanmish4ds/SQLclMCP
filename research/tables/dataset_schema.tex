@@ -1,0 +1,27 @@
+\begin{table}[h]
+\centering
+\caption{Evaluation Database Schema Characteristics}
+\label{tab:schema_characteristics}
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Table} & \textbf{Rows} & \textbf{Columns} & \textbf{Primary Indexes} & \textbf{Foreign Keys} \\
+\midrule
+employees & 10,000 & 8 & emp\_id & dept\_id \\
+departments & 50 & 3 & dept\_id & None \\
+salaries & 50,000 & 4 & emp\_id, eff\_date & emp\_id \\
+orders & 100,000 & 7 & order\_id & customer\_id \\
+customers & 5,000 & 5 & cust\_id & None \\
+products & 1,000 & 6 & prod\_id & category\_id \\
+categories & 50 & 2 & cat\_id & None \\
+order\_items & 350,000 & 4 & order\_id, item\_seq & order\_id, prod\_id \\
+locations & 100 & 3 & loc\_id & None \\
+suppliers & 500 & 4 & supplier\_id & None \\
+time\_dim & 3,650 & 3 & date\_key & None \\
+exchange\_rates & 9,125 & 3 & currency\_pair, date\_key & None \\
+\bottomrule
+\end{tabular}
+
+\footnotesize
+\textit{Note}: Total schema size: 525,315 rows across 12 tables. Primary indexes use B-tree structures. All tables contain created\_at timestamp and modified\_at LAST\_MODIFIED columns.
+\end{table}

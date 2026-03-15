@@ -1,0 +1,56 @@
+\section{Introduction}
+
+The automatic generation of SQL queries from natural language descriptions represents a long-standing challenge in database research, natural language processing, and machine learning. Traditionally, accessing relational databases has required specialized knowledge of schema design, SQL syntax, and query optimization principles---skills that limit database access to trained technical professionals. The emergence of Large Language Models (LLMs) with strong code generation capabilities has opened new possibilities for democratizing database access through natural language interfaces.
+
+\subsection{Motivation and Problem Statement}
+
+Organizations accumulate vast quantities of operational data in enterprise databases such as Oracle Database, PostgreSQL, and MySQL. However, the gap between business users who understand domain requirements and database professionals who can formulate complex queries creates a bottleneck in data-driven decision-making. According to industry surveys, business analysts spend 10-20\% of their time writing SQL queries or requesting custom reports from IT departments, representing significant opportunity costs.
+
+Recent advances in transformer-based language models \cite{vaswani2017attention, devlin2018bert, brown2020language} have demonstrated remarkable capabilities in code generation tasks, including SQL synthesis. However, deploying such systems in production enterprise environments requires rigorous evaluation against multiple metrics:
+
+\begin{enumerate}
+    \item \textbf{Semantic Correctness}: Does the generated query return the same results as the intended query?
+    \item \textbf{Execution Efficiency}: What is the performance overhead compared to human-written baselines?
+    \item \textbf{Optimization Potential}: Can generated queries be improved through rule-based or learned optimization techniques?
+    \item \textbf{Robustness Across Complexity}: How does accuracy degrade with increasing query complexity?
+\end{enumerate}
+
+The Model Context Protocol (MCP) \cite{anthropic2024mcp} represents an emerging standard for enhancing neural models with structured context, enabling code generators to access database schemas, query history, domain-specific constraints, and execution feedback. This contextual grounding has shown promise in improving code generation accuracy and relevance.
+
+\subsection{Research Questions}
+
+This study addresses the following research questions:
+
+\begin{enumerate}
+    \item[RQ1:] \textit{How accurately does an MCP-enhanced LLM generate semantically equivalent SQL queries compared to human-written baselines across varying complexity levels?}
+    
+    \item[RQ2:] \textit{What are the performance characteristics (latency, resource consumption) of MCP-generated queries relative to baseline queries, and what factors contribute to performance differential?}
+    
+    \item[RQ3:] \textit{What optimization opportunities exist in MCP-generated queries, and how do query execution plans differ from human-written baselines in terms of cost, cardinality estimation, and resource utilization?}
+    
+    \item[RQ4:] \textit{What are the primary failure modes in MCP-generated SQL, and can they be systematically classified to guide both model improvement and deployment safeguards?}
+    
+    \item[RQ5:] \textit{What deployment scenarios are suitable for MCP-generated SQL, and what risk mitigation strategies are necessary for production environments?}
+\end{enumerate}
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+    \item \textbf{Comprehensive Evaluation Framework}: We present SQLclMCP, a reusable evaluation framework for assessing neural SQL generation systems across semantic accuracy, performance, and optimization dimensions.
+    
+    \item \textbf{Empirical Evaluation on 120 Queries}: We conduct a systematic evaluation across three complexity levels (simple, medium, complex) with detailed analysis of accuracy degradation patterns.
+    
+    \item \textbf{EXPLAIN PLAN Analysis}: We analyze query execution plans using Oracle EXPLAIN PLAN to characterize optimization gaps and identify areas for post-generation optimization.
+    
+    \item \textbf{Failure Mode Classification}: We systematically classify failure modes (incorrect JOINs, missing predicates, aggregate misuse) to guide both model improvements and deployment safeguards.
+    
+    \item \textbf{Production Deployment Guidance}: We provide concrete recommendations for safe deployment scenarios, risk mitigation strategies, and architectural safeguards.
+    
+    \item \textbf{Reusable Methodology}: We provide a methodology and implementation that can be adapted to other database systems and neural SQL generation approaches.
+\end{enumerate}
+
+\subsection{Paper Organization}
+
+The remainder of this paper is organized as follows. Section \ref{sec:related} surveys related work in semantic parsing, SQL generation, and neural code synthesis. Section \ref{sec:methodology} describes our evaluation framework architecture and methodology. Section \ref{sec:dataset} characterizes the test dataset and evaluation metrics. Section \ref{sec:implementation} details the technology stack and implementation. Section \ref{sec:results} presents empirical results and analysis. Section \ref{sec:discussion} discusses findings, implications, and limitations. Section \ref{sec:conclusion} concludes with future research directions.

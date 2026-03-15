@@ -1,0 +1,237 @@
+{
+  "timestamp": "2026-03-14T17:18:15.576453",
+  "run_mode": "compare",
+  "mcp_mode": "llm",
+  "summary": {
+    "run_mode": "compare",
+    "total": 2,
+    "rq1_semantic_correctness": {
+      "total": 2,
+      "generated": 2,
+      "executed": 2,
+      "matches": 2,
+      "accuracy_pct": 100.0
+    },
+    "rq4_robustness": {
+      "by_tier": {
+        "simple": {
+          "total": 2,
+          "matches": 2,
+          "accuracy_pct": 100.0
+        },
+        "medium": {
+          "total": 0,
+          "matches": 0,
+          "accuracy_pct": 0.0
+        },
+        "complex": {
+          "total": 0,
+          "matches": 0,
+          "accuracy_pct": 0.0
+        }
+      },
+      "degradation": {}
+    },
+    "rq2_efficiency": {
+      "baseline": {
+        "overall": {
+          "count": 2,
+          "avg_ms": 34.51112494803965,
+          "median_ms": 34.51112494803965,
+          "p95_ms": 1.916124951094389
+        },
+        "by_tier": {
+          "simple": {
+            "count": 2,
+            "avg_ms": 34.51112494803965,
+            "median_ms": 34.51112494803965,
+            "p95_ms": 1.916124951094389
+          },
+          "medium": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          },
+          "complex": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          }
+        }
+      },
+      "mcp": {
+        "overall": {
+          "count": 2,
+          "avg_ms": 3.2161459093913436,
+          "median_ms": 3.2161459093913436,
+          "p95_ms": 2.5754168163985014
+        },
+        "by_tier": {
+          "simple": {
+            "count": 2,
+            "avg_ms": 3.2161459093913436,
+            "median_ms": 3.2161459093913436,
+            "p95_ms": 2.5754168163985014
+          },
+          "medium": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          },
+          "complex": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          }
+        },
+        "latency_ratio": {
+          "avg": 1.0256148890873689,
+          "median": 1.0256148890873689,
+          "p95": 0.03837826753533877,
+          "count": 2
+        }
+      }
+    },
+    "rq3_optimization": {
+      "cost": {
+        "comparable": 2,
+        "mcp_lower": 0,
+        "same": 2,
+        "mcp_higher": 0,
+        "avg_delta": 0,
+        "median_delta": 0.0
+      },
+      "cardinality": {
+        "comparable": 2,
+        "same": 2,
+        "different": 0,
+        "avg_delta": 0
+      },
+      "bytes": {
+        "comparable": 0,
+        "mcp_lower": 0,
+        "same": 0,
+        "mcp_higher": 0,
+        "avg_delta": null
+      },
+      "correct_but_expensive": 0
+    },
+    "baseline_success": 2,
+    "baseline_success_rate": 100.0
+  },
+  "baseline_results": [
+    {
+      "id": 1,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM REGION",
+      "success": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 67.10612494498491,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 2,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM NATION",
+      "success": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.916124951094389,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    }
+  ],
+  "mcp_results": [
+    {
+      "id": 1,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS region_count FROM REGION",
+      "executed": true,
+      "semantic_match": true,
+      "exact_order_match": true,
+      "extract_string_match": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 2.5754168163985014,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "plan_diff": null,
+      "latency_ratio": 0.03837826753533877,
+      "error": null
+    },
+    {
+      "id": 2,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS nation_count FROM NATION",
+      "executed": true,
+      "semantic_match": true,
+      "exact_order_match": true,
+      "extract_string_match": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.856875002384186,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "plan_diff": null,
+      "latency_ratio": 2.012851510639399,
+      "error": null
+    }
+  ],
+  "schema_validation": null
+}

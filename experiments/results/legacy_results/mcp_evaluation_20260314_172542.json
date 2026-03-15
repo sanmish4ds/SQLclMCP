@@ -1,0 +1,6873 @@
+{
+  "timestamp": "2026-03-14T17:25:42.491488",
+  "run_mode": "compare",
+  "mcp_mode": "llm",
+  "summary": {
+    "run_mode": "compare",
+    "total": 100,
+    "rq1_semantic_correctness": {
+      "total": 100,
+      "generated": 100,
+      "executed": 100,
+      "matches": 98,
+      "accuracy_pct": 98.0
+    },
+    "rq4_robustness": {
+      "by_tier": {
+        "simple": {
+          "total": 20,
+          "matches": 20,
+          "accuracy_pct": 100.0
+        },
+        "medium": {
+          "total": 30,
+          "matches": 30,
+          "accuracy_pct": 100.0
+        },
+        "complex": {
+          "total": 50,
+          "matches": 48,
+          "accuracy_pct": 96.0
+        }
+      },
+      "degradation": {
+        "simple_to_medium": 0.0,
+        "medium_to_complex": -4.0
+      }
+    },
+    "rq2_efficiency": {
+      "baseline": {
+        "overall": {
+          "count": 100,
+          "avg_ms": 32.52090416382998,
+          "median_ms": 4.664916545152664,
+          "p95_ms": 115.84099987521768
+        },
+        "by_tier": {
+          "simple": {
+            "count": 20,
+            "avg_ms": 21.536598063539714,
+            "median_ms": 0.5749791162088513,
+            "p95_ms": 68.05350002832711
+          },
+          "medium": {
+            "count": 30,
+            "avg_ms": 7.14259702557077,
+            "median_ms": 3.848978434689343,
+            "p95_ms": 16.07683300971985
+          },
+          "complex": {
+            "count": 50,
+            "avg_ms": 52.14161088690162,
+            "median_ms": 15.013478929176927,
+            "p95_ms": 116.52629193849862
+          }
+        }
+      },
+      "mcp": {
+        "overall": {
+          "count": 100,
+          "avg_ms": 60.315625038929284,
+          "median_ms": 16.297312453389168,
+          "p95_ms": 237.45995783247054
+        },
+        "by_tier": {
+          "simple": {
+            "count": 20,
+            "avg_ms": 10.372416768223047,
+            "median_ms": 1.4310210244730115,
+            "p95_ms": 76.83637482114136
+          },
+          "medium": {
+            "count": 30,
+            "avg_ms": 18.153343186713755,
+            "median_ms": 13.141062576323748,
+            "p95_ms": 41.72612517140806
+          },
+          "complex": {
+            "count": 50,
+            "avg_ms": 105.5902774585411,
+            "median_ms": 55.176791502162814,
+            "p95_ms": 261.8758329190314
+          }
+        },
+        "latency_ratio": {
+          "avg": 5.194781507095819,
+          "median": 3.425930048193992,
+          "p95": 15.735684536627131,
+          "count": 100
+        }
+      }
+    },
+    "rq3_optimization": {
+      "cost": {
+        "comparable": 100,
+        "mcp_lower": 29,
+        "same": 50,
+        "mcp_higher": 21,
+        "avg_delta": -2900.6,
+        "median_delta": 0.0
+      },
+      "cardinality": {
+        "comparable": 100,
+        "same": 100,
+        "different": 0,
+        "avg_delta": 0
+      },
+      "bytes": {
+        "comparable": 90,
+        "mcp_lower": 11,
+        "same": 57,
+        "mcp_higher": 22,
+        "avg_delta": 1704.6
+      },
+      "correct_but_expensive": 19
+    },
+    "baseline_success": 100,
+    "baseline_success_rate": 100.0
+  },
+  "baseline_results": [
+    {
+      "id": 1,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM REGION",
+      "success": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 2.2035830188542604,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 2,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM NATION",
+      "success": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.31658285297453403,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 3,
+      "question": "How many suppliers exist?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER",
+      "success": true,
+      "rows": [
+        [
+          10000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.7653340473771095,
+      "explain_plan": {
+        "cost": 9,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 4,
+      "question": "How many customers exist?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER",
+      "success": true,
+      "rows": [
+        [
+          150000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 16.707791946828365,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 5,
+      "question": "Show first 10 customers",
+      "complexity": "simple",
+      "sql": "SELECT * FROM CUSTOMER FETCH FIRST 10 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          290,
+          "Cust#290",
+          "Addr290",
+          15,
+          "Ph290          ",
+          1290.0,
+          "Seg       ",
+          "7XAGkFemUO4B8DM"
+        ],
+        [
+          291,
+          "Cust#291",
+          "Addr291",
+          16,
+          "Ph291          ",
+          1291.0,
+          "Seg       ",
+          "CQfZOikxpDs3J1e"
+        ],
+        [
+          292,
+          "Cust#292",
+          "Addr292",
+          17,
+          "Ph292          ",
+          1292.0,
+          "Seg       ",
+          "XulF07et97oobT1"
+        ],
+        [
+          293,
+          "Cust#293",
+          "Addr293",
+          18,
+          "Ph293          ",
+          1293.0,
+          "Seg       ",
+          "eHqZesNxvv3tyc8"
+        ],
+        [
+          294,
+          "Cust#294",
+          "Addr294",
+          19,
+          "Ph294          ",
+          1294.0,
+          "Seg       ",
+          "DpLjTuJxNobkx0k"
+        ],
+        [
+          295,
+          "Cust#295",
+          "Addr295",
+          20,
+          "Ph295          ",
+          1295.0,
+          "Seg       ",
+          "VfvspbKmSveet0a"
+        ],
+        [
+          296,
+          "Cust#296",
+          "Addr296",
+          21,
+          "Ph296          ",
+          1296.0,
+          "Seg       ",
+          "uWmilQcd5xD42DE"
+        ],
+        [
+          297,
+          "Cust#297",
+          "Addr297",
+          22,
+          "Ph297          ",
+          1297.0,
+          "Seg       ",
+          "KhuEoFpqMOIrjtZ"
+        ],
+        [
+          298,
+          "Cust#298",
+          "Addr298",
+          23,
+          "Ph298          ",
+          1298.0,
+          "Seg       ",
+          "S79KM4iy3fT8XdV"
+        ],
+        [
+          299,
+          "Cust#299",
+          "Addr299",
+          24,
+          "Ph299          ",
+          1299.0,
+          "Seg       ",
+          "Ea7acpP5Iv67WMQ"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 0.5845411214977503,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 770,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 6,
+      "question": "Show first 10 suppliers",
+      "complexity": "simple",
+      "sql": "SELECT * FROM SUPPLIER FETCH FIRST 10 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          267,
+          "Sup#267                  ",
+          "Addr267",
+          17,
+          "Ph267          ",
+          5267.0,
+          "m31nhNukrhWacWD"
+        ],
+        [
+          268,
+          "Sup#268                  ",
+          "Addr268",
+          18,
+          "Ph268          ",
+          5268.0,
+          "KxfjfM59MdNRXho"
+        ],
+        [
+          269,
+          "Sup#269                  ",
+          "Addr269",
+          19,
+          "Ph269          ",
+          5269.0,
+          "8WUXBlQwi3EBsRl"
+        ],
+        [
+          270,
+          "Sup#270                  ",
+          "Addr270",
+          20,
+          "Ph270          ",
+          5270.0,
+          "lvTrZ4IejsqwaNx"
+        ],
+        [
+          271,
+          "Sup#271                  ",
+          "Addr271",
+          21,
+          "Ph271          ",
+          5271.0,
+          "lb1WoSOHyGEIMuN"
+        ],
+        [
+          272,
+          "Sup#272                  ",
+          "Addr272",
+          22,
+          "Ph272          ",
+          5272.0,
+          "gGeZi2mEgJZOGRp"
+        ],
+        [
+          273,
+          "Sup#273                  ",
+          "Addr273",
+          23,
+          "Ph273          ",
+          5273.0,
+          "wLe5mE3eXdI6zwR"
+        ],
+        [
+          274,
+          "Sup#274                  ",
+          "Addr274",
+          24,
+          "Ph274          ",
+          5274.0,
+          "Zqces67gSGlGpMl"
+        ],
+        [
+          275,
+          "Sup#275                  ",
+          "Addr275",
+          0,
+          "Ph275          ",
+          5275.0,
+          "UzgNwCP2klyuj9B"
+        ],
+        [
+          276,
+          "Sup#276                  ",
+          "Addr276",
+          1,
+          "Ph276          ",
+          5276.0,
+          "vt9uxVATLInV5p7"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 0.5654171109199524,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 780,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 7,
+      "question": "What is the maximum order key?",
+      "complexity": "simple",
+      "sql": "SELECT MAX(O_ORDERKEY) FROM ORDERS",
+      "success": true,
+      "rows": [
+        [
+          700000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.3720419481396675,
+      "explain_plan": {
+        "cost": 3,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 8,
+      "question": "What is the average account balance of customers?",
+      "complexity": "simple",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER",
+      "success": true,
+      "rows": [
+        [
+          42666.5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 42.67312493175268,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 9,
+      "question": "How many line items are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM LINEITEM",
+      "success": true,
+      "rows": [
+        [
+          4000000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 288.1185000296682,
+      "explain_plan": {
+        "cost": 17947,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 10,
+      "question": "What is the minimum part key?",
+      "complexity": "simple",
+      "sql": "SELECT MIN(P_PARTKEY) FROM PART",
+      "success": true,
+      "rows": [
+        [
+          1
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.39591710083186626,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 11,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM REGION",
+      "success": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.18804194405674934,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 12,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM NATION",
+      "success": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.2634169068187475,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 13,
+      "question": "How many suppliers exist?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER",
+      "success": true,
+      "rows": [
+        [
+          10000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.5900000687688589,
+      "explain_plan": {
+        "cost": 9,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 14,
+      "question": "How many customers exist?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER",
+      "success": true,
+      "rows": [
+        [
+          150000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.5548341907560825,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 15,
+      "question": "Show first 10 customers",
+      "complexity": "simple",
+      "sql": "SELECT * FROM CUSTOMER FETCH FIRST 10 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          290,
+          "Cust#290",
+          "Addr290",
+          15,
+          "Ph290          ",
+          1290.0,
+          "Seg       ",
+          "7XAGkFemUO4B8DM"
+        ],
+        [
+          291,
+          "Cust#291",
+          "Addr291",
+          16,
+          "Ph291          ",
+          1291.0,
+          "Seg       ",
+          "CQfZOikxpDs3J1e"
+        ],
+        [
+          292,
+          "Cust#292",
+          "Addr292",
+          17,
+          "Ph292          ",
+          1292.0,
+          "Seg       ",
+          "XulF07et97oobT1"
+        ],
+        [
+          293,
+          "Cust#293",
+          "Addr293",
+          18,
+          "Ph293          ",
+          1293.0,
+          "Seg       ",
+          "eHqZesNxvv3tyc8"
+        ],
+        [
+          294,
+          "Cust#294",
+          "Addr294",
+          19,
+          "Ph294          ",
+          1294.0,
+          "Seg       ",
+          "DpLjTuJxNobkx0k"
+        ],
+        [
+          295,
+          "Cust#295",
+          "Addr295",
+          20,
+          "Ph295          ",
+          1295.0,
+          "Seg       ",
+          "VfvspbKmSveet0a"
+        ],
+        [
+          296,
+          "Cust#296",
+          "Addr296",
+          21,
+          "Ph296          ",
+          1296.0,
+          "Seg       ",
+          "uWmilQcd5xD42DE"
+        ],
+        [
+          297,
+          "Cust#297",
+          "Addr297",
+          22,
+          "Ph297          ",
+          1297.0,
+          "Seg       ",
+          "KhuEoFpqMOIrjtZ"
+        ],
+        [
+          298,
+          "Cust#298",
+          "Addr298",
+          23,
+          "Ph298          ",
+          1298.0,
+          "Seg       ",
+          "S79KM4iy3fT8XdV"
+        ],
+        [
+          299,
+          "Cust#299",
+          "Addr299",
+          24,
+          "Ph299          ",
+          1299.0,
+          "Seg       ",
+          "Ea7acpP5Iv67WMQ"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 0.3915829584002495,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 770,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 16,
+      "question": "Show first 10 suppliers",
+      "complexity": "simple",
+      "sql": "SELECT * FROM SUPPLIER FETCH FIRST 10 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          267,
+          "Sup#267                  ",
+          "Addr267",
+          17,
+          "Ph267          ",
+          5267.0,
+          "m31nhNukrhWacWD"
+        ],
+        [
+          268,
+          "Sup#268                  ",
+          "Addr268",
+          18,
+          "Ph268          ",
+          5268.0,
+          "KxfjfM59MdNRXho"
+        ],
+        [
+          269,
+          "Sup#269                  ",
+          "Addr269",
+          19,
+          "Ph269          ",
+          5269.0,
+          "8WUXBlQwi3EBsRl"
+        ],
+        [
+          270,
+          "Sup#270                  ",
+          "Addr270",
+          20,
+          "Ph270          ",
+          5270.0,
+          "lvTrZ4IejsqwaNx"
+        ],
+        [
+          271,
+          "Sup#271                  ",
+          "Addr271",
+          21,
+          "Ph271          ",
+          5271.0,
+          "lb1WoSOHyGEIMuN"
+        ],
+        [
+          272,
+          "Sup#272                  ",
+          "Addr272",
+          22,
+          "Ph272          ",
+          5272.0,
+          "gGeZi2mEgJZOGRp"
+        ],
+        [
+          273,
+          "Sup#273                  ",
+          "Addr273",
+          23,
+          "Ph273          ",
+          5273.0,
+          "wLe5mE3eXdI6zwR"
+        ],
+        [
+          274,
+          "Sup#274                  ",
+          "Addr274",
+          24,
+          "Ph274          ",
+          5274.0,
+          "Zqces67gSGlGpMl"
+        ],
+        [
+          275,
+          "Sup#275                  ",
+          "Addr275",
+          0,
+          "Ph275          ",
+          5275.0,
+          "UzgNwCP2klyuj9B"
+        ],
+        [
+          276,
+          "Sup#276                  ",
+          "Addr276",
+          1,
+          "Ph276          ",
+          5276.0,
+          "vt9uxVATLInV5p7"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 0.33570919185876846,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 780,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 17,
+      "question": "What is the maximum order key?",
+      "complexity": "simple",
+      "sql": "SELECT MAX(O_ORDERKEY) FROM ORDERS",
+      "success": true,
+      "rows": [
+        [
+          700000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.14312495477497578,
+      "explain_plan": {
+        "cost": 3,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 18,
+      "question": "What is the average account balance of customers?",
+      "complexity": "simple",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER",
+      "success": true,
+      "rows": [
+        [
+          42666.5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 5.314833950251341,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 19,
+      "question": "How many line items are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM LINEITEM",
+      "success": true,
+      "rows": [
+        [
+          4000000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 68.05350002832711,
+      "explain_plan": {
+        "cost": 17947,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 20,
+      "question": "What is the minimum part key?",
+      "complexity": "simple",
+      "sql": "SELECT MIN(P_PARTKEY) FROM PART",
+      "success": true,
+      "rows": [
+        [
+          1
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.19408296793699265,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 101,
+      "question": "How many suppliers are in nation 1?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 1",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.4615831896662712,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 102,
+      "question": "How many orders were placed in 1994?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1994-01-01' AND O_ORDERDATE < DATE '1995-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 69.30704112164676,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 103,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.9960830472409725,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 104,
+      "question": "Count parts for Brand#05?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#05'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 8.519041817635298,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 105,
+      "question": "How many customers are in nation 5?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 5",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.707332933321595,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 106,
+      "question": "How many suppliers are in nation 6?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 6",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.5752500146627426,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 107,
+      "question": "How many orders were placed in 1992?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1992-01-01' AND O_ORDERDATE < DATE '1993-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 16.760041937232018,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 108,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.342291038483381,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 109,
+      "question": "Count parts for Brand#10?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#10'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.9203329682350159,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 110,
+      "question": "How many customers are in nation 10?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 10",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.0491248946636915,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 111,
+      "question": "How many suppliers are in nation 11?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 11",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.5235001444816589,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 112,
+      "question": "How many orders were placed in 1997?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1997-01-01' AND O_ORDERDATE < DATE '1998-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 15.489875106140971,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 113,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.9821660611778498,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 114,
+      "question": "Count parts for Brand#15?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#15'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.8742499630898237,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 115,
+      "question": "How many customers are in nation 15?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 15",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.9543751627206802,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 116,
+      "question": "How many suppliers are in nation 16?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 16",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.517750158905983,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 117,
+      "question": "How many orders were placed in 1995?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1995-01-01' AND O_ORDERDATE < DATE '1996-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 15.23279189132154,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 118,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.730667056515813,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 119,
+      "question": "Count parts for Brand#20?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#20'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.8762909565120935,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 120,
+      "question": "How many customers are in nation 20?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 20",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.8267909549176693,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 121,
+      "question": "How many suppliers are in nation 21?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 21",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.6190829444676638,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 122,
+      "question": "How many orders were placed in 1993?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1993-01-01' AND O_ORDERDATE < DATE '1994-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 16.07683300971985,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 123,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.8711659144610167,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 124,
+      "question": "Count parts for Brand#25?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#25'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.9843751322478056,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 125,
+      "question": "How many customers are in nation 0?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 0",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.5656250547617674,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 126,
+      "question": "How many suppliers are in nation 1?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM SUPPLIER WHERE S_NATIONKEY = 1",
+      "success": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.8047500159591436,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 127,
+      "question": "How many orders were placed in 1998?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM ORDERS WHERE O_ORDERDATE >= DATE '1998-01-01' AND O_ORDERDATE < DATE '1999-01-01'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 15.760916052386165,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 128,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "sql": "SELECT AVG(C_ACCTBAL) FROM CUSTOMER WHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "success": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.622500156983733,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 129,
+      "question": "Count parts for Brand#05?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM PART WHERE P_BRAND = 'Brand#05'",
+      "success": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.7702910806983709,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 130,
+      "question": "How many customers are in nation 5?",
+      "complexity": "medium",
+      "sql": "SELECT COUNT(*) FROM CUSTOMER WHERE C_NATIONKEY = 5",
+      "success": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.555790986865759,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 201,
+      "question": "Supplier delivery metrics for nation 1 and mode RAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 1 AND l.L_SHIPMODE = 'RAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 116.52629193849862,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 202,
+      "question": "Part demand and supplier diversity size>=7, suppliers>=3",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 7 AND sd.supplier_count >= 3 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 9.859541896730661,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 203,
+      "question": "Revenue and order profile for nation 3 in 1995",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 3 AND o.O_ORDERDATE >= DATE '1995-01-01' AND o.O_ORDERDATE < DATE '1996-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.295583056285977,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 204,
+      "question": "Supplier delivery metrics for nation 4 and mode MAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 4 AND l.L_SHIPMODE = 'MAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 118.31479193642735,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 205,
+      "question": "Part demand and supplier diversity size>=10, suppliers>=1",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 10 AND sd.supplier_count >= 1 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          210,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          226,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          232,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          237,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          277,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          281,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          290,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          291,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          313,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          318,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          6,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          14,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          23,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          27,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          50,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          51,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          52,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          57,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          58,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          64,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          72,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          107,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          108,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          113,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          124,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          125,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          135,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          158,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          161,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          166,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          173,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          703,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          706,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          722,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          734,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          753,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          754,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          762,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          763,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          770,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          774,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          781,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          786,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          792,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          808,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          809,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          813,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          815,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          817,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          823,
+          10,
+          200,
+          2000,
+          1
+        ]
+      ],
+      "row_count": 50,
+      "latency_ms": 208.08116695843637,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 206,
+      "question": "Revenue and order profile for nation 6 in 1998",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 6 AND o.O_ORDERDATE >= DATE '1998-01-01' AND o.O_ORDERDATE < DATE '1999-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.560290845111012,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 207,
+      "question": "Supplier delivery metrics for nation 7 and mode AIR",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 7 AND l.L_SHIPMODE = 'AIR' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 111.4282920025289,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 208,
+      "question": "Part demand and supplier diversity size>=13, suppliers>=4",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 13 AND sd.supplier_count >= 4 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9373340290039778,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 209,
+      "question": "Revenue and order profile for nation 9 in 1994",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 9 AND o.O_ORDERDATE >= DATE '1994-01-01' AND o.O_ORDERDATE < DATE '1995-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.622124843299389,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 210,
+      "question": "Supplier delivery metrics for nation 10 and mode TRUCK",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 10 AND l.L_SHIPMODE = 'TRUCK' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 112.83579096198082,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 211,
+      "question": "Part demand and supplier diversity size>=16, suppliers>=2",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 16 AND sd.supplier_count >= 2 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9159159380942583,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 212,
+      "question": "Revenue and order profile for nation 12 in 1997",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 12 AND o.O_ORDERDATE >= DATE '1997-01-01' AND o.O_ORDERDATE < DATE '1998-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.173959080129862,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 213,
+      "question": "Supplier delivery metrics for nation 13 and mode FOB",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 13 AND l.L_SHIPMODE = 'FOB' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 113.45733399502933,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 214,
+      "question": "Part demand and supplier diversity size>=19, suppliers>=5",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 19 AND sd.supplier_count >= 5 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.945833045989275,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 215,
+      "question": "Revenue and order profile for nation 15 in 1993",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 15 AND o.O_ORDERDATE >= DATE '1993-01-01' AND o.O_ORDERDATE < DATE '1994-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.435333898290992,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 216,
+      "question": "Supplier delivery metrics for nation 16 and mode SHIP",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 16 AND l.L_SHIPMODE = 'SHIP' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 113.32350014708936,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 217,
+      "question": "Part demand and supplier diversity size>=22, suppliers>=3",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 22 AND sd.supplier_count >= 3 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9060828015208244,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 218,
+      "question": "Revenue and order profile for nation 18 in 1996",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 18 AND o.O_ORDERDATE >= DATE '1996-01-01' AND o.O_ORDERDATE < DATE '1997-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.332333045080304,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 219,
+      "question": "Supplier delivery metrics for nation 19 and mode REG AIR",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 19 AND l.L_SHIPMODE = 'REG AIR' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 115.5827499460429,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 220,
+      "question": "Part demand and supplier diversity size>=25, suppliers>=1",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 25 AND sd.supplier_count >= 1 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.8791249711066484,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 221,
+      "question": "Revenue and order profile for nation 21 in 1992",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 21 AND o.O_ORDERDATE >= DATE '1992-01-01' AND o.O_ORDERDATE < DATE '1993-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.875499997287989,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 222,
+      "question": "Supplier delivery metrics for nation 22 and mode RAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 22 AND l.L_SHIPMODE = 'RAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 114.11474994383752,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 223,
+      "question": "Part demand and supplier diversity size>=28, suppliers>=4",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 28 AND sd.supplier_count >= 4 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9157499298453331,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 224,
+      "question": "Revenue and order profile for nation 24 in 1995",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 24 AND o.O_ORDERDATE >= DATE '1995-01-01' AND o.O_ORDERDATE < DATE '1996-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.095166862010956,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 225,
+      "question": "Supplier delivery metrics for nation 0 and mode MAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 0 AND l.L_SHIPMODE = 'MAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 112.09658300504088,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 226,
+      "question": "Part demand and supplier diversity size>=31, suppliers>=2",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 31 AND sd.supplier_count >= 2 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.8955828379839659,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 227,
+      "question": "Revenue and order profile for nation 2 in 1998",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 2 AND o.O_ORDERDATE >= DATE '1998-01-01' AND o.O_ORDERDATE < DATE '1999-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.170333975926042,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 228,
+      "question": "Supplier delivery metrics for nation 3 and mode AIR",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 3 AND l.L_SHIPMODE = 'AIR' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 109.9908328615129,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 229,
+      "question": "Part demand and supplier diversity size>=34, suppliers>=5",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 34 AND sd.supplier_count >= 5 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9069589432328939,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 230,
+      "question": "Revenue and order profile for nation 5 in 1994",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 5 AND o.O_ORDERDATE >= DATE '1994-01-01' AND o.O_ORDERDATE < DATE '1995-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.23683320172131,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 231,
+      "question": "Supplier delivery metrics for nation 6 and mode TRUCK",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 6 AND l.L_SHIPMODE = 'TRUCK' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 112.9419170320034,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 232,
+      "question": "Part demand and supplier diversity size>=7, suppliers>=3",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 7 AND sd.supplier_count >= 3 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 6.4159168396145105,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 233,
+      "question": "Revenue and order profile for nation 8 in 1997",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 8 AND o.O_ORDERDATE >= DATE '1997-01-01' AND o.O_ORDERDATE < DATE '1998-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.206999843940139,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 234,
+      "question": "Supplier delivery metrics for nation 9 and mode FOB",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 9 AND l.L_SHIPMODE = 'FOB' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 112.65145801007748,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 235,
+      "question": "Part demand and supplier diversity size>=10, suppliers>=1",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 10 AND sd.supplier_count >= 1 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [
+        [
+          210,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          226,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          232,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          237,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          277,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          281,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          290,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          291,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          313,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          318,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          6,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          14,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          23,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          27,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          50,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          51,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          52,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          57,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          58,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          64,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          72,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          107,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          108,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          113,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          124,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          125,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          135,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          158,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          161,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          166,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          173,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          703,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          706,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          722,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          734,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          753,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          754,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          762,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          763,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          770,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          774,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          781,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          786,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          792,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          808,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          809,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          813,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          815,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          817,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          823,
+          10,
+          200,
+          2000,
+          1
+        ]
+      ],
+      "row_count": 50,
+      "latency_ms": 205.53129189647734,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 236,
+      "question": "Revenue and order profile for nation 11 in 1993",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 11 AND o.O_ORDERDATE >= DATE '1993-01-01' AND o.O_ORDERDATE < DATE '1994-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.17829205840826,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 237,
+      "question": "Supplier delivery metrics for nation 12 and mode SHIP",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 12 AND l.L_SHIPMODE = 'SHIP' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 111.78941698744893,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 238,
+      "question": "Part demand and supplier diversity size>=13, suppliers>=4",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 13 AND sd.supplier_count >= 4 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.8460418321192265,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 239,
+      "question": "Revenue and order profile for nation 14 in 1996",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 14 AND o.O_ORDERDATE >= DATE '1996-01-01' AND o.O_ORDERDATE < DATE '1997-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.931790996342897,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 240,
+      "question": "Supplier delivery metrics for nation 15 and mode REG AIR",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 15 AND l.L_SHIPMODE = 'REG AIR' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 113.3940420113504,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 241,
+      "question": "Part demand and supplier diversity size>=16, suppliers>=2",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 16 AND sd.supplier_count >= 2 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.818916829302907,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 242,
+      "question": "Revenue and order profile for nation 17 in 1992",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 17 AND o.O_ORDERDATE >= DATE '1992-01-01' AND o.O_ORDERDATE < DATE '1993-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.715792145580053,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 243,
+      "question": "Supplier delivery metrics for nation 18 and mode RAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 18 AND l.L_SHIPMODE = 'RAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 111.81420809589326,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 244,
+      "question": "Part demand and supplier diversity size>=19, suppliers>=5",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 19 AND sd.supplier_count >= 5 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.9726248681545258,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 245,
+      "question": "Revenue and order profile for nation 20 in 1995",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 20 AND o.O_ORDERDATE >= DATE '1995-01-01' AND o.O_ORDERDATE < DATE '1996-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.37770901247859,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 246,
+      "question": "Supplier delivery metrics for nation 21 and mode MAIL",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 21 AND l.L_SHIPMODE = 'MAIL' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 115.84099987521768,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 247,
+      "question": "Part demand and supplier diversity size>=22, suppliers>=3",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 22 AND sd.supplier_count >= 3 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.8760001510381699,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 248,
+      "question": "Revenue and order profile for nation 23 in 1998",
+      "complexity": "complex",
+      "sql": "SELECT c.C_NATIONKEY, COUNT(DISTINCT o.O_ORDERKEY) AS order_count, SUM(l.L_EXTENDEDPRICE * (1 - l.L_DISCOUNT)) AS net_revenue FROM CUSTOMER c JOIN ORDERS o ON c.C_CUSTKEY = o.O_CUSTKEY JOIN LINEITEM l ON o.O_ORDERKEY = l.L_ORDERKEY WHERE c.C_NATIONKEY = 23 AND o.O_ORDERDATE >= DATE '1998-01-01' AND o.O_ORDERDATE < DATE '1999-01-01' GROUP BY c.C_NATIONKEY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.277542009949684,
+      "explain_plan": {
+        "cost": 20558,
+        "cardinality": 1918,
+        "bytes": 40278,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 249,
+      "question": "Supplier delivery metrics for nation 24 and mode AIR",
+      "complexity": "complex",
+      "sql": "SELECT s.S_NATIONKEY, l.L_SHIPMODE, COUNT(*) AS line_count, SUM(l.L_EXTENDEDPRICE) AS gross_value, SUM(CASE WHEN l.L_RECEIPTDATE <= l.L_COMMITDATE THEN 1 ELSE 0 END) AS on_time_lines FROM SUPPLIER s JOIN LINEITEM l ON s.S_SUPPKEY = l.L_SUPPKEY WHERE s.S_NATIONKEY = 24 AND l.L_SHIPMODE = 'AIR' GROUP BY s.S_NATIONKEY, l.L_SHIPMODE",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 112.95187496580184,
+      "explain_plan": {
+        "cost": 17980,
+        "cardinality": 1,
+        "bytes": 43,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 250,
+      "question": "Part demand and supplier diversity size>=25, suppliers>=1",
+      "complexity": "complex",
+      "sql": "WITH part_activity AS ( SELECT l.L_PARTKEY AS partkey, COUNT(*) AS line_count, SUM(l.L_QUANTITY) AS total_qty FROM LINEITEM l GROUP BY l.L_PARTKEY), supplier_diversity AS ( SELECT ps.PS_PARTKEY AS partkey, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count FROM PARTSUPP ps GROUP BY ps.PS_PARTKEY) SELECT p.P_PARTKEY, p.P_SIZE, pa.line_count, pa.total_qty, sd.supplier_count FROM PART p JOIN part_activity pa ON p.P_PARTKEY = pa.partkey JOIN supplier_diversity sd ON p.P_PARTKEY = sd.partkey WHERE p.P_SIZE >= 25 AND sd.supplier_count >= 1 ORDER BY pa.total_qty DESC FETCH FIRST 50 ROWS ONLY",
+      "success": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 0.8360419888049364,
+      "explain_plan": {
+        "cost": 18308,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "error": null
+    }
+  ],
+  "mcp_results": [
+    {
+      "id": 1,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS region_count FROM REGION",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.9580410551279783,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 0.43476512885187596,
+      "error": null
+    },
+    {
+      "id": 2,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS nation_count FROM NATION",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.3154589105397463,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 4.155180541776096,
+      "error": null
+    },
+    {
+      "id": 3,
+      "question": "How many suppliers exist?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count FROM SUPPLIER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          10000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.3777089770883322,
+      "explain_plan": {
+        "cost": 9,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 0.7804239538320233,
+      "error": null
+    },
+    {
+      "id": 4,
+      "question": "How many customers exist?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count FROM CUSTOMER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          150000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.172292072325945,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 0.2497213327532469,
+      "error": null
+    },
+    {
+      "id": 5,
+      "question": "Show first 10 customers",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT * FROM CUSTOMER FETCH FIRST 10 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          290,
+          "Cust#290",
+          "Addr290",
+          15,
+          "Ph290          ",
+          1290.0,
+          "Seg       ",
+          "7XAGkFemUO4B8DM"
+        ],
+        [
+          291,
+          "Cust#291",
+          "Addr291",
+          16,
+          "Ph291          ",
+          1291.0,
+          "Seg       ",
+          "CQfZOikxpDs3J1e"
+        ],
+        [
+          292,
+          "Cust#292",
+          "Addr292",
+          17,
+          "Ph292          ",
+          1292.0,
+          "Seg       ",
+          "XulF07et97oobT1"
+        ],
+        [
+          293,
+          "Cust#293",
+          "Addr293",
+          18,
+          "Ph293          ",
+          1293.0,
+          "Seg       ",
+          "eHqZesNxvv3tyc8"
+        ],
+        [
+          294,
+          "Cust#294",
+          "Addr294",
+          19,
+          "Ph294          ",
+          1294.0,
+          "Seg       ",
+          "DpLjTuJxNobkx0k"
+        ],
+        [
+          295,
+          "Cust#295",
+          "Addr295",
+          20,
+          "Ph295          ",
+          1295.0,
+          "Seg       ",
+          "VfvspbKmSveet0a"
+        ],
+        [
+          296,
+          "Cust#296",
+          "Addr296",
+          21,
+          "Ph296          ",
+          1296.0,
+          "Seg       ",
+          "uWmilQcd5xD42DE"
+        ],
+        [
+          297,
+          "Cust#297",
+          "Addr297",
+          22,
+          "Ph297          ",
+          1297.0,
+          "Seg       ",
+          "KhuEoFpqMOIrjtZ"
+        ],
+        [
+          298,
+          "Cust#298",
+          "Addr298",
+          23,
+          "Ph298          ",
+          1298.0,
+          "Seg       ",
+          "S79KM4iy3fT8XdV"
+        ],
+        [
+          299,
+          "Cust#299",
+          "Addr299",
+          24,
+          "Ph299          ",
+          1299.0,
+          "Seg       ",
+          "Ea7acpP5Iv67WMQ"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 1.396375009790063,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 770,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.388839652909581,
+      "error": null
+    },
+    {
+      "id": 6,
+      "question": "Show first 10 suppliers",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT * FROM SUPPLIER FETCH FIRST 10 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          267,
+          "Sup#267                  ",
+          "Addr267",
+          17,
+          "Ph267          ",
+          5267.0,
+          "m31nhNukrhWacWD"
+        ],
+        [
+          268,
+          "Sup#268                  ",
+          "Addr268",
+          18,
+          "Ph268          ",
+          5268.0,
+          "KxfjfM59MdNRXho"
+        ],
+        [
+          269,
+          "Sup#269                  ",
+          "Addr269",
+          19,
+          "Ph269          ",
+          5269.0,
+          "8WUXBlQwi3EBsRl"
+        ],
+        [
+          270,
+          "Sup#270                  ",
+          "Addr270",
+          20,
+          "Ph270          ",
+          5270.0,
+          "lvTrZ4IejsqwaNx"
+        ],
+        [
+          271,
+          "Sup#271                  ",
+          "Addr271",
+          21,
+          "Ph271          ",
+          5271.0,
+          "lb1WoSOHyGEIMuN"
+        ],
+        [
+          272,
+          "Sup#272                  ",
+          "Addr272",
+          22,
+          "Ph272          ",
+          5272.0,
+          "gGeZi2mEgJZOGRp"
+        ],
+        [
+          273,
+          "Sup#273                  ",
+          "Addr273",
+          23,
+          "Ph273          ",
+          5273.0,
+          "wLe5mE3eXdI6zwR"
+        ],
+        [
+          274,
+          "Sup#274                  ",
+          "Addr274",
+          24,
+          "Ph274          ",
+          5274.0,
+          "Zqces67gSGlGpMl"
+        ],
+        [
+          275,
+          "Sup#275                  ",
+          "Addr275",
+          0,
+          "Ph275          ",
+          5275.0,
+          "UzgNwCP2klyuj9B"
+        ],
+        [
+          276,
+          "Sup#276                  ",
+          "Addr276",
+          1,
+          "Ph276          ",
+          5276.0,
+          "vt9uxVATLInV5p7"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 2.2605829872190952,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 780,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.998080255372979,
+      "error": null
+    },
+    {
+      "id": 7,
+      "question": "What is the maximum order key?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT MAX(O_ORDERKEY) AS max_order_key FROM ORDERS",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          700000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.2774579226970673,
+      "explain_plan": {
+        "cost": 3,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.4336394836248396,
+      "error": null
+    },
+    {
+      "id": 8,
+      "question": "What is the average account balance of customers?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_account_balance\nFROM CUSTOMER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          42666.5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 11.702166870236397,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 0.27422802733457474,
+      "error": null
+    },
+    {
+      "id": 9,
+      "question": "How many line items are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS line_item_count FROM LINEITEM",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          4000000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 78.67162488400936,
+      "explain_plan": {
+        "cost": 17947,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 0.2730530142143193,
+      "error": null
+    },
+    {
+      "id": 10,
+      "question": "What is the minimum part key?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT MIN(P_PARTKEY) AS min_partkey FROM PART",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          1
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.4348749537020922,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.6241802909933893,
+      "error": null
+    },
+    {
+      "id": 11,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS region_count FROM REGION",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.1346661485731602,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 6.034111986370064,
+      "error": null
+    },
+    {
+      "id": 12,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS nation_count FROM NATION",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.9004171006381512,
+      "explain_plan": {
+        "cost": 1,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 3.418220612763144,
+      "error": null
+    },
+    {
+      "id": 13,
+      "question": "How many suppliers exist?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count FROM SUPPLIER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          10000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 1.4271670952439308,
+      "explain_plan": {
+        "cost": 9,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 2.4189269981306465,
+      "error": null
+    },
+    {
+      "id": 14,
+      "question": "How many customers exist?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count FROM CUSTOMER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          150000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 5.48616680316627,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 3.5284577839766085,
+      "error": null
+    },
+    {
+      "id": 15,
+      "question": "Show first 10 customers",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT * FROM CUSTOMER FETCH FIRST 10 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          290,
+          "Cust#290",
+          "Addr290",
+          15,
+          "Ph290          ",
+          1290.0,
+          "Seg       ",
+          "7XAGkFemUO4B8DM"
+        ],
+        [
+          291,
+          "Cust#291",
+          "Addr291",
+          16,
+          "Ph291          ",
+          1291.0,
+          "Seg       ",
+          "CQfZOikxpDs3J1e"
+        ],
+        [
+          292,
+          "Cust#292",
+          "Addr292",
+          17,
+          "Ph292          ",
+          1292.0,
+          "Seg       ",
+          "XulF07et97oobT1"
+        ],
+        [
+          293,
+          "Cust#293",
+          "Addr293",
+          18,
+          "Ph293          ",
+          1293.0,
+          "Seg       ",
+          "eHqZesNxvv3tyc8"
+        ],
+        [
+          294,
+          "Cust#294",
+          "Addr294",
+          19,
+          "Ph294          ",
+          1294.0,
+          "Seg       ",
+          "DpLjTuJxNobkx0k"
+        ],
+        [
+          295,
+          "Cust#295",
+          "Addr295",
+          20,
+          "Ph295          ",
+          1295.0,
+          "Seg       ",
+          "VfvspbKmSveet0a"
+        ],
+        [
+          296,
+          "Cust#296",
+          "Addr296",
+          21,
+          "Ph296          ",
+          1296.0,
+          "Seg       ",
+          "uWmilQcd5xD42DE"
+        ],
+        [
+          297,
+          "Cust#297",
+          "Addr297",
+          22,
+          "Ph297          ",
+          1297.0,
+          "Seg       ",
+          "KhuEoFpqMOIrjtZ"
+        ],
+        [
+          298,
+          "Cust#298",
+          "Addr298",
+          23,
+          "Ph298          ",
+          1298.0,
+          "Seg       ",
+          "S79KM4iy3fT8XdV"
+        ],
+        [
+          299,
+          "Cust#299",
+          "Addr299",
+          24,
+          "Ph299          ",
+          1299.0,
+          "Seg       ",
+          "Ea7acpP5Iv67WMQ"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 1.7733750864863396,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 770,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.5287340739525135,
+      "error": null
+    },
+    {
+      "id": 16,
+      "question": "Show first 10 suppliers",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT * FROM SUPPLIER FETCH FIRST 10 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          267,
+          "Sup#267                  ",
+          "Addr267",
+          17,
+          "Ph267          ",
+          5267.0,
+          "m31nhNukrhWacWD"
+        ],
+        [
+          268,
+          "Sup#268                  ",
+          "Addr268",
+          18,
+          "Ph268          ",
+          5268.0,
+          "KxfjfM59MdNRXho"
+        ],
+        [
+          269,
+          "Sup#269                  ",
+          "Addr269",
+          19,
+          "Ph269          ",
+          5269.0,
+          "8WUXBlQwi3EBsRl"
+        ],
+        [
+          270,
+          "Sup#270                  ",
+          "Addr270",
+          20,
+          "Ph270          ",
+          5270.0,
+          "lvTrZ4IejsqwaNx"
+        ],
+        [
+          271,
+          "Sup#271                  ",
+          "Addr271",
+          21,
+          "Ph271          ",
+          5271.0,
+          "lb1WoSOHyGEIMuN"
+        ],
+        [
+          272,
+          "Sup#272                  ",
+          "Addr272",
+          22,
+          "Ph272          ",
+          5272.0,
+          "gGeZi2mEgJZOGRp"
+        ],
+        [
+          273,
+          "Sup#273                  ",
+          "Addr273",
+          23,
+          "Ph273          ",
+          5273.0,
+          "wLe5mE3eXdI6zwR"
+        ],
+        [
+          274,
+          "Sup#274                  ",
+          "Addr274",
+          24,
+          "Ph274          ",
+          5274.0,
+          "Zqces67gSGlGpMl"
+        ],
+        [
+          275,
+          "Sup#275                  ",
+          "Addr275",
+          0,
+          "Ph275          ",
+          5275.0,
+          "UzgNwCP2klyuj9B"
+        ],
+        [
+          276,
+          "Sup#276                  ",
+          "Addr276",
+          1,
+          "Ph276          ",
+          5276.0,
+          "vt9uxVATLInV5p7"
+        ]
+      ],
+      "row_count": 10,
+      "latency_ms": 1.573583809658885,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 10,
+        "bytes": 780,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.687342044303885,
+      "error": null
+    },
+    {
+      "id": 17,
+      "question": "What is the maximum order key?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT MAX(O_ORDERKEY) AS max_order_key FROM ORDERS",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          700000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.9169168770313263,
+      "explain_plan": {
+        "cost": 3,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.406408152043949,
+      "error": null
+    },
+    {
+      "id": 18,
+      "question": "What is the average account balance of customers?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_account_balance\nFROM CUSTOMER",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          42666.5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 11.996916960924864,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.2572515102485045,
+      "error": null
+    },
+    {
+      "id": 19,
+      "question": "How many line items are there?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS line_item_count FROM LINEITEM",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          4000000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 76.83637482114136,
+      "explain_plan": {
+        "cost": 17947,
+        "cardinality": 1,
+        "bytes": null,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": null
+      },
+      "latency_ratio": 1.1290583847878273,
+      "error": null
+    },
+    {
+      "id": 20,
+      "question": "What is the minimum part key?",
+      "complexity": "simple",
+      "generated": true,
+      "mcp_sql": "SELECT MIN(P_PARTKEY) AS min_partkey FROM PART",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          1
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.8361670188605785,
+      "explain_plan": {
+        "cost": 2,
+        "cardinality": 1,
+        "bytes": 5,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.308296744163727,
+      "error": null
+    },
+    {
+      "id": 101,
+      "question": "How many suppliers are in nation 1?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 1",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 2.8389161452651024,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 1.9423568670855627,
+      "error": null
+    },
+    {
+      "id": 102,
+      "question": "How many orders were placed in 1994?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1994-01-01' AND O_ORDERDATE < DATE '1995-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 40.67316697910428,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 0.5868547599329093,
+      "error": null
+    },
+    {
+      "id": 103,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 14.120417181402445,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.5335644966517017,
+      "error": null
+    },
+    {
+      "id": 104,
+      "question": "Count parts for Brand#05?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#05'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.7375420797616243,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 0.43872798840176197,
+      "error": null
+    },
+    {
+      "id": 105,
+      "question": "How many customers are in nation 5?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 5",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 12.357166968286037,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.6250888015194107,
+      "error": null
+    },
+    {
+      "id": 106,
+      "question": "How many suppliers are in nation 6?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 6",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 2.749124774709344,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.7790086130134215,
+      "error": null
+    },
+    {
+      "id": 107,
+      "question": "How many orders were placed in 1992?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1992-01-01' AND O_ORDERDATE < DATE '1993-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 40.195874869823456,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.398315888490071,
+      "error": null
+    },
+    {
+      "id": 108,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 11.893915943801403,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.7390876931997528,
+      "error": null
+    },
+    {
+      "id": 109,
+      "question": "Count parts for Brand#10?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#10'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 6.169083993881941,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.703100080955272,
+      "error": null
+    },
+    {
+      "id": 110,
+      "question": "How many customers are in nation 10?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 10",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 16.917333006858826,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.1780220286991,
+      "error": null
+    },
+    {
+      "id": 111,
+      "question": "How many suppliers are in nation 11?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 11",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.8690841756761074,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 7.390798677824744,
+      "error": null
+    },
+    {
+      "id": 112,
+      "question": "How many orders were placed in 1997?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1997-01-01' AND O_ORDERDATE < DATE '1998-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 41.72612517140806,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.693767695703738,
+      "error": null
+    },
+    {
+      "id": 113,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 13.203125214204192,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.3155636935690613,
+      "error": null
+    },
+    {
+      "id": 114,
+      "question": "Count parts for Brand#15?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#15'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 5.805375054478645,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.640406405006824,
+      "error": null
+    },
+    {
+      "id": 115,
+      "question": "How many customers are in nation 15?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 15",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 21.199207985773683,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 5.360950115615295,
+      "error": null
+    },
+    {
+      "id": 116,
+      "question": "How many suppliers are in nation 16?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 16",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 7.805458037182689,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 15.075723112622093,
+      "error": null
+    },
+    {
+      "id": 117,
+      "question": "How many orders were placed in 1995?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1995-01-01' AND O_ORDERDATE < DATE '1996-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 45.3171250410378,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.9749717165673335,
+      "error": null
+    },
+    {
+      "id": 118,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 23.110416950657964,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.1947144037671125,
+      "error": null
+    },
+    {
+      "id": 119,
+      "question": "Count parts for Brand#20?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#20'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 6.20358414016664,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 7.07936569933211,
+      "error": null
+    },
+    {
+      "id": 120,
+      "question": "How many customers are in nation 20?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 20",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 15.23162517696619,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.980260577702209,
+      "error": null
+    },
+    {
+      "id": 121,
+      "question": "How many suppliers are in nation 21?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 21",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.4815419241786,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 7.239000790164204,
+      "error": null
+    },
+    {
+      "id": 122,
+      "question": "How many orders were placed in 1993?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1993-01-01' AND O_ORDERDATE < DATE '1994-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 39.86045811325312,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 2.479372528728388,
+      "error": null
+    },
+    {
+      "id": 123,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 17.96795893460512,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.641485105943025,
+      "error": null
+    },
+    {
+      "id": 124,
+      "question": "Count parts for Brand#25?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#25'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 7.8400420024991035,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 7.964486043645259,
+      "error": null
+    },
+    {
+      "id": 125,
+      "question": "How many customers are in nation 0?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 0",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 15.67729189991951,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.39678644252935,
+      "error": null
+    },
+    {
+      "id": 126,
+      "question": "How many suppliers are in nation 1?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS supplier_count\nFROM SUPPLIER S\nWHERE S.S_NATIONKEY = 1",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          400
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 5.376625107601285,
+      "explain_plan": {
+        "cost": 34,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.681112147842755,
+      "error": null
+    },
+    {
+      "id": 127,
+      "question": "How many orders were placed in 1998?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS order_count\nFROM ORDERS\nWHERE O_ORDERDATE >= DATE '1998-01-01' AND O_ORDERDATE < DATE '1999-01-01'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 86.97433397173882,
+      "explain_plan": {
+        "cost": 2119,
+        "cardinality": 1,
+        "bytes": 8,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 5.518355258200307,
+      "error": null
+    },
+    {
+      "id": 128,
+      "question": "Average balance for segment HOUSEHOLD?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT AVG(C_ACCTBAL) AS average_balance\nFROM CUSTOMER\nWHERE C_MKTSEGMENT = 'HOUSEHOLD'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 14.515249989926815,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 16,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.1401296910713974,
+      "error": null
+    },
+    {
+      "id": 129,
+      "question": "Count parts for Brand#05?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS part_count\nFROM PART\nWHERE P_BRAND = 'Brand#05'",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          0
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 3.704124828800559,
+      "explain_plan": {
+        "cost": 102,
+        "cardinality": 1,
+        "bytes": 11,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 4.808733895039105,
+      "error": null
+    },
+    {
+      "id": 130,
+      "question": "How many customers are in nation 5?",
+      "complexity": "medium",
+      "generated": true,
+      "mcp_sql": "SELECT COUNT(*) AS customer_count\nFROM CUSTOMER\nWHERE C_NATIONKEY = 5",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [
+        [
+          6000
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 13.078999938443303,
+      "explain_plan": {
+        "cost": 478,
+        "cardinality": 1,
+        "bytes": 3,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 0,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 3.6782251788010036,
+      "error": null
+    },
+    {
+      "id": 201,
+      "question": "Supplier delivery metrics for nation 1 and mode RAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 1 AND L.L_SHIPMODE = 'RAIL'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 327.90945819579065,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 56,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": 13
+      },
+      "latency_ratio": 2.8140383834478997,
+      "error": null
+    },
+    {
+      "id": 202,
+      "question": "Part demand and supplier diversity size>=7, suppliers>=3",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 7\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 3\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 237.45995783247054,
+      "explain_plan": {
+        "cost": 18427,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 119,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 24.08427899791269,
+      "error": null
+    },
+    {
+      "id": 203,
+      "question": "Revenue and order profile for nation 3 in 1995",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 3 AND O.O_ORDERDATE >= DATE '1995-01-01' AND O.O_ORDERDATE < DATE '1996-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 41.815000120550394,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.733795760951121,
+      "error": null
+    },
+    {
+      "id": 204,
+      "question": "Supplier delivery metrics for nation 4 and mode MAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 4 AND L.L_SHIPMODE = 'MAIL'\nGROUP BY L.L_SUPPKEY\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 157.3532079346478,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.3299538067834873,
+      "error": null
+    },
+    {
+      "id": 205,
+      "question": "Part demand and supplier diversity size>=10, suppliers>=1",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 10\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 1\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": false,
+      "rows": [
+        [
+          538,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          588,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          600,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          607,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          612,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          629,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          655,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          709,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          724,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          784,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          790,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          989,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1037,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1092,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1229,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1298,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1315,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          8,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          10,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          123,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          126,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          183,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          255,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          256,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          397,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3631,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3688,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3715,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3785,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3925,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3942,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4010,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4175,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4212,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4236,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4341,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1437,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1530,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1542,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1609,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1628,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1662,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1704,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1713,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1816,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1882,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2087,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2394,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2419,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2637,
+          10,
+          200,
+          2000,
+          1
+        ]
+      ],
+      "row_count": 50,
+      "latency_ms": 227.10104216821492,
+      "explain_plan": {
+        "cost": 18427,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 119,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 1.0914060387482243,
+      "error": null
+    },
+    {
+      "id": 206,
+      "question": "Revenue and order profile for nation 6 in 1998",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 6 AND O.O_ORDERDATE >= DATE '1998-01-01' AND O.O_ORDERDATE < DATE '1999-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 42.44862496852875,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.9153693027211713,
+      "error": null
+    },
+    {
+      "id": 207,
+      "question": "Supplier delivery metrics for nation 7 and mode AIR",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nWHERE S.S_NATIONKEY = 7 AND L.L_SHIPMODE = 'AIR'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 150.93137486837804,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.3545157352403159,
+      "error": null
+    },
+    {
+      "id": 208,
+      "question": "Part demand and supplier diversity size>=13, suppliers>=4",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 13\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 4\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.726165914908051,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 15.710691662988326,
+      "error": null
+    },
+    {
+      "id": 209,
+      "question": "Revenue and order profile for nation 9 in 1994",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 9 AND O.O_ORDERDATE >= DATE '1994-01-01' AND O.O_ORDERDATE < DATE '1995-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 42.25945798680186,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.8901037598627344,
+      "error": null
+    },
+    {
+      "id": 210,
+      "question": "Supplier delivery metrics for nation 10 and mode TRUCK",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 10 AND L.L_SHIPMODE = 'TRUCK'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 152.86004217341542,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 34,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -9
+      },
+      "latency_ratio": 1.3547123733543063,
+      "error": null
+    },
+    {
+      "id": 211,
+      "question": "Part demand and supplier diversity size>=16, suppliers>=2",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 16\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 2\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 15.11483290232718,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 16.502423719993928,
+      "error": null
+    },
+    {
+      "id": 212,
+      "question": "Revenue and order profile for nation 12 in 1997",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 12 AND O.O_ORDERDATE >= DATE '1997-01-01' AND O.O_ORDERDATE < DATE '1998-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 47.92995797470212,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 3.158698248861491,
+      "error": null
+    },
+    {
+      "id": 213,
+      "question": "Supplier delivery metrics for nation 13 and mode FOB",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 13 AND L.L_SHIPMODE = 'FOB'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 162.81354217790067,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.435019988968132,
+      "error": null
+    },
+    {
+      "id": 214,
+      "question": "Part demand and supplier diversity size>=19, suppliers>=5",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 19\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 5\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 19.679374992847443,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 20.80639397861617,
+      "error": null
+    },
+    {
+      "id": 215,
+      "question": "Revenue and order profile for nation 15 in 1993",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 15 AND O.O_ORDERDATE >= DATE '1993-01-01' AND O.O_ORDERDATE < DATE '1994-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 71.28158397972584,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 4.93799343208576,
+      "error": null
+    },
+    {
+      "id": 216,
+      "question": "Supplier delivery metrics for nation 16 and mode SHIP",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN PART P ON L.L_PARTKEY = P.P_PARTKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 16 AND L.L_SHIPMODE = 'SHIP'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 155.4993751924485,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 70,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": 27
+      },
+      "latency_ratio": 1.3721723648723922,
+      "error": null
+    },
+    {
+      "id": 217,
+      "question": "Part demand and supplier diversity size>=22, suppliers>=3",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 22\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 3\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.257833128795028,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 15.735684536627131,
+      "error": null
+    },
+    {
+      "id": 218,
+      "question": "Revenue and order profile for nation 18 in 1996",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 18 AND O.O_ORDERDATE >= DATE '1996-01-01' AND O.O_ORDERDATE < DATE '1997-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 44.61674997583032,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.909977877772915,
+      "error": null
+    },
+    {
+      "id": 219,
+      "question": "Supplier delivery metrics for nation 19 and mode REG AIR",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN PART P ON L.L_PARTKEY = P.P_PARTKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 19 AND L.L_SHIPMODE = 'REG AIR'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 433.4160410799086,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 66,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": 23
+      },
+      "latency_ratio": 3.7498332690841734,
+      "error": null
+    },
+    {
+      "id": 220,
+      "question": "Part demand and supplier diversity size>=25, suppliers>=1",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 25\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 1\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 14.370083110406995,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 16.34589345393959,
+      "error": null
+    },
+    {
+      "id": 221,
+      "question": "Revenue and order profile for nation 21 in 1992",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 21 AND O.O_ORDERDATE >= DATE '1992-01-01' AND O.O_ORDERDATE < DATE '1993-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 37.56583295762539,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.525349263182694,
+      "error": null
+    },
+    {
+      "id": 222,
+      "question": "Supplier delivery metrics for nation 22 and mode RAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nWHERE S.S_NATIONKEY = 22 AND L.L_SHIPMODE = 'RAIL'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 170.51091697067022,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 25,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": -18
+      },
+      "latency_ratio": 1.49420576266073,
+      "error": null
+    },
+    {
+      "id": 223,
+      "question": "Part demand and supplier diversity size>=28, suppliers>=4",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 28\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 4\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 13.677999842911959,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 14.936391909112267,
+      "error": null
+    },
+    {
+      "id": 224,
+      "question": "Revenue and order profile for nation 24 in 1995",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 24 AND O.O_ORDERDATE >= DATE '1995-01-01' AND O.O_ORDERDATE < DATE '1996-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 33.92662503756583,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.2475157345194243,
+      "error": null
+    },
+    {
+      "id": 225,
+      "question": "Supplier delivery metrics for nation 0 and mode MAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 0 AND L.L_SHIPMODE = 'MAIL'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 137.30637496337295,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 56,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": 13
+      },
+      "latency_ratio": 1.2248934916883096,
+      "error": null
+    },
+    {
+      "id": 226,
+      "question": "Part demand and supplier diversity size>=31, suppliers>=2",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 31\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 2\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 12.614334002137184,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 14.085055527116996,
+      "error": null
+    },
+    {
+      "id": 227,
+      "question": "Revenue and order profile for nation 2 in 1998",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 2 AND O.O_ORDERDATE >= DATE '1998-01-01' AND O.O_ORDERDATE < DATE '1999-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 42.32104099355638,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.9865944631548933,
+      "error": null
+    },
+    {
+      "id": 228,
+      "question": "Supplier delivery metrics for nation 3 and mode AIR",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nWHERE S.S_NATIONKEY = 3 AND L.L_SHIPMODE = 'AIR'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 146.55808289535344,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.3324572519591844,
+      "error": null
+    },
+    {
+      "id": 229,
+      "question": "Part demand and supplier diversity size>=34, suppliers>=5",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 34\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 5\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 13.686917023733258,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 15.090999571541417,
+      "error": null
+    },
+    {
+      "id": 230,
+      "question": "Revenue and order profile for nation 5 in 1994",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 5 AND O.O_ORDERDATE >= DATE '1994-01-01' AND O.O_ORDERDATE < DATE '1995-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 85.52674995735288,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 6.007427968392031,
+      "error": null
+    },
+    {
+      "id": 231,
+      "question": "Supplier delivery metrics for nation 6 and mode TRUCK",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 6 AND L.L_SHIPMODE = 'TRUCK'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 381.25120801851153,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 34,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -9
+      },
+      "latency_ratio": 3.375639603412076,
+      "error": null
+    },
+    {
+      "id": 232,
+      "question": "Part demand and supplier diversity size>=7, suppliers>=3",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 7\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 3\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 261.8758329190314,
+      "explain_plan": {
+        "cost": 18427,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 119,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 40.81658778712689,
+      "error": null
+    },
+    {
+      "id": 233,
+      "question": "Revenue and order profile for nation 8 in 1997",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 8 AND O.O_ORDERDATE >= DATE '1997-01-01' AND O.O_ORDERDATE < DATE '1998-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 56.89183296635747,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 3.741160883159237,
+      "error": null
+    },
+    {
+      "id": 234,
+      "question": "Supplier delivery metrics for nation 9 and mode FOB",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 9 AND L.L_SHIPMODE = 'FOB'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 140.31154196709394,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 34,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -9
+      },
+      "latency_ratio": 1.245536848307299,
+      "error": null
+    },
+    {
+      "id": 235,
+      "question": "Part demand and supplier diversity size>=10, suppliers>=1",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 10\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 1\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": false,
+      "rows": [
+        [
+          538,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          588,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          600,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          607,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          612,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          629,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          655,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          709,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          724,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          784,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          790,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          989,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1037,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1092,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1229,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1298,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1315,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          8,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          10,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          123,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          126,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          183,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          255,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          256,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          397,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3631,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3688,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3715,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3785,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3925,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          3942,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4010,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4175,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4212,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4236,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          4341,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1437,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1530,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1542,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1609,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1628,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1662,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1704,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1713,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1816,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          1882,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2087,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2394,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2419,
+          10,
+          200,
+          2000,
+          1
+        ],
+        [
+          2637,
+          10,
+          200,
+          2000,
+          1
+        ]
+      ],
+      "row_count": 50,
+      "latency_ms": 219.53716687858105,
+      "explain_plan": {
+        "cost": 18427,
+        "cardinality": 50,
+        "bytes": 2350,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 119,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 1.068144732867043,
+      "error": null
+    },
+    {
+      "id": 236,
+      "question": "Revenue and order profile for nation 11 in 1993",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 11 AND O.O_ORDERDATE >= DATE '1993-01-01' AND O.O_ORDERDATE < DATE '1994-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 42.960458202287555,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 2.830388164687404,
+      "error": null
+    },
+    {
+      "id": 237,
+      "question": "Supplier delivery metrics for nation 12 and mode SHIP",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 12 AND L.L_SHIPMODE = 'SHIP'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 156.56049991957843,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 60,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": 17
+      },
+      "latency_ratio": 1.4004948244533393,
+      "error": null
+    },
+    {
+      "id": 238,
+      "question": "Part demand and supplier diversity size>=13, suppliers>=4",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 13\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 4\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 7.046084152534604,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 8.328292863350581,
+      "error": null
+    },
+    {
+      "id": 239,
+      "question": "Revenue and order profile for nation 14 in 1996",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 14 AND O.O_ORDERDATE >= DATE '1996-01-01' AND O.O_ORDERDATE < DATE '1997-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 45.96933303400874,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 3.078621516016905,
+      "error": null
+    },
+    {
+      "id": 240,
+      "question": "Supplier delivery metrics for nation 15 and mode REG AIR",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 15 AND L.L_SHIPMODE = 'REG AIR'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 143.3660420589149,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 34,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": -9
+      },
+      "latency_ratio": 1.2643172385068027,
+      "error": null
+    },
+    {
+      "id": 241,
+      "question": "Part demand and supplier diversity size>=16, suppliers>=2",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 16\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 2\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 6.753042107447982,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 8.24631008401235,
+      "error": null
+    },
+    {
+      "id": 242,
+      "question": "Revenue and order profile for nation 17 in 1992",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 17 AND O.O_ORDERDATE >= DATE '1992-01-01' AND O.O_ORDERDATE < DATE '1993-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 46.35770805180073,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 3.1502013342669053,
+      "error": null
+    },
+    {
+      "id": 243,
+      "question": "Supplier delivery metrics for nation 18 and mode RAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nWHERE S.S_NATIONKEY = 18 AND L.L_SHIPMODE = 'RAIL'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 174.03683299198747,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.5564822749782505,
+      "error": null
+    },
+    {
+      "id": 244,
+      "question": "Part demand and supplier diversity size>=19, suppliers>=5",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 19\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 5\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 6.078750127926469,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.249840331000778,
+      "error": null
+    },
+    {
+      "id": 245,
+      "question": "Revenue and order profile for nation 20 in 1995",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 20 AND O.O_ORDERDATE >= DATE '1995-01-01' AND O.O_ORDERDATE < DATE '1996-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 65.01079117879272,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 4.521637704753174,
+      "error": null
+    },
+    {
+      "id": 246,
+      "question": "Supplier delivery metrics for nation 21 and mode MAIL",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT S.S_SUPPKEY, S.S_NAME, COUNT(L.L_ORDERKEY) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM SUPPLIER S\nJOIN LINEITEM L ON S.S_SUPPKEY = L.L_SUPPKEY\nJOIN NATION N ON S.S_NATIONKEY = N.N_NATIONKEY\nWHERE N.N_NATIONKEY = 21 AND L.L_SHIPMODE = 'MAIL'\nGROUP BY S.S_SUPPKEY, S.S_NAME\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 254.895833786577,
+      "explain_plan": {
+        "cost": 17981,
+        "cardinality": 1,
+        "bytes": 56,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 1,
+        "cardinality": 0,
+        "bytes": 13
+      },
+      "latency_ratio": 2.200393937044287,
+      "error": null
+    },
+    {
+      "id": 247,
+      "question": "Part demand and supplier diversity size>=22, suppliers>=3",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 22\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 3\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 9.100292110815644,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 10.388459522559053,
+      "error": null
+    },
+    {
+      "id": 248,
+      "question": "Revenue and order profile for nation 23 in 1998",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT C.C_NATIONKEY, COUNT(O.O_ORDERKEY) AS order_count, SUM(O.O_TOTALPRICE) AS net_revenue\nFROM CUSTOMER C\nJOIN ORDERS O ON C.C_CUSTKEY = O.O_CUSTKEY\nWHERE C.C_NATIONKEY = 23 AND O.O_ORDERDATE >= DATE '1998-01-01' AND O.O_ORDERDATE < DATE '1999-01-01'\nGROUP BY C.C_NATIONKEY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 53.46175003796816,
+      "explain_plan": {
+        "cost": 2597,
+        "cardinality": 1918,
+        "bytes": 49868,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -17961,
+        "cardinality": 0,
+        "bytes": 9590
+      },
+      "latency_ratio": 3.7444645584451384,
+      "error": null
+    },
+    {
+      "id": 249,
+      "question": "Supplier delivery metrics for nation 24 and mode AIR",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT L.L_SUPPKEY, COUNT(*) AS delivery_count, SUM(L.L_QUANTITY) AS total_quantity\nFROM LINEITEM L\nJOIN SUPPLIER S ON L.L_SUPPKEY = S.S_SUPPKEY\nWHERE S.S_NATIONKEY = 24 AND L.L_SHIPMODE = 'AIR'\nGROUP BY L.L_SUPPKEY\nORDER BY delivery_count DESC\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 135.15670807100832,
+      "explain_plan": {
+        "cost": 17982,
+        "cardinality": 1,
+        "bytes": 30,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": 2,
+        "cardinality": 0,
+        "bytes": -13
+      },
+      "latency_ratio": 1.1965866711989455,
+      "error": null
+    },
+    {
+      "id": 250,
+      "question": "Part demand and supplier diversity size>=25, suppliers>=1",
+      "complexity": "complex",
+      "generated": true,
+      "mcp_sql": "SELECT p.P_PARTKEY, p.P_SIZE, COUNT(l.L_LINENUMBER) AS line_count, SUM(l.L_QUANTITY) AS total_qty, COUNT(DISTINCT ps.PS_SUPPKEY) AS supplier_count\nFROM LINEITEM l\nJOIN PARTSUPP ps ON l.L_PARTKEY = ps.PS_PARTKEY\nJOIN PART p ON l.L_PARTKEY = p.P_PARTKEY\nWHERE p.P_SIZE >= 25\nGROUP BY p.P_PARTKEY, p.P_SIZE\nHAVING COUNT(DISTINCT ps.PS_SUPPKEY) >= 1\nFETCH FIRST 50 ROWS ONLY",
+      "executed": true,
+      "semantic_match": true,
+      "rows": [],
+      "row_count": 0,
+      "latency_ms": 5.35358302295208,
+      "explain_plan": {
+        "cost": 18063,
+        "cardinality": 1,
+        "bytes": 47,
+        "error": null
+      },
+      "explain_delta": {
+        "cost": -245,
+        "cardinality": 0,
+        "bytes": 0
+      },
+      "latency_ratio": 6.40348582324753,
+      "error": null
+    }
+  ]
+}

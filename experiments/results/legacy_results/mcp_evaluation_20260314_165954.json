@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-03-14T16:59:54.590696",
+  "run_mode": "baseline",
+  "mcp_mode": "llm",
+  "summary": {
+    "run_mode": "baseline",
+    "total": 2,
+    "rq2_efficiency": {
+      "baseline": {
+        "overall": {
+          "count": 2,
+          "avg_ms": 2.6416874025017023,
+          "median_ms": 2.6416874025017023,
+          "p95_ms": 0.7533750031143427
+        },
+        "by_tier": {
+          "simple": {
+            "count": 2,
+            "avg_ms": 2.6416874025017023,
+            "median_ms": 2.6416874025017023,
+            "p95_ms": 0.7533750031143427
+          },
+          "medium": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          },
+          "complex": {
+            "count": 0,
+            "avg_ms": null,
+            "median_ms": null,
+            "p95_ms": null
+          }
+        }
+      }
+    },
+    "baseline_success": 2,
+    "baseline_success_rate": 100.0
+  },
+  "baseline_results": [
+    {
+      "id": 1,
+      "question": "How many regions are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM REGION",
+      "success": true,
+      "rows": [
+        [
+          5
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 4.529999801889062,
+      "explain_plan": {
+        "cost": null,
+        "cardinality": null,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    },
+    {
+      "id": 2,
+      "question": "How many nations are there?",
+      "complexity": "simple",
+      "sql": "SELECT COUNT(*) FROM NATION",
+      "success": true,
+      "rows": [
+        [
+          25
+        ]
+      ],
+      "row_count": 1,
+      "latency_ms": 0.7533750031143427,
+      "explain_plan": {
+        "cost": null,
+        "cardinality": null,
+        "bytes": null,
+        "error": null
+      },
+      "error": null
+    }
+  ],
+  "mcp_results": []
+}

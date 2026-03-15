@@ -1,0 +1,130 @@
+# Environment and Configuration
+.env
+.env.local
+.env.*.local
+config.local.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# SQLcl
+.sqlcl/
+*.sqlcl
+sql-history.txt
+
+# Logs
+*.log
+logs/
+debug.log
+
+# Node modules (if using Node.js)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+~*
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Sensitive data - Never commit these!
+# Passwords, API keys, credentials
+secrets/
+*.creds
+*.key
+*.pem
+password*
+credentials*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+oracle_data/
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
+# Compiled files
+*.o
+*.a
+*.dylib
+*.so
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+*.sublime-project
+*.sublime-workspace
+
+# Node
+package-lock.json
+yarn.lock
+
+# Miscellaneous
+.cache/
+.pytest_cache/
+.tox/
+.hypothesis/
+*.egg-info/
+dist/
+build/
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.blg
+*.bbl
+*.toc
+*.synctex.gz
+*.out
+
+# Optional local paper outputs
+research_paper_mcp.pdf
+research.zip
+
+# DO NOT COMMIT
+# Add sensitive files here
+# config/secrets.yml
+# .env.production

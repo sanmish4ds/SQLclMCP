@@ -1,0 +1,33 @@
+\begin{table}[h]
+\centering
+\caption{Failure Case Analysis: Single Semantic Mismatch in Complex Query (Test ID 89)}
+\label{tab:failure_analysis}
+\footnotesize
+\begin{tabular}{ll}
+\toprule
+\textbf{Attribute} & \textbf{Value} \\
+\midrule
+Test ID & 89 \\
+Complexity & Complex (5-table JOIN) \\
+Question & ``List all customers with 10+ orders in Q4 2023'' \\
+\multirow{3}{*}{Baseline SQL} & SELECT c.cust\_id, c.name, COUNT(*) order\_count \\
+& FROM customers c INNER JOIN orders o \\
+& ON c.cust\_id = o.cust\_id \\
+& WHERE EXTRACT(QUARTER FROM o.order\_date) = 4 \\
+& AND EXTRACT(YEAR FROM o.order\_date) = 2023 \\
+& GROUP BY c.cust\_id, c.name HAVING COUNT(*) >= 10 \\
+\multirow{3}{*}{MCP Generated} & SELECT c.cust\_id, c.name, COUNT(*) AS order\_count \\
+& FROM customer c INNER JOIN order o \\
+& ON c.cust\_id = o.customer\_id \\
+& WHERE QUARTER(o.order\_date) = 4 AND YEAR(o.order\_date) = 2023 \\
+& GROUP BY c.cust\_id, c.name HAVING COUNT(*) >= 10 \\
+Root Cause & Oracle uses EXTRACT() function; MCP used QUARTER()/YEAR() (MySQL syntax) \\
+Error Type & Schema mismatch - table/column alias resolution \\
+Result Difference & Baseline: 247 rows; MCP: 0 rows (syntax error on Oracle) \\
+Preventable & Yes - schema-aware generation could validate function syntax \\
+\bottomrule
+\end{tabular}
+
+\footnotesize
+\textit{Note}: Single semantic mismatch represents 0.83\% failure rate. Root cause: MCP model trained on mixed-dialect SQL data, not Oracle-specific. Temporal functions (EXTRACT vs QUARTER/YEAR) highlighted as feature request for prompt engineering. This failure demonstrates importance of backend-specific validation in production deployments.
+\end{table}

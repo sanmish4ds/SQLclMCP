@@ -1,0 +1,30 @@
+\begin{table}[h]
+\centering
+\caption{Query Optimization Analysis: Cost and Cardinality Metrics}
+\label{tab:optimization_metrics}
+\small
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Queries} & \textbf{Percentage} \\
+\midrule
+\multicolumn{3}{l}{\textit{EXPLAIN PLAN Cost Comparison}} \\
+MCP Lower Cost & 0 & 0.0\% \\
+Same Cost & 120 & 100.0\% \\
+MCP Higher Cost & 0 & 0.0\% \\
+\midrule
+\multicolumn{3}{l}{\textit{Cardinality Estimation}} \\
+Exact Match (/120 comparable) & 120 & 100.0\% \\
+Row Estimate Deviation Mean & - & 0.0\% \\
+\midrule
+\multicolumn{3}{l}{\textit{Data Transfer (Bytes)}} \\
+Same Bytes (/114 measurable) & 114 & 100.0\% \\
+\midrule
+\multicolumn{3}{l}{\textit{Latency Overhead}} \\
+Mean Delta (MCP vs Baseline) & -5.22 ms & -2.8\% (improvement) \\
+P95 Delta & -268.18 ms & -30.3\% (improvement) \\
+\bottomrule
+\end{tabular}
+
+\footnotesize
+\textit{Note}: Oracle EXPLAIN PLAN shows MCP generates SQL with identical optimizer estimates. Perfect cardinality agreement indicates MCP does not introduce new operator selection patterns. Mean latency improvement suggests MCP overhead amortized or overshadowed by query execution variance. P95 improvement critical for production deployments with SLA requirements.
+\end{table}

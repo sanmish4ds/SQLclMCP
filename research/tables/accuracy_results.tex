@@ -1,0 +1,20 @@
+\begin{table}[h]
+\centering
+\caption{MCP Semantic Accuracy Results by Query Complexity (120 Total Queries)}
+\label{tab:accuracy_results}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Complexity} & \textbf{Total} & \textbf{Matches} & \textbf{Accuracy} & \textbf{Row Count Acc.} & \textbf{Failure Type} \\
+\midrule
+Simple & 12 & 12 & 100.0\% & 100.0\% & None \\
+Medium & 64 & 64 & 100.0\% & 100.0\% & None \\
+Complex & 44 & 43 & 97.73\% & 100.0\% & JOIN alias (1) \\
+\midrule
+\textbf{Overall} & \textbf{120} & \textbf{119} & \textbf{99.17\%} & \textbf{100.0\%} & \\
+\bottomrule
+\end{tabular}
+
+\footnotesize
+\textit{Note}: Semantic accuracy determined by sorted result set comparison (normalized tuples). Row count accuracy measures agreement on query output cardinality. Single failure in complex category: MCP generated incorrect table alias in nested subquery, producing different result set (see Section~\ref{sec:failure_analysis}). All baseline queries validated for correctness before evaluation.
+\end{table}

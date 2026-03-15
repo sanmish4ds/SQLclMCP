@@ -1,0 +1,65 @@
+\section{Related Work}
+\label{sec:related}
+
+Our work builds upon and extends three areas of prior research: (1) natural language to SQL generation and semantic parsing, (2) query optimization and learned components in database systems, and (3) neural code generation and Large Language Models.
+
+\subsection{Natural Language to SQL Generation}
+
+Early approaches to semantic parsing focused on linguistic structure and hand-crafted rules. While historically important, rule-based methods struggle with language diversity and require extensive manual annotation.
+
+Neural approaches to SQL generation gained prominence with the release of large-scale datasets like WikiSQL (80K questions) and Spider (10K complex questions across 200 databases). Zhong et al. \cite{zhong2017seq2sql} introduced Seq2SQL, combining a sequence-to-sequence model with entity linking and column prediction for single-table queries. Their approach achieved 91.3\% accuracy on WikiSQL.
+
+More sophisticated approaches incorporate type information and intermediate representations. Yu et al. \cite{yu2018typesql} proposed TypeSQL, which leverages type information to constrain the search space and achieved 94.3\% accuracy on WikiSQL. Recent work has moved toward multi-table queries requiring complex JOIN logic and nested subqueries.
+
+Transformer-based approaches \cite{vaswani2017attention} have further improved semantic parsing results. Pre-trained language models like BERT \cite{devlin2018bert} and larger models like GPT-3 \cite{brown2020language} demonstrate strong performance on code generation tasks when prompted with few examples or fine-tuned on domain-specific datasets.
+
+Recent Oracle-focused deployment work demonstrates practical NL2SQL integration paths through SELECT AI and enterprise database workflows \cite{mishra2026natural}. Complementary SQL practice material also highlights broad pattern coverage needed for robust question-to-query mapping \cite{mishra2026sqluniverse}.
+
+\subsection{Query Optimization}
+
+Traditional query optimization leverages cost-based optimizer models that estimate query costs based on table statistics and hardware characteristics. Selinger et al. \cite{selinger1979access} established the foundational framework for access path selection in System R. Modern database systems extend these principles with cardinality estimation, join ordering, and predicate push-down heuristics, with practical Oracle tuning guidance documented in applied engineering literature \cite{mishra2025oracletuning}.
+
+Recent work investigates learned components in database optimization. Marcus and Papaemmanouil \cite{marcus2019learned} demonstrated that neural networks can learn cardinality estimation functions from query logs, outperforming traditional statistical approaches. This work motivates our investigation into how well neural SQL generators learn implicit cost optimization.
+
+In our SQLclMCP evaluation, EXPLAIN PLAN analysis directly examines optimizer-facing metrics (cost, cardinality, and bytes) as a proxy for plan quality. Unlike prior assumptions of mixed optimization behavior, our measured results show plan-level parity with baseline SQL (100\% cost agreement and 100\% cardinality agreement), indicating that MCP-generated queries generally preserve optimizer characteristics in this workload. This reframes the optimization question from broad plan correction to targeted handling of edge cases (for example, dialect-specific syntax errors) and production guardrails such as validation and retry.
+
+\subsection{Neural Code Generation and Large Language Models}
+
+Large language models have achieved impressive performance on code generation tasks. Brown et al. \cite{brown2020language} demonstrated that GPT-3 can perform few-shot code generation with 28.8\% pass rate on HumanEval without task-specific fine-tuning. More recent models show further improvements.
+
+The Model Context Protocol \cite{anthropic2024mcp} extends LLMs with the ability to access structured context during generation, enabling better-informed code synthesis. This contextual grounding provides access to:
+
+\begin{itemize}
+    \item Database schema (table names, column definitions, data types)
+    \item Query history (successful queries for similar questions)
+    \item Domain knowledge (business rules, naming conventions)
+    \item Execution feedback (query results, performance metrics)
+\end{itemize}
+
+Our work evaluates how MCP-enhanced models perform on SQL generation specifically, examining whether contextual grounding translates to improved semantic correctness and optimization.
+
+\subsection{Evaluation Methodologies for Code Generation}
+
+Prior work on evaluating semantic parsing systems has employed multiple validation approaches:
+
+\begin{itemize}
+    \item \textbf{Exact Match}: Compares generated code to reference implementation; very strict but ignores equivalent formulations
+    \item \textbf{Execution Match}: Compares outputs on canonical test data; More practical but sensitive to data ordering
+    \item \textbf{Semantic Equivalence}: Proves mathematical equivalence; Limited applicability for complex programs
+\end{itemize}
+
+Our approach combines execution match (row-level semantic comparison) with performance analysis (EXPLAIN PLAN metrics), providing a more comprehensive evaluation than exact match alone while remaining practical. We also align with leakage-safe evaluation principles from recent ensemble-learning benchmark design \cite{mishra2026erp}.
+
+\subsection{Gap in Literature}
+
+While prior work has evaluated SQL generation models on accuracy, there is a gap in rigorous production deployment evaluation including:
+
+\begin{enumerate}
+    \item Failure mode classification and systematic analysis
+    \item Performance characteristics (latency overhead) compared to baselines
+    \item Query optimization analysis beyond generation accuracy
+    \item Risk mitigation strategies for production deployment
+    \item Framework design that can be adapted to new models and database systems
+\end{enumerate}
+
+Our work addresses these gaps by providing a comprehensive framework that evaluates not just accuracy but also production-readiness factors critical for enterprise deployment.
