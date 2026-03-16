@@ -231,6 +231,23 @@ const requestHandler = (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const pathname = url.pathname;
 
+  // GET / (root) — friendly info so the deploy URL doesn't show "Not found"
+  if ((pathname === '/' || pathname === '') && request.method === 'GET') {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({
+      name: 'SQLclMCP MCP Server',
+      status: 'running',
+      endpoints: {
+        health: '/health',
+        generate_sql: 'POST /generate-sql',
+        generate_batch: 'POST /generate-batch',
+        reload_rules: 'POST /reload-rules',
+      },
+      docs: 'https://github.com/your-org/SQLclMCP',
+    }));
+    return;
+  }
+
   // GET /health
   if (pathname === '/health' && request.method === 'GET') {
     response.writeHead(200);
