@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: sqlclmcp-mcp-server
+    name: sqlclmcp-server
     runtime: node
     plan: free
 
