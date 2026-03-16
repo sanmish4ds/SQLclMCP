@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQLclMCP — Natural language to SQL</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      background: #0f1419;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .sub { color: #8b949e; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.35rem; color: #8b949e; font-size: 0.85rem; }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #161b22;
+      color: #e6edf3;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    textarea::placeholder { color: #6e7681; }
+    select {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #161b22;
+      color: #e6edf3;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+    button.secondary { background: #21262d; color: #e6edf3; }
+    button.secondary:hover { background: #30363d; }
+    .result {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border-radius: 6px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      white-space: pre-wrap;
+      font-family: ui-monospace, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .result.success { border-color: #238636; }
+    .result.error { border-color: #da3633; color: #f85149; }
+    .meta { color: #8b949e; font-size: 0.8rem; margin-top: 0.5rem; }
+    .status { font-size: 0.85rem; color: #8b949e; margin-bottom: 1rem; }
+    .status.ok { color: #3fb950; }
+    .status.fail { color: #f85149; }
+    a { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <h1>SQLclMCP</h1>
+  <p class="sub">Natural language → Oracle SQL. Powered by your MCP server.</p>
+
+  <p class="status" id="serverStatus">Checking server…</p>
+
+  <label for="question">Your question (in plain English)</label>
+  <textarea id="question" placeholder="e.g. List top 10 customers by total order value"></textarea>
+
+  <label for="mode">Mode</label>
+  <select id="mode">
+    <option value="hybrid">Hybrid (lookup then LLM)</option>
+    <option value="llm">LLM only</option>
+    <option value="lookup">Lookup only</option>
+  </select>
+
+  <button type="button" id="btnGenerate">Generate SQL</button>
+  <button type="button" id="btnCopy" class="secondary" disabled>Copy SQL</button>
+
+  <div id="result"></div>
+
+  <script>
+    const MCP_URL = 'https://sqlclmcp.onrender.com';
+    const questionEl = document.getElementById('question');
+    const modeEl = document.getElementById('mode');
+    const btnGenerate = document.getElementById('btnGenerate');
+    const btnCopy = document.getElementById('btnCopy');
+    const resultEl = document.getElementById('result');
+    const statusEl = document.getElementById('serverStatus');
+
+    async function checkHealth() {
+      try {
+        const r = await fetch(MCP_URL + '/health');
+        const data = await r.json();
+        statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
+          ' · Rules: ' + (data.loaded_rules || '—') +
+          ' · LLM: ' + (data.llm_enabled ? 'on' : 'off');
+        statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
+      } catch (e) {
+        statusEl.textContent = 'Server: unreachable (check URL or CORS)';
+        statusEl.className = 'status fail';
+      }
+    }
+    checkHealth();
+
+    let lastSql = '';
+
+    btnGenerate.addEventListener('click', async () => {
+      const question = questionEl.value.trim();
+      if (!question) {
+        resultEl.innerHTML = '<div class="result error">Enter a question.</div>';
+        return;
+      }
+      btnGenerate.disabled = true;
+      resultEl.innerHTML = '<div class="result">Generating…</div>';
+      try {
+        const r = await fetch(MCP_URL + '/generate-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question,
+            mode: modeEl.value,
+          }),
+        });
+        const data = await r.json();
+        lastSql = data.generated_sql || '';
+        if (data.success && data.generated_sql) {
+          resultEl.innerHTML =
+            '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
+            '<p class="meta">Source: ' + (data.source || '—') + ' · Mode: ' + (data.mode || '—') + '</p>';
+          btnCopy.disabled = false;
+        } else {
+          resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No SQL generated') + '</div>';
+          btnCopy.disabled = true;
+        }
+      } catch (e) {
+        resultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
+        btnCopy.disabled = true;
+      }
+      btnGenerate.disabled = false;
+    });
+
+    btnCopy.addEventListener('click', () => {
+      if (!lastSql) return;
+      navigator.clipboard.writeText(lastSql).then(() => {
+        btnCopy.textContent = 'Copied!';
+        setTimeout(() => { btnCopy.textContent = 'Copy SQL'; }, 1500);
+      });
+    });
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

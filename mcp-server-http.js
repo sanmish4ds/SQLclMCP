@@ -237,10 +237,11 @@ const requestHandler = (request, response) => {
     response.end(JSON.stringify({
       name: 'SQLclMCP MCP Server',
       status: 'running',
+      offer: 'Natural language to Oracle SQL over HTTP. Send a question, get generated SQL.',
       endpoints: {
-        health: '/health',
-        generate_sql: 'POST /generate-sql',
-        generate_batch: 'POST /generate-batch',
+        health: 'GET /health',
+        generate_sql: 'POST /generate-sql — body: { "question": "your question", "mode": "llm|lookup|hybrid" }',
+        generate_batch: 'POST /generate-batch — body: { "questions": ["q1", "q2"], "mode": "llm|lookup|hybrid" }',
         reload_rules: 'POST /reload-rules',
       },
       docs: 'https://github.com/your-org/SQLclMCP',
