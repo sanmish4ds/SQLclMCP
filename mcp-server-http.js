@@ -24,9 +24,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Configuration
+// Configuration (Render sets PORT; use HTTP_PORT or 3000 locally)
 const config = {
-  httpPort: process.env.HTTP_PORT || 3000,
+  httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
   dbHost: process.env.DB_HOST || 'localhost',
   dbPort: process.env.DB_PORT || '1521',
   dbSid: process.env.DB_SID || 'FREE',

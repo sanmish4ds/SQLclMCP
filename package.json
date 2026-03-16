@@ -1,0 +1,12 @@
+{
+  "name": "sqlclmcp-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP HTTP server for SQLclMCP NL2SQL evaluation (health + generate-sql)",
+  "main": "mcp-server-http.js",
+  "scripts": {
+    "start": "node mcp-server-http.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

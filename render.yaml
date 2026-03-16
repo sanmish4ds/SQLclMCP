@@ -1,0 +1,21 @@
+# Render Blueprint: one web service for the MCP server
+# Deploy: connect this repo in Render and use "Blueprint" or set the fields below manually.
+
+services:
+  - type: web
+    name: sqlclmcp-mcp-server
+    runtime: node
+    plan: free
+
+    buildCommand: npm install
+    startCommand: npm start
+
+    envVars:
+      - key: ENABLE_LLM_SQL_GEN
+        value: "true"
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      # Set these in Render Dashboard → Environment (never commit real values):
+      # - LLM_API_KEY
+      # - LLM_API_URL (optional, default OpenAI)
+      # - DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_SID (optional, for /health display)
