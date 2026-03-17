@@ -73,6 +73,26 @@ cd experiments && python3 mcp_evaluation.py --run-mode compare
 - 750 free instance hours/month; 512 MB RAM.
 - No secrets in the repo; set all keys in Render **Environment**.
 
+## Optional: Render MCP server in Cursor
+
+To manage Render services from Cursor (or any MCP client), add the Render MCP server to your MCP config (e.g. Cursor **Settings → MCP** or `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "render": {
+      "command": "npx",
+      "args": ["-y", "@render-com/mcp-server"],
+      "env": {
+        "RENDER_API_KEY": "rnd_xxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+Replace `rnd_xxxxxxxxxxxxxx` with your [Render API key](https://dashboard.render.com/u/settings#api-keys).
+
 ## Optional: custom domain
 
 In Render: **Settings** → **Custom Domain** → add e.g. `api.yourdomain.com` and follow the DNS instructions.
