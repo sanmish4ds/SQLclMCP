@@ -28,6 +28,10 @@ let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
 // Configuration (Render sets PORT; DB prefers DB_DSN/ORACLE_WALLET_* for Autonomous)
+const rawWalletPath = process.env.ORACLE_WALLET_PATH || process.env.TNS_ADMIN || null;
+const walletPath = rawWalletPath ? path.resolve(rawWalletPath) : null;
+if (walletPath) process.env.TNS_ADMIN = walletPath; // Oracle native layer looks for tnsnames.ora here
+
 const config = {
   httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
   dbHost: process.env.DB_HOST || null,
@@ -36,7 +40,7 @@ const config = {
   dbUser: process.env.DB_USER || null,
   dbPassword: process.env.DB_PASSWORD || null,
   dbDsn: process.env.DB_DSN || null, // e.g. "prishivdb1_high"
-  dbWalletPath: process.env.ORACLE_WALLET_PATH || null, // for Autonomous DB wallets
+  dbWalletPath: walletPath, // directory containing tnsnames.ora + wallet files
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
