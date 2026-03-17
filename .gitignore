@@ -123,6 +123,7 @@ build/
 # Optional local paper outputs
 research_paper_mcp.pdf
 research.zip
+research/
 
 # DO NOT COMMIT
 # Add sensitive files here
