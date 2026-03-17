@@ -24,6 +24,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+let oracledb;
+try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
+
 // Configuration (Render sets PORT; use HTTP_PORT or 3000 locally)
 const config = {
   httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
@@ -32,7 +35,9 @@ const config = {
   dbSid: process.env.DB_SID || 'FREE',
   dbUser: process.env.DB_USER || 'mcp_dev',
   dbPassword: process.env.DB_PASSWORD || 'mcp_pass123',
+  dbDsn: process.env.DB_DSN || null, // e.g. "localhost:1521/FREE"
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
+  enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
   llmApiKey: process.env.LLM_API_KEY || '',
   llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
@@ -242,10 +247,27 @@ const requestHandler = (request, response) => {
         health: 'GET /health',
         generate_sql: 'POST /generate-sql — body: { "question": "your question", "mode": "llm|lookup|hybrid" }',
         generate_batch: 'POST /generate-batch — body: { "questions": ["q1", "q2"], "mode": "llm|lookup|hybrid" }',
+        execute_sql: 'POST /execute-sql — body: { "sql": "SELECT ..." } (opt-in, SELECT only)',
+        schema: 'GET /schema — tables and columns for the UI',
         reload_rules: 'POST /reload-rules',
       },
       docs: 'https://github.com/your-org/SQLclMCP',
     }));
+    return;
+  }
+
+  // GET /schema — tables and columns (for UI to show "what you can play with")
+  if (pathname === '/schema' && request.method === 'GET') {
+    const schemaPath = path.join(__dirname, 'schema.json');
+    try {
+      const raw = fs.readFileSync(schemaPath, 'utf8');
+      const schema = JSON.parse(raw);
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(schema));
+    } catch (err) {
+      response.writeHead(500);
+      response.end(JSON.stringify({ error: 'Schema not available', message: err.message }));
+    }
     return;
   }
 
@@ -259,6 +281,7 @@ const requestHandler = (request, response) => {
       loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
       llm_enabled: config.enableLLMSqlGeneration,
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
+      execute_sql_available: !!(config.enableExecuteSql && oracledb),
       timestamp: new Date().toISOString(),
     }));
     return;
@@ -321,6 +344,74 @@ const requestHandler = (request, response) => {
       } catch (error) {
         response.writeHead(400);
         response.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /execute-sql — run SELECT only (opt-in via EXECUTE_SQL_ENABLED; DB must be reachable)
+  if (pathname === '/execute-sql' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('end', async () => {
+      if (!config.enableExecuteSql || !oracledb) {
+        response.writeHead(503, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({
+          success: false,
+          error: 'SQL execution is disabled on this server. Copy the SQL and run it in your database client (e.g. SQL Developer).',
+          execute_available: false,
+        }));
+        return;
+      }
+      try {
+        const data = JSON.parse(body);
+        const sql = (data.sql || '').trim().replace(/;\s*$/, '');
+        if (!sql) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, error: 'No SQL provided' }));
+          return;
+        }
+        const upper = sql.toUpperCase();
+        const allowedStart = upper.startsWith('SELECT') || upper.startsWith('WITH');
+        const forbidden = /\b(DROP|DELETE|INSERT|UPDATE|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE)\b/.test(upper);
+        if (!allowedStart || forbidden) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            success: false,
+            error: 'Only SELECT (and WITH ... SELECT) queries are allowed for execution.',
+          }));
+          return;
+        }
+        const connectString = config.dbDsn || `${config.dbHost}:${config.dbPort}/${config.dbSid}`;
+        const conn = await oracledb.getConnection({
+          user: config.dbUser,
+          password: config.dbPassword,
+          connectString,
+        });
+        try {
+          const result = await conn.execute(sql, [], {
+            outFormat: oracledb.OUT_FORMAT_OBJECT,
+            maxRows: 500,
+          });
+          const rows = result.rows || [];
+          const meta = result.metaData ? result.metaData.map(m => m.name) : [];
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            success: true,
+            columns: meta,
+            rows,
+            rowCount: rows.length,
+          }));
+        } finally {
+          await conn.close();
+        }
+      } catch (err) {
+        response.writeHead(500);
+        response.end(JSON.stringify({
+          success: false,
+          error: err.message || String(err),
+          execute_available: true,
+        }));
       }
     });
     return;

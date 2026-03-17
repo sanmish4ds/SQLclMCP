@@ -37,11 +37,12 @@ Do **not** commit `.env` (it’s in `.gitignore`). You’ll set secrets in Rende
    | `LLM_API_KEY` | your OpenAI (or compatible) API key | Yes (for LLM mode) |
    | `LLM_MODEL` | `gpt-4o-mini` | No (default) |
    | `LLM_API_URL` | e.g. `https://api.openai.com/v1/chat/completions` | No |
-   | `DB_USER` | e.g. `mcp_dev` | No (only for /health display) |
-   | `DB_PASSWORD` | … | No |
-   | `DB_HOST` | your Oracle host | No |
-   | `DB_PORT` | `1521` | No |
-   | `DB_SID` | e.g. `FREE` | No |
+| `DB_USER` | e.g. `mcp_dev` | No (for /health display; required for execution if enabled) |
+| `DB_PASSWORD` | … | No (required for execution if enabled) |
+| `DB_HOST` | your Oracle host | No (or set `DB_DSN` e.g. `host:1521/FREE`) |
+| `DB_PORT` | `1521` | No |
+| `DB_SID` | e.g. `FREE` | No |
+| `EXECUTE_SQL_ENABLED` | `true` | No. If set, server can run SELECTs via `POST /execute-sql`. Oracle must be reachable from Render (often not). Prefer leaving unset on Render and running the server locally for execution. |
 
    Render sets `PORT` automatically; the server uses it.
 

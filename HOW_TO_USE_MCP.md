@@ -55,7 +55,21 @@ Omit `mode` to use `hybrid`.
 
 ---
 
-## 3. Generate SQL for many questions at once
+## 3. Execute SQL (optional, when enabled on the server)
+
+**Endpoint:** `POST /execute-sql`  
+**Body:** `{"sql": "SELECT ..."}`
+
+The server can run **SELECT** (and `WITH ... SELECT`) queries against an Oracle database if the deployer has turned execution on. Execution is **off** on the public Render deploy (no DB access there).
+
+- If execution is **enabled** (e.g. server run locally with Oracle): the server runs the SQL and returns `{ "success": true, "columns": [...], "rows": [...], "rowCount": N }`.
+- If execution is **disabled**: the server returns 503 with a message to copy the SQL and run it in your own client (e.g. SQL Developer).
+
+The UI at [prishiv.netlify.app](https://prishiv.netlify.app) has an **Execute SQL** button: when execution is available you see results in a table; otherwise you get the “copy and run locally” hint.
+
+---
+
+## 4. Generate SQL for many questions at once
 
 **Endpoint:** `POST /generate-batch`  
 **Body:** JSON with `questions` (array of strings) and optional `mode`.
@@ -70,7 +84,7 @@ Response includes a `results` array with one entry per question (each with `gene
 
 ---
 
-## 4. Use from your own code
+## 5. Use from your own code
 
 ### Python
 
@@ -111,7 +125,7 @@ curl -X POST https://sqlclmcp.onrender.com/generate-sql -H "Content-Type: applic
 
 ---
 
-## 5. Run the full evaluation pipeline against this server
+## 6. Run the full evaluation pipeline against this server
 
 If you have the SQLclMCP repo and an Oracle DB with TPC-H data, you can point the evaluation runner at the live server:
 
@@ -131,6 +145,7 @@ This runs the baseline SQL locally, sends the same questions to the MCP server, 
 |----------------------------|---------------|
 | Check server is running    | `GET /health` |
 | One question → SQL         | `POST /generate-sql` with `{"question": "..."}` |
+| Run generated SQL on server | `POST /execute-sql` with `{"sql": "SELECT ..."}` (only when server has execution enabled) |
 | Many questions → SQL       | `POST /generate-batch` with `{"questions": ["...", "..."]}` |
 | Use in your app            | Same URLs; call from Python, JS, or any HTTP client. |
 | Evaluate with Oracle + TPC-H | Set `MCP_SERVER_URL` and run `mcp_evaluation.py`. |

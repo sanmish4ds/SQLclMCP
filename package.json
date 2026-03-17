@@ -8,5 +8,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "oracledb": "^6.0.0"
   }
 }

@@ -71,6 +71,59 @@
     .status.ok { color: #3fb950; }
     .status.fail { color: #f85149; }
     a { color: #58a6ff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
+    th, td { border: 1px solid #30363d; padding: 0.4rem 0.6rem; text-align: left; }
+    th { background: #21262d; color: #8b949e; }
+    .execute-hint { color: #8b949e; font-size: 0.8rem; margin-top: 0.5rem; }
+    .schema-section { margin-bottom: 1.5rem; }
+    .schema-toggle {
+      background: transparent;
+      border: 1px dashed #30363d;
+      color: #8b949e;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      width: 100%;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .schema-toggle:hover { border-color: #58a6ff; color: #58a6ff; }
+    .schema-toggle .arrow { transition: transform 0.2s; }
+    .schema-section.open .schema-toggle .arrow { transform: rotate(90deg); }
+    .schema-desc { color: #8b949e; font-size: 0.8rem; margin-top: 0.35rem; margin-bottom: 0.75rem; }
+    .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+    .schema-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .schema-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-color: #58a6ff; }
+    .schema-card.open { border-color: #238636; }
+    .schema-card-emoji { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .schema-card-name { font-weight: 600; font-family: ui-monospace, monospace; color: #e6edf3; }
+    .schema-card-hint { font-size: 0.7rem; color: #8b949e; margin-top: 0.2rem; }
+    .schema-cols { display: none; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #21262d; }
+    .schema-card.open .schema-cols { display: block; }
+    .schema-cols-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 0.35rem; }
+    .col-pill {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-family: ui-monospace, monospace;
+      background: #21262d;
+      color: #8b949e;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      margin: 0.15rem 0.15rem 0 0;
+      cursor: pointer;
+    }
+    .col-pill:hover { background: #30363d; color: #58a6ff; }
+    .col-pill.copied { background: #238636; color: #fff; }
   </style>
 </head>
 <body>
@@ -78,6 +131,15 @@
   <p class="sub">Natural language → Oracle SQL. Powered by your MCP server.</p>
 
   <p class="status" id="serverStatus">Checking server…</p>
+
+  <div class="schema-section" id="schemaSection">
+    <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
+      <span class="arrow">▶</span>
+      <span id="schemaToggleLabel">Loading schema…</span>
+    </button>
+    <p class="schema-desc" id="schemaDesc"></p>
+    <div class="schema-grid" id="schemaGrid"></div>
+  </div>
 
   <label for="question">Your question (in plain English)</label>
   <textarea id="question" placeholder="e.g. List top 10 customers by total order value"></textarea>
@@ -91,8 +153,10 @@
 
   <button type="button" id="btnGenerate">Generate SQL</button>
   <button type="button" id="btnCopy" class="secondary" disabled>Copy SQL</button>
+  <button type="button" id="btnExecute" class="secondary" disabled>Execute SQL</button>
 
   <div id="result"></div>
+  <div id="executeResult"></div>
 
   <script>
     const MCP_URL = 'https://sqlclmcp.onrender.com';
@@ -100,16 +164,22 @@
     const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
     const btnCopy = document.getElementById('btnCopy');
+    const btnExecute = document.getElementById('btnExecute');
     const resultEl = document.getElementById('result');
+    const executeResultEl = document.getElementById('executeResult');
     const statusEl = document.getElementById('serverStatus');
+
+    let executeAvailable = false;
 
     async function checkHealth() {
       try {
         const r = await fetch(MCP_URL + '/health');
         const data = await r.json();
+        executeAvailable = !!data.execute_sql_available;
         statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
           ' · Rules: ' + (data.loaded_rules || '—') +
-          ' · LLM: ' + (data.llm_enabled ? 'on' : 'off');
+          ' · LLM: ' + (data.llm_enabled ? 'on' : 'off') +
+          ' · Execute: ' + (executeAvailable ? 'on' : 'off');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
       } catch (e) {
         statusEl.textContent = 'Server: unreachable (check URL or CORS)';
@@ -119,6 +189,56 @@
     checkHealth();
 
     let lastSql = '';
+    let schemaData = null;
+
+    async function loadSchema() {
+      try {
+        const r = await fetch(MCP_URL + '/schema');
+        schemaData = await r.json();
+        document.getElementById('schemaToggleLabel').textContent =
+          (schemaData.title || 'Tables you can play with') + ' 🎮';
+        document.getElementById('schemaDesc').textContent =
+          schemaData.description || 'Click a table to see columns; click a column to copy its name.';
+        const grid = document.getElementById('schemaGrid');
+        grid.innerHTML = (schemaData.tables || []).map(t => {
+          const cols = (t.columns || []).map(c =>
+            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
+          ).join('');
+          return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
+            '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
+            '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
+            '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
+            '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
+        }).join('');
+        document.getElementById('schemaSection').addEventListener('click', (e) => {
+          const card = e.target.closest('.schema-card');
+          const pill = e.target.closest('.col-pill');
+          if (card && !pill) {
+            card.classList.toggle('open');
+            document.getElementById('schemaSection').classList.add('open');
+          }
+          if (pill) {
+            const col = pill.getAttribute('data-col');
+            navigator.clipboard.writeText(col).then(() => {
+              pill.classList.add('copied');
+              pill.textContent = '✓ ' + col;
+              setTimeout(() => { pill.classList.remove('copied'); pill.textContent = col; }, 1200);
+            });
+          }
+        });
+      } catch (err) {
+        document.getElementById('schemaToggleLabel').textContent = 'Schema unavailable';
+        document.getElementById('schemaDesc').textContent = 'Could not load table list.';
+      }
+    }
+    loadSchema();
+
+    document.getElementById('schemaToggle').addEventListener('click', () => {
+      document.getElementById('schemaSection').classList.toggle('open');
+      document.getElementById('schemaGrid').style.display =
+        document.getElementById('schemaSection').classList.contains('open') ? 'grid' : 'none';
+    });
+    document.getElementById('schemaGrid').style.display = 'none';
 
     btnGenerate.addEventListener('click', async () => {
       const question = questionEl.value.trim();
@@ -144,13 +264,17 @@
             '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
             '<p class="meta">Source: ' + (data.source || '—') + ' · Mode: ' + (data.mode || '—') + '</p>';
           btnCopy.disabled = false;
+          btnExecute.disabled = false;
+          executeResultEl.innerHTML = '';
         } else {
           resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No SQL generated') + '</div>';
           btnCopy.disabled = true;
+          btnExecute.disabled = true;
         }
       } catch (e) {
         resultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
         btnCopy.disabled = true;
+        btnExecute.disabled = true;
       }
       btnGenerate.disabled = false;
     });
@@ -161,6 +285,43 @@
         btnCopy.textContent = 'Copied!';
         setTimeout(() => { btnCopy.textContent = 'Copy SQL'; }, 1500);
       });
+    });
+
+    btnExecute.addEventListener('click', async () => {
+      if (!lastSql) return;
+      executeResultEl.innerHTML = '<p class="meta">Running query…</p>';
+      btnExecute.disabled = true;
+      try {
+        const r = await fetch(MCP_URL + '/execute-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql: lastSql }),
+        });
+        const data = await r.json();
+        if (data.success && data.rows) {
+          const cols = data.columns || [];
+          let table = '<p class="meta">Rows: ' + data.rowCount + '</p><table><thead><tr>';
+          cols.forEach(c => { table += '<th>' + escapeHtml(String(c)) + '</th>'; });
+          table += '</tr></thead><tbody>';
+          data.rows.forEach(row => {
+            table += '<tr>';
+            cols.forEach(col => {
+              const v = row[col];
+              table += '<td>' + escapeHtml(v === null || v === undefined ? '—' : String(v)) + '</td>';
+            });
+            table += '</tr>';
+          });
+          table += '</tbody></table>';
+          executeResultEl.innerHTML = table;
+        } else {
+          const msg = data.error || 'Execution failed';
+          executeResultEl.innerHTML = '<div class="result error">' + escapeHtml(msg) + '</div>' +
+            (msg.indexOf('disabled') !== -1 ? '<p class="execute-hint">Copy the SQL above and run it in SQL Developer or your Oracle client.</p>' : '');
+        }
+      } catch (e) {
+        executeResultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
+      }
+      btnExecute.disabled = false;
     });
 
     function escapeHtml(s) {

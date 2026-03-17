@@ -1,0 +1,54 @@
+{
+  "title": "TPC-H — Tables you can play with",
+  "description": "Ask questions in plain English; we turn them into Oracle SQL against these tables.",
+  "tables": [
+    {
+      "name": "REGION",
+      "emoji": "🌍",
+      "hint": "Geographic regions",
+      "columns": ["R_REGIONKEY", "R_NAME", "R_COMMENT"]
+    },
+    {
+      "name": "NATION",
+      "emoji": "🏳️",
+      "hint": "Countries, linked to regions",
+      "columns": ["N_NATIONKEY", "N_NAME", "N_REGIONKEY", "N_COMMENT"]
+    },
+    {
+      "name": "CUSTOMER",
+      "emoji": "👤",
+      "hint": "Customers and their balances",
+      "columns": ["C_CUSTKEY", "C_NAME", "C_ADDRESS", "C_NATIONKEY", "C_PHONE", "C_ACCTBAL", "C_MKTSEGMENT", "C_COMMENT"]
+    },
+    {
+      "name": "SUPPLIER",
+      "emoji": "🏭",
+      "hint": "Suppliers",
+      "columns": ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_NATIONKEY", "S_PHONE", "S_ACCTBAL", "S_COMMENT"]
+    },
+    {
+      "name": "PART",
+      "emoji": "🔩",
+      "hint": "Parts / products",
+      "columns": ["P_PARTKEY", "P_NAME", "P_MFGR", "P_BRAND", "P_TYPE", "P_SIZE", "P_CONTAINER", "P_RETAILPRICE", "P_COMMENT"]
+    },
+    {
+      "name": "ORDERS",
+      "emoji": "📦",
+      "hint": "Orders (dates, totals, customer)",
+      "columns": ["O_ORDERKEY", "O_CUSTKEY", "O_ORDERSTATUS", "O_TOTALPRICE", "O_ORDERDATE", "O_ORDERPRIORITY", "O_CLERK", "O_SHIPPRIORITY", "O_COMMENT"]
+    },
+    {
+      "name": "LINEITEM",
+      "emoji": "📋",
+      "hint": "Order line items (L_* columns, not P_*)",
+      "columns": ["L_ORDERKEY", "L_PARTKEY", "L_SUPPKEY", "L_LINENUMBER", "L_QUANTITY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_TAX", "L_RETURNFLAG", "L_LINESTATUS", "L_SHIPDATE", "L_COMMITDATE", "L_RECEIPTDATE", "L_SHIPINSTRUCT", "L_SHIPMODE", "L_COMMENT"]
+    },
+    {
+      "name": "PARTSUPP",
+      "emoji": "🔗",
+      "hint": "Part–supplier links and supply cost",
+      "columns": ["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY", "PS_SUPPLYCOST", "PS_COMMENT"]
+    }
+  ]
+}
