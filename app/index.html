@@ -144,12 +144,12 @@
 
   <p class="status" id="serverStatus">Checking server…</p>
   <div class="server-url-row">
-    <label for="serverUrl">Server URL</label>
+    <label for="serverUrl">Server URL (for Execute SQL)</label>
     <div class="server-url-inputs">
-      <input type="text" id="serverUrl" placeholder="e.g. http://localhost:3000 — leave empty for public server (Execute disabled there)" />
-      <button type="button" id="btnUseLocal" class="secondary">Use local (3000)</button>
+      <input type="text" id="serverUrl" placeholder="Leave empty for public demo (no Execute). For local queries, use http://localhost:3000." />
+      <button type="button" id="btnUseLocal" class="secondary">Use local server (localhost:3000)</button>
     </div>
-    <p class="meta">Set to <code>http://localhost:3000</code> and run <code>npm start</code> locally with Oracle to enable <strong>Execute SQL</strong>.</p>
+    <p class="meta">To run queries from this UI, start the MCP server locally with Oracle and set this to <code>http://localhost:3000</code>. Leave it empty to use the public demo (SQL generation only).</p>
   </div>
 
   <div class="schema-section" id="schemaSection">
@@ -204,10 +204,12 @@
         const r = await fetch(base + '/health');
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
-        statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
+        const baseStatus = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
           ' · Rules: ' + (data.loaded_rules || '—') +
           ' · LLM: ' + (data.llm_enabled ? 'on' : 'off') +
           ' · Execute: ' + (executeAvailable ? 'on' : 'off');
+        const executeHint = executeAvailable ? '' : ' (set Server URL to your local MCP to enable)';
+        statusEl.textContent = baseStatus + executeHint;
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
       } catch (e) {
