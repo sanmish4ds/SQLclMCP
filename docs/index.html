@@ -224,7 +224,7 @@
         ],
       };
       try {
-        const r = await fetch(getMcpUrl() + '/schema');
+        const r = await fetch(MCP_URL + '/schema');
         schemaData = r.ok ? await r.json() : fallback;
       } catch (_) {
         schemaData = fallback;
@@ -296,7 +296,7 @@
       btnGenerate.disabled = true;
       resultEl.innerHTML = '<div class="result">Generating…</div>';
       try {
-        const r = await fetch(getMcpUrl() + '/generate-sql', {
+        const r = await fetch(MCP_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -339,7 +339,7 @@
       executeResultEl.innerHTML = '<p class="meta">Running query…</p>';
       btnExecute.disabled = true;
       try {
-        const r = await fetch(getMcpUrl() + '/execute-sql', {
+        const r = await fetch(MCP_URL + '/execute-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sql: lastSql }),
