@@ -1,6 +1,7 @@
 # Python deps for local evaluation & visualization (not used by Render MCP server).
 # Render runs this so the build step succeeds; the deployed service is Node-only.
 oracledb>=2.0.0
+python-dotenv>=1.0.0
 requests>=2.28.0
 matplotlib>=3.7.0
 numpy>=1.24.0

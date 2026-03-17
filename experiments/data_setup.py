@@ -22,6 +22,8 @@ Run:
 
 import sys, os, random, string
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+load_dotenv()
 
 try:
     import oracledb
@@ -37,7 +39,7 @@ except ImportError:
 ORACLE_USER        = os.getenv("DB_USER", "admin")
 ORACLE_PASSWORD    = os.getenv("DB_PASSWORD")
 ORACLE_DSN         = os.getenv("DB_DSN", "prishivdb1_high")
-ORACLE_WALLET_PATH = os.getenv("ORACLE_WALLET_PATH", "/Users/sanjaymishra/Downloads/Wallet_prishivdb1")
+ORACLE_WALLET_PATH = os.getenv("ORACLE_WALLET_PATH", "/Users/sanjaymishra/Downloads/Wallet_prishivdb_new")
 ORACLE_WALLET_PWD  = os.getenv("ORACLE_WALLET_PWD")
 
 # ── Data helpers ──────────────────────────────────────────────────────────────
