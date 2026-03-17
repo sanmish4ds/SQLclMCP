@@ -143,14 +143,6 @@
   <p class="sub">Natural language → Oracle SQL. Powered by your MCP server.</p>
 
   <p class="status" id="serverStatus">Checking server…</p>
-  <div class="server-url-row">
-    <label for="serverUrl">Server URL (for Execute SQL)</label>
-    <div class="server-url-inputs">
-      <input type="text" id="serverUrl" placeholder="Leave empty for public demo (no Execute). For local queries, use http://localhost:3000." />
-      <button type="button" id="btnUseLocal" class="secondary">Use local server (localhost:3000)</button>
-    </div>
-    <p class="meta">To run queries from this UI, start the MCP server locally with Oracle and set this to <code>http://localhost:3000</code>. Leave it empty to use the public demo (SQL generation only).</p>
-  </div>
 
   <div class="schema-section" id="schemaSection">
     <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
@@ -179,8 +171,7 @@
   <div id="executeResult"></div>
 
   <script>
-    const DEFAULT_MCP_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:3000' : 'https://sqlclmcp.onrender.com';
+    const MCP_URL = 'https://sqlclmcp.onrender.com';
     const questionEl = document.getElementById('question');
     const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
@@ -189,27 +180,19 @@
     const resultEl = document.getElementById('result');
     const executeResultEl = document.getElementById('executeResult');
     const statusEl = document.getElementById('serverStatus');
-    const serverUrlEl = document.getElementById('serverUrl');
-
-    function getMcpUrl() {
-      const v = (serverUrlEl && serverUrlEl.value || '').trim();
-      return v || DEFAULT_MCP_URL;
-    }
 
     let executeAvailable = false;
 
     async function checkHealth() {
-      const base = getMcpUrl();
+      const base = MCP_URL;
       try {
         const r = await fetch(base + '/health');
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
-        const baseStatus = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
+        statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
           ' · Rules: ' + (data.loaded_rules || '—') +
           ' · LLM: ' + (data.llm_enabled ? 'on' : 'off') +
           ' · Execute: ' + (executeAvailable ? 'on' : 'off');
-        const executeHint = executeAvailable ? '' : ' (set Server URL to your local MCP to enable)';
-        statusEl.textContent = baseStatus + executeHint;
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
       } catch (e) {
@@ -220,26 +203,6 @@
       }
     }
 
-    if (serverUrlEl) {
-      try {
-        const saved = localStorage.getItem('sqlclmcp_server_url');
-        if (saved) { serverUrlEl.value = saved; }
-      } catch (_) {}
-      serverUrlEl.addEventListener('change', () => {
-        try { localStorage.setItem('sqlclmcp_server_url', serverUrlEl.value.trim()); } catch (_) {}
-        checkHealth();
-        loadSchema();
-      });
-      serverUrlEl.addEventListener('input', () => {
-        try { localStorage.setItem('sqlclmcp_server_url', serverUrlEl.value.trim()); } catch (_) {}
-      });
-      document.getElementById('btnUseLocal').addEventListener('click', () => {
-        serverUrlEl.value = 'http://localhost:3000';
-        try { localStorage.setItem('sqlclmcp_server_url', serverUrlEl.value); } catch (_) {}
-        checkHealth();
-        loadSchema();
-      });
-    }
     checkHealth();
 
     let lastSql = '';
