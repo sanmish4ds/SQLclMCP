@@ -256,18 +256,85 @@ const requestHandler = (request, response) => {
     return;
   }
 
-  // GET /schema — tables and columns (for UI to show "what you can play with")
+  // GET /schema — tables and columns (live from DB when possible, else static)
   if (pathname === '/schema' && request.method === 'GET') {
-    const schemaPath = path.join(__dirname, 'schema.json');
-    try {
-      const raw = fs.readFileSync(schemaPath, 'utf8');
-      const schema = JSON.parse(raw);
+    const fallbackSchema = {
+      title: 'TPC-H — Tables you can play with',
+      description: 'Ask questions in plain English; we turn them into Oracle SQL against these tables.',
+      tables: [
+        { name: 'REGION', emoji: '🌍', hint: 'Geographic regions', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
+        { name: 'NATION', emoji: '🏳️', hint: 'Countries, linked to regions', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
+        { name: 'CUSTOMER', emoji: '👤', hint: 'Customers and their balances', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
+        { name: 'SUPPLIER', emoji: '🏭', hint: 'Suppliers', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
+        { name: 'PART', emoji: '🔩', hint: 'Parts / products', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
+        { name: 'ORDERS', emoji: '📦', hint: 'Orders (dates, totals, customer)', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
+        { name: 'LINEITEM', emoji: '📋', hint: 'Order line items (L_* columns)', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
+        { name: 'PARTSUPP', emoji: '🔗', hint: 'Part–supplier links and supply cost', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
+      ],
+    };
+
+    (async () => {
+      let schema = null;
+
+      if (config.enableExecuteSql && oracledb) {
+        try {
+          const connectString = config.dbDsn || `${config.dbHost}:${config.dbPort}/${config.dbSid}`;
+          const conn = await oracledb.getConnection({
+            user: config.dbUser,
+            password: config.dbPassword,
+            connectString,
+          });
+          try {
+            const tablesResult = await conn.execute(
+              'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME',
+              [],
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            const tableNames = (tablesResult.rows || []).map(r => r.TABLE_NAME);
+
+            const colsResult = await conn.execute(
+              'SELECT TABLE_NAME, COLUMN_NAME FROM USER_TAB_COLUMNS ORDER BY TABLE_NAME, COLUMN_ID',
+              [],
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            const columnsByTable = {};
+            for (const row of (colsResult.rows || [])) {
+              const t = row.TABLE_NAME;
+              if (!columnsByTable[t]) columnsByTable[t] = [];
+              columnsByTable[t].push(row.COLUMN_NAME);
+            }
+
+            schema = {
+              title: 'Database tables (live from Oracle)',
+              description: 'Tables and columns from your database. Ask questions in plain English.',
+              source: 'database',
+              tables: tableNames.map(name => ({
+                name,
+                emoji: '📋',
+                hint: `${(columnsByTable[name] || []).length} columns`,
+                columns: columnsByTable[name] || [],
+              })),
+            };
+          } finally {
+            await conn.close();
+          }
+        } catch (err) {
+          console.warn('[MCP-Server] Schema from DB failed:', err.message);
+        }
+      }
+
+      if (!schema) {
+        try {
+          const raw = fs.readFileSync(path.join(__dirname, 'schema.json'), 'utf8');
+          schema = JSON.parse(raw);
+        } catch (_) {
+          schema = fallbackSchema;
+        }
+      }
+
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify(schema));
-    } catch (err) {
-      response.writeHead(500);
-      response.end(JSON.stringify({ error: 'Schema not available', message: err.message }));
-    }
+    })();
     return;
   }
 
