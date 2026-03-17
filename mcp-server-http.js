@@ -27,15 +27,16 @@ const path = require('path');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
-// Configuration (Render sets PORT; use HTTP_PORT or 3000 locally)
+// Configuration (Render sets PORT; DB prefers DB_DSN/ORACLE_WALLET_* for Autonomous)
 const config = {
   httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
-  dbHost: process.env.DB_HOST || 'localhost',
-  dbPort: process.env.DB_PORT || '1521',
-  dbSid: process.env.DB_SID || 'FREE',
-  dbUser: process.env.DB_USER || 'mcp_dev',
-  dbPassword: process.env.DB_PASSWORD || 'mcp_pass123',
-  dbDsn: process.env.DB_DSN || null, // e.g. "localhost:1521/FREE"
+  dbHost: process.env.DB_HOST || null,
+  dbPort: process.env.DB_PORT || null,
+  dbSid: process.env.DB_SID || null,
+  dbUser: process.env.DB_USER || null,
+  dbPassword: process.env.DB_PASSWORD || null,
+  dbDsn: process.env.DB_DSN || null, // e.g. "prishivdb1_high"
+  dbWalletPath: process.env.ORACLE_WALLET_PATH || null, // for Autonomous DB wallets
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
@@ -276,14 +277,18 @@ const requestHandler = (request, response) => {
     (async () => {
       let schema = null;
 
-      if (config.enableExecuteSql && oracledb) {
+      if (config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword) {
         try {
           const connectString = config.dbDsn || `${config.dbHost}:${config.dbPort}/${config.dbSid}`;
-          const conn = await oracledb.getConnection({
+          const connConfig = {
             user: config.dbUser,
             password: config.dbPassword,
             connectString,
-          });
+          };
+          if (config.dbWalletPath) {
+            connConfig.configDir = config.dbWalletPath;
+          }
+          const conn = await oracledb.getConnection(connConfig);
           try {
             const tablesResult = await conn.execute(
               'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME',
@@ -421,7 +426,7 @@ const requestHandler = (request, response) => {
     let body = '';
     request.on('data', chunk => { body += chunk.toString(); });
     request.on('end', async () => {
-      if (!config.enableExecuteSql || !oracledb) {
+      if (!config.enableExecuteSql || !oracledb || !config.dbDsn || !config.dbUser || !config.dbPassword) {
         response.writeHead(503, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify({
           success: false,
@@ -450,11 +455,15 @@ const requestHandler = (request, response) => {
           return;
         }
         const connectString = config.dbDsn || `${config.dbHost}:${config.dbPort}/${config.dbSid}`;
-        const conn = await oracledb.getConnection({
+        const connConfig = {
           user: config.dbUser,
           password: config.dbPassword,
           connectString,
-        });
+        };
+        if (config.dbWalletPath) {
+          connConfig.configDir = config.dbWalletPath;
+        }
+        const conn = await oracledb.getConnection(connConfig);
         try {
           const result = await conn.execute(sql, [], {
             outFormat: oracledb.OUT_FORMAT_OBJECT,
