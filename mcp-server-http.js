@@ -250,6 +250,7 @@ const requestHandler = (request, response) => {
       offer: 'Natural language to Oracle SQL over HTTP. Send a question, get generated SQL.',
       endpoints: {
         health: 'GET /health',
+        egress_ip: 'GET /egress-ip — this server\'s outbound IP (for Oracle DB allow list)',
         generate_sql: 'POST /generate-sql — body: { "question": "your question", "mode": "llm|lookup|hybrid" }',
         generate_batch: 'POST /generate-batch — body: { "questions": ["q1", "q2"], "mode": "llm|lookup|hybrid" }',
         execute_sql: 'POST /execute-sql — body: { "sql": "SELECT ..." } (opt-in, SELECT only)',
@@ -360,6 +361,25 @@ const requestHandler = (request, response) => {
       execute_sql_available: !!(config.enableExecuteSql && oracledb),
       timestamp: new Date().toISOString(),
     }));
+    return;
+  }
+
+  // GET /egress-ip — returns this server's outbound IP (add to Oracle DB allow list)
+  if (pathname === '/egress-ip' && request.method === 'GET') {
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        const ip = data.ip || 'unknown';
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({
+          egress_ip: ip,
+          hint: 'Add this IP to Oracle Cloud → your Autonomous DB → Network → Access Control List (allowlisted IPs).',
+        }));
+      })
+      .catch(err => {
+        response.writeHead(500, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ error: err.message, egress_ip: null }));
+      });
     return;
   }
 
