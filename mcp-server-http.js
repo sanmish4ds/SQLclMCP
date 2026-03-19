@@ -555,6 +555,262 @@ const requestHandler = (request, response) => {
     return;
   }
 
+  // GET /mcp/tools — list available SQLcl MCP-style tools
+  if (pathname === '/mcp/tools' && request.method === 'GET') {
+    const dbReady = !!(config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword);
+    response.writeHead(200);
+    response.end(JSON.stringify({
+      server: 'SQLcl MCP over HTTP',
+      db_ready: dbReady,
+      connection: dbReady ? `${config.dbUser}@${config.dbDsn}` : null,
+      tools: [
+        { name: 'list-connections', description: 'Show current database connection status' },
+        { name: 'schema-information', description: 'List tables and columns. Pass tableName for one table.' },
+        { name: 'run-sql', description: 'Execute a SELECT query against Oracle Database' },
+        { name: 'run-sqlcl', description: 'Run a SQLcl command: DESC <table>, SHOW TABLES' },
+      ],
+    }));
+    return;
+  }
+
+  // POST /mcp/invoke — unified SQLcl MCP tool invocation
+  if (pathname === '/mcp/invoke' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('end', async () => {
+      let data;
+      try { data = JSON.parse(body); } catch (_) {
+        response.writeHead(400);
+        response.end(JSON.stringify({ success: false, tool: null, error: 'Invalid JSON body' }));
+        return;
+      }
+
+      const tool = String(data.tool || '').trim().toLowerCase();
+      const params = data.params || {};
+      const dbReady = !!(config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword);
+
+      // ── list-connections ──────────────────────────────────────
+      if (tool === 'list-connections') {
+        response.writeHead(200);
+        response.end(JSON.stringify({
+          success: true, tool,
+          result: {
+            connections: (config.dbDsn && config.dbUser)
+              ? [{ name: config.dbDsn, user: config.dbUser, status: dbReady ? 'configured' : 'not available', execute_enabled: !!config.enableExecuteSql }]
+              : [],
+            oracledb_available: !!oracledb,
+            execute_enabled: !!config.enableExecuteSql,
+          },
+        }));
+        return;
+      }
+
+      // ── schema-information ────────────────────────────────────
+      if (tool === 'schema-information') {
+        const tableName = params.tableName
+          ? String(params.tableName).toUpperCase().replace(/[^A-Z0-9_$#]/g, '')
+          : null;
+        if (dbReady) {
+          const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
+          if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;
+          let conn;
+          try {
+            conn = await oracledb.getConnection(connConfig);
+            if (tableName) {
+              const r = await conn.execute(
+                `SELECT COLUMN_NAME, DATA_TYPE,
+                        CASE WHEN DATA_TYPE IN ('VARCHAR2','CHAR','NVARCHAR2','RAW') THEN TO_CHAR(DATA_LENGTH)
+                             WHEN DATA_PRECISION IS NOT NULL THEN TO_CHAR(DATA_PRECISION) || ',' || TO_CHAR(DATA_SCALE)
+                             ELSE NULL END AS SIZE_PREC,
+                        NULLABLE
+                 FROM USER_TAB_COLUMNS WHERE TABLE_NAME = :t ORDER BY COLUMN_ID`,
+                { t: tableName },
+                { outFormat: oracledb.OUT_FORMAT_OBJECT }
+              );
+              response.writeHead(200);
+              response.end(JSON.stringify({ success: true, tool, source: 'database', result: { tableName, columns: r.rows || [] } }));
+            } else {
+              const r = await conn.execute(
+                `SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME`,
+                [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+              );
+              response.writeHead(200);
+              response.end(JSON.stringify({ success: true, tool, source: 'database', result: { tables: (r.rows || []).map(row => row.TABLE_NAME) } }));
+            }
+          } catch (err) {
+            response.writeHead(500);
+            response.end(JSON.stringify({ success: false, tool, error: err.message }));
+          } finally {
+            if (conn) { try { await conn.close(); } catch (_) {} }
+          }
+        } else {
+          try {
+            const raw = fs.readFileSync(path.join(__dirname, 'schema.json'), 'utf8');
+            const schema = JSON.parse(raw);
+            const tables = (schema.tables || []).map(t => t.name);
+            if (tableName) {
+              const tableInfo = (schema.tables || []).find(t => t.name === tableName);
+              if (!tableInfo) {
+                response.writeHead(404);
+                response.end(JSON.stringify({ success: false, tool, error: `Table ${tableName} not found in static schema` }));
+              } else {
+                const columns = (tableInfo.columns || []).map(c => ({ COLUMN_NAME: c, DATA_TYPE: '—', SIZE_PREC: null, NULLABLE: '—' }));
+                response.writeHead(200);
+                response.end(JSON.stringify({ success: true, tool, source: 'static', result: { tableName, columns } }));
+              }
+            } else {
+              response.writeHead(200);
+              response.end(JSON.stringify({ success: true, tool, source: 'static', result: { tables } }));
+            }
+          } catch (_) {
+            response.writeHead(503);
+            response.end(JSON.stringify({ success: false, tool, error: 'DB execution not available and schema.json could not be read' }));
+          }
+        }
+        return;
+      }
+
+      // ── run-sql ───────────────────────────────────────────────
+      if (tool === 'run-sql') {
+        if (!dbReady) {
+          response.writeHead(503);
+          response.end(JSON.stringify({ success: false, tool, error: 'SQL execution not enabled. Set EXECUTE_SQL_ENABLED=true and configure DB_DSN/DB_USER/DB_PASSWORD in .env' }));
+          return;
+        }
+        const sql = String(params.sql || '').trim().replace(/;\s*$/, '');
+        if (!sql) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, tool, error: 'Missing params.sql' }));
+          return;
+        }
+        const upper = sql.toUpperCase();
+        if ((!upper.startsWith('SELECT') && !upper.startsWith('WITH')) ||
+            /\b(DROP|DELETE|INSERT|UPDATE|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE)\b/.test(upper)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, tool, error: 'Only SELECT / WITH…SELECT queries are permitted.' }));
+          return;
+        }
+        const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
+        if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;
+        let conn;
+        try {
+          conn = await oracledb.getConnection(connConfig);
+          const r = await conn.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 500 });
+          const rows = r.rows || [];
+          const columns = r.metaData ? r.metaData.map(m => m.name) : [];
+          response.writeHead(200);
+          response.end(JSON.stringify({ success: true, tool, result: { columns, rows, rowCount: rows.length } }));
+        } catch (err) {
+          response.writeHead(500);
+          response.end(JSON.stringify({ success: false, tool, error: err.message }));
+        } finally {
+          if (conn) { try { await conn.close(); } catch (_) {} }
+        }
+        return;
+      }
+
+      // ── run-sqlcl ─────────────────────────────────────────────
+      if (tool === 'run-sqlcl') {
+        const cmd = String(params.command || '').trim();
+        if (!cmd) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, tool, error: 'Missing params.command' }));
+          return;
+        }
+
+        // DESC / DESCRIBE <table>
+        const descMatch = cmd.match(/^(?:desc(?:ribe)?)\s+(\w+)\s*$/i);
+        if (descMatch) {
+          const tbl = descMatch[1].toUpperCase().replace(/[^A-Z0-9_$#]/g, '');
+          if (!dbReady) {
+            response.writeHead(503);
+            response.end(JSON.stringify({ success: false, tool, error: 'DB execution not enabled.' }));
+            return;
+          }
+          const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
+          if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;
+          let conn;
+          try {
+            conn = await oracledb.getConnection(connConfig);
+            const r = await conn.execute(
+              `SELECT COLUMN_NAME,
+                      DATA_TYPE,
+                      CASE WHEN DATA_TYPE IN ('VARCHAR2','CHAR','NVARCHAR2','RAW') THEN TO_CHAR(DATA_LENGTH)
+                           WHEN DATA_PRECISION IS NOT NULL THEN TO_CHAR(DATA_PRECISION) || ',' || TO_CHAR(DATA_SCALE)
+                           ELSE NULL END AS SIZE_PREC,
+                      NULLABLE
+               FROM USER_TAB_COLUMNS WHERE TABLE_NAME = :t ORDER BY COLUMN_ID`,
+              { t: tbl },
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            if (!r.rows || r.rows.length === 0) {
+              response.writeHead(404);
+              response.end(JSON.stringify({ success: false, tool, error: `Table ${tbl} not found.` }));
+            } else {
+              response.writeHead(200);
+              response.end(JSON.stringify({
+                success: true, tool, command: cmd,
+                result: { columns: ['COLUMN_NAME', 'DATA_TYPE', 'SIZE_PREC', 'NULLABLE'], rows: r.rows, rowCount: r.rows.length },
+              }));
+            }
+          } catch (err) {
+            response.writeHead(500);
+            response.end(JSON.stringify({ success: false, tool, error: err.message }));
+          } finally {
+            if (conn) { try { await conn.close(); } catch (_) {} }
+          }
+          return;
+        }
+
+        // SHOW TABLES
+        if (/^show\s+tables?\s*$/i.test(cmd)) {
+          if (!dbReady) {
+            response.writeHead(503);
+            response.end(JSON.stringify({ success: false, tool, error: 'DB execution not enabled.' }));
+            return;
+          }
+          const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
+          if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;
+          let conn;
+          try {
+            conn = await oracledb.getConnection(connConfig);
+            const r = await conn.execute(
+              `SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME`,
+              [], { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            const rows = r.rows || [];
+            response.writeHead(200);
+            response.end(JSON.stringify({
+              success: true, tool, command: cmd,
+              result: { columns: ['TABLE_NAME', 'NUM_ROWS'], rows, rowCount: rows.length },
+            }));
+          } catch (err) {
+            response.writeHead(500);
+            response.end(JSON.stringify({ success: false, tool, error: err.message }));
+          } finally {
+            if (conn) { try { await conn.close(); } catch (_) {} }
+          }
+          return;
+        }
+
+        // Unsupported command
+        response.writeHead(422);
+        response.end(JSON.stringify({
+          success: false, tool,
+          error: `SQLcl command not supported: "${cmd}". Supported: DESC <table>, SHOW TABLES`,
+        }));
+        return;
+      }
+
+      response.writeHead(400);
+      response.end(JSON.stringify({
+        success: false,
+        error: `Unknown tool: "${data.tool}". Available: list-connections, schema-information, run-sql, run-sqlcl`,
+      }));
+    });
+    return;
+  }
+
   response.writeHead(404);
   response.end(JSON.stringify({ error: 'Not found' }));
 };
