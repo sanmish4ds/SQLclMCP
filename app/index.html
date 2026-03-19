@@ -136,12 +136,69 @@
     }
     .col-pill:hover { background: #30363d; color: #58a6ff; }
     .col-pill.copied { background: #238636; color: #fff; }
+    /* ── Tabs ──────────────────────────────────────────────────── */
+    .tabs { display: flex; border-bottom: 2px solid #21262d; margin-bottom: 1.5rem; }
+    .tab-btn {
+      background: transparent;
+      color: #8b949e;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.92rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: color 0.15s;
+    }
+    .tab-btn:hover { color: #e6edf3; background: transparent; }
+    .tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* ── SQLcl MCP Tab ─────────────────────────────────────────── */
+    .tools-panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+    }
+    .tool-tag {
+      display: inline-block;
+      background: #21262d;
+      color: #58a6ff;
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin: 0.2rem 0.15rem 0 0;
+      border: 1px solid #30363d;
+      cursor: pointer;
+    }
+    .tool-tag:hover { border-color: #58a6ff; }
+    .conn-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-family: ui-monospace, monospace;
+      margin-left: 0.4rem;
+    }
+    .conn-badge.on { border: 1px solid #238636; color: #3fb950; }
+    .conn-badge.off { border: 1px solid #6e7681; color: #6e7681; }
+    .mcp-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
   </style>
 </head>
 <body>
-  <h1>MCP SQL Assistant</h1>
-  <p class="sub">Powered by Model Context Protocol. Ask in plain English — generate &amp; execute Oracle SQL.</p>
+  <h1>SQLcl MCP Assistant</h1>
+  <p class="sub">Natural language to Oracle SQL &middot; Direct SQLcl MCP execution &middot; Schema explorer.</p>
 
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="nl-sql">NL to SQL</button>
+    <button class="tab-btn" data-tab="sqlcl-mcp">SQLcl MCP</button>
+  </div>
+
+  <div id="tab-nl-sql" class="tab-panel active">
   <p class="status" id="serverStatus">Checking server…</p>
 
   <div class="schema-section" id="schemaSection">
@@ -169,6 +226,23 @@
 
   <div id="result"></div>
   <div id="executeResult"></div>
+  </div><!-- /tab-nl-sql -->
+
+  <div id="tab-sqlcl-mcp" class="tab-panel">
+    <p class="status" id="mcpStatus">Loading SQLcl MCP tools…</p>
+    <div id="mcpTools" class="tools-panel">Loading…</div>
+
+    <label for="mcpInput">SQL query or SQLcl command</label>
+    <textarea id="mcpInput" placeholder="SELECT * FROM REGION&#10;&#10;SQLcl commands:&#10;  DESC CUSTOMER&#10;  SHOW TABLES"></textarea>
+    <div class="mcp-actions">
+      <button type="button" id="btnMcpRunSql">&#9654; Run SQL</button>
+      <button type="button" class="secondary" id="btnMcpDescribe">DESC &lt;table&gt;</button>
+      <button type="button" class="secondary" id="btnMcpShowTables">SHOW TABLES</button>
+      <button type="button" class="secondary" id="btnMcpSchema">Schema Info</button>
+      <button type="button" class="secondary" id="btnMcpListConn">List Connections</button>
+    </div>
+    <div id="mcpResult"></div>
+  </div><!-- /tab-sqlcl-mcp -->
 
   <script>
     const MCP_URL = 'https://sqlclmcp.onrender.com';
@@ -376,6 +450,157 @@
       div.textContent = s;
       return div.innerHTML;
     }
+
+    // ── Tab switching ─────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'sqlcl-mcp' && !mcpToolsLoaded) loadMcpTools();
+      });
+    });
+
+    // ── SQLcl MCP Tab ─────────────────────────────────────────
+    let mcpToolsLoaded = false;
+    const mcpStatusEl = document.getElementById('mcpStatus');
+    const mcpResultEl = document.getElementById('mcpResult');
+
+    async function loadMcpTools() {
+      mcpToolsLoaded = true;
+      const toolsEl = document.getElementById('mcpTools');
+      try {
+        const r = await fetch(MCP_URL + '/mcp/tools');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        const dbBadge = data.db_ready
+          ? '<span class="conn-badge on">&#9679; ' + escapeHtml(data.connection || 'connected') + '</span>'
+          : '<span class="conn-badge off">&#9679; DB execution not enabled</span>';
+        const toolTags = (data.tools || []).map(t =>
+          '<span class="tool-tag" title="' + escapeHtml(t.description) + '">' + escapeHtml(t.name) + '</span>'
+        ).join('');
+        toolsEl.innerHTML = '<strong>SQLcl MCP Server</strong>' + dbBadge +
+          '<br><span style="color:#6e7681;font-size:0.78rem">Tools: </span>' + toolTags;
+        mcpStatusEl.textContent = data.db_ready
+          ? 'SQLcl MCP: tools ready · DB execution enabled'
+          : 'SQLcl MCP: tools ready · DB execution disabled (set EXECUTE_SQL_ENABLED=true in .env)';
+        mcpStatusEl.className = 'status ' + (data.db_ready ? 'ok' : '');
+      } catch (e) {
+        toolsEl.innerHTML = '<span style="color:#f85149">Cannot reach /mcp/tools — is the server running?</span>';
+        mcpStatusEl.textContent = 'SQLcl MCP: server unreachable';
+        mcpStatusEl.className = 'status fail';
+      }
+    }
+
+    async function mcpInvoke(tool, params) {
+      mcpResultEl.innerHTML = '<div class="result">Calling <strong>' + escapeHtml(tool) + '</strong>…</div>';
+      try {
+        const r = await fetch(MCP_URL + '/mcp/invoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tool, params }),
+        });
+        const data = await r.json();
+        if (!data.success) {
+          mcpResultEl.innerHTML = '<div class="result error">Tool error: ' + escapeHtml(data.error || 'Unknown error') + '</div>';
+          return;
+        }
+        renderMcpResult(tool, data);
+      } catch (e) {
+        mcpResultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    function renderMcpResult(tool, data) {
+      const result = data.result || {};
+      if (tool === 'list-connections') {
+        const conns = result.connections || [];
+        if (conns.length === 0) {
+          mcpResultEl.innerHTML = '<div class="result">No DB connections configured.<br>' +
+            'Add <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> and ' +
+            '<code>EXECUTE_SQL_ENABLED=true</code> to your .env file.</div>';
+          return;
+        }
+        mcpResultEl.innerHTML = '<p class="meta">Connections (' + conns.length + ')</p>' +
+          buildTable(['Name', 'User', 'Status', 'Execute SQL'],
+            conns.map(c => [c.name || '—', c.user || '—', c.status || '—', c.execute_enabled ? '✓ on' : '✗ off']));
+        return;
+      }
+      if (tool === 'schema-information') {
+        if (result.tableName) {
+          const cols = result.columns || [];
+          mcpResultEl.innerHTML = '<p class="meta">Table: <strong>' + escapeHtml(result.tableName) +
+            '</strong> · ' + cols.length + ' columns</p>' +
+            buildTable(['Column', 'Type', 'Size / Precision', 'Nullable'],
+              cols.map(c => [c.COLUMN_NAME || '—', c.DATA_TYPE || '—', c.SIZE_PREC != null ? String(c.SIZE_PREC) : '—', c.NULLABLE || '—']));
+          return;
+        }
+        const tables = result.tables || [];
+        mcpResultEl.innerHTML = '<p class="meta">Tables (' + tables.length + ') — click to describe</p>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem">' +
+          tables.map(t => '<span class="tool-tag" onclick="mcpDescribeTable(\'' + escapeHtml(String(t)) + '\')">' + escapeHtml(String(t)) + '</span>').join('') +
+          '</div>';
+        return;
+      }
+      // run-sql / run-sqlcl — both return { columns, rows, rowCount }
+      const cols = result.columns || [];
+      const rows = result.rows || [];
+      if (cols.length === 0 && rows.length === 0) {
+        mcpResultEl.innerHTML = '<div class="result">No rows returned.</div>';
+        return;
+      }
+      const cmdLabel = data.command ? ' · <code>' + escapeHtml(data.command) + '</code>' : '';
+      mcpResultEl.innerHTML = '<p class="meta">Rows: ' + (result.rowCount != null ? result.rowCount : rows.length) + cmdLabel + '</p>' +
+        buildTable(cols, rows.map(row => cols.map(col => {
+          const v = row[col]; return v === null || v === undefined ? '—' : String(v);
+        })));
+    }
+
+    function buildTable(headers, rowArrays) {
+      let html = '<table><thead><tr>' +
+        headers.map(h => '<th>' + escapeHtml(String(h)) + '</th>').join('') +
+        '</tr></thead><tbody>';
+      rowArrays.forEach(row => {
+        html += '<tr>' + row.map(v => '<td>' + escapeHtml(String(v)) + '</td>').join('') + '</tr>';
+      });
+      return html + '</tbody></table>';
+    }
+
+    function mcpDescribeTable(tableName) {
+      document.getElementById('mcpInput').value = 'DESC ' + tableName;
+      mcpInvoke('run-sqlcl', { command: 'DESC ' + tableName });
+    }
+
+    document.getElementById('btnMcpRunSql').addEventListener('click', () => {
+      const sql = document.getElementById('mcpInput').value.trim();
+      if (!sql) { mcpResultEl.innerHTML = '<div class="result error">Enter a SQL query first.</div>'; return; }
+      mcpInvoke('run-sql', { sql });
+    });
+
+    document.getElementById('btnMcpDescribe').addEventListener('click', () => {
+      const input = document.getElementById('mcpInput').value.trim();
+      const m = input.match(/^(?:desc(?:ribe)?\s+)?(\w+)\s*$/i);
+      const table = (m ? m[1] : input).toUpperCase().replace(/[^A-Z0-9_]/g, '');
+      if (!table) { mcpResultEl.innerHTML = '<div class="result error">Type a table name or pick one from Schema Info.</div>'; return; }
+      document.getElementById('mcpInput').value = 'DESC ' + table;
+      mcpInvoke('run-sqlcl', { command: 'DESC ' + table });
+    });
+
+    document.getElementById('btnMcpShowTables').addEventListener('click', () => {
+      mcpInvoke('run-sqlcl', { command: 'SHOW TABLES' });
+    });
+
+    document.getElementById('btnMcpSchema').addEventListener('click', () => {
+      const input = document.getElementById('mcpInput').value.trim();
+      const m = input.match(/^(?:desc(?:ribe)?\s+)?(\w+)\s*$/i);
+      const tableName = m ? m[1].toUpperCase() : undefined;
+      mcpInvoke('schema-information', tableName ? { tableName } : {});
+    });
+
+    document.getElementById('btnMcpListConn').addEventListener('click', () => {
+      mcpInvoke('list-connections', {});
+    });
   </script>
 </body>
 </html>
