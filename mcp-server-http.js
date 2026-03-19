@@ -284,8 +284,17 @@ class SqlclMcpBridge {
     const env = { ...process.env };
     if (config.dbWalletPath) env.TNS_ADMIN = config.dbWalletPath;
 
+    // Build args: -mcp flag + optional credentials so SQLcl connects on startup
+    const sqlArgs = ['-mcp'];
+    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
+      const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;
+      sqlArgs.push(`${config.dbUser}/${config.dbPassword}@${dsn}`);
+    } else {
+      sqlArgs.push('/nolog');
+    }
+
     await new Promise((resolve, reject) => {
-      this.proc = spawn(sqlBin, ['mcp'], { stdio: ['pipe', 'pipe', 'pipe'], env });
+      this.proc = spawn(sqlBin, sqlArgs, { stdio: ['pipe', 'pipe', 'pipe'], env });
       this.proc.stdout.setEncoding('utf8');
       this.proc.stdout.on('data', d => this._onData(d));
       this.proc.stderr.setEncoding('utf8');
