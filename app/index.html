@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MCP SQL Assistant — Natural Language to Oracle SQL</title>
+  <title>SQLcl MCP Assistant — Oracle SQL</title>
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 640px;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 1.5rem;
-      background: #0f1419;
+      padding: 1.75rem 1.5rem 3rem;
+      background: #0d1117;
       color: #e6edf3;
       min-height: 100vh;
     }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .sub { color: #8b949e; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.2rem; font-weight: 600; letter-spacing: -0.01em; }
+    .sub { color: #8b949e; font-size: 0.85rem; margin-bottom: 1.75rem; }
     label { display: block; margin-bottom: 0.35rem; color: #8b949e; font-size: 0.85rem; }
     textarea {
       width: 100%;
@@ -137,20 +137,28 @@
     .col-pill:hover { background: #30363d; color: #58a6ff; }
     .col-pill.copied { background: #238636; color: #fff; }
     /* ── Tabs ──────────────────────────────────────────────────── */
-    .tabs { display: flex; border-bottom: 2px solid #21262d; margin-bottom: 1.5rem; }
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 1px solid #21262d;
+      margin-bottom: 1.75rem;
+      padding-bottom: 0;
+    }
     .tab-btn {
       background: transparent;
       color: #8b949e;
       border: none;
       border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      padding: 0.55rem 1.1rem;
-      font-size: 0.92rem;
+      margin-bottom: -1px;
+      padding: 0.5rem 1.1rem;
+      font-size: 0.88rem;
+      font-weight: 500;
       cursor: pointer;
       border-radius: 0;
-      transition: color 0.15s;
+      transition: color 0.15s, border-color 0.15s;
+      letter-spacing: 0.01em;
     }
-    .tab-btn:hover { color: #e6edf3; background: transparent; }
+    .tab-btn:hover { color: #c9d1d9; background: transparent; }
     .tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -314,11 +322,11 @@
 </head>
 <body>
   <h1>SQLcl MCP Assistant</h1>
-  <p class="sub">Natural language to Oracle SQL &middot; Direct SQLcl MCP execution &middot; Schema explorer.</p>
+  <p class="sub">Oracle SQL &middot; Natural language queries &middot; Schema explorer &middot; Live database chat</p>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="nl-sql">NL to SQL</button>
-    <button class="tab-btn" data-tab="sqlcl-mcp">SQLcl MCP</button>
+    <button class="tab-btn active" data-tab="nl-sql">NL → SQL via Custom MCP</button>
+    <button class="tab-btn" data-tab="sqlcl-mcp">NL → SQL via SQLcl MCP</button>
   </div>
 
   <div id="tab-nl-sql" class="tab-panel active">
@@ -327,9 +335,9 @@
   <div class="schema-section" id="schemaSection">
     <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
       <span class="arrow">▶</span>
-      <span id="schemaToggleLabel">Loading schema…</span>
+      <span id="schemaToggleLabel">TPC-H Schema — Tables you can query 🎮</span>
     </button>
-    <p class="schema-desc" id="schemaDesc"></p>
+    <p class="schema-desc" id="schemaDesc">Click a table to see columns · click a column to copy its name.</p>
     <div class="schema-grid" id="schemaGrid"></div>
   </div>
 
@@ -352,8 +360,8 @@
   </div><!-- /tab-nl-sql -->
 
   <div id="tab-sqlcl-mcp" class="tab-panel">
-    <p class="status" id="mcpStatus">Loading SQLcl MCP tools…</p>
-    <div id="mcpTools" class="tools-panel">Loading…</div>
+    <p class="status" id="mcpStatus">Connecting to SQLcl MCP…</p>
+    <div id="mcpTools" class="tools-panel">Initializing…</div>
     <div class="chat-wrap">
       <div class="chat-history" id="chatHistory">
         <div class="chat-welcome">
@@ -397,7 +405,10 @@
     async function checkHealth() {
       const base = MCP_URL;
       try {
-        const r = await fetch(base + '/health');
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 7000);
+        const r = await fetch(base + '/health', { signal: ctrl.signal });
+        clearTimeout(timer);
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
         statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
@@ -407,7 +418,10 @@
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
       } catch (e) {
-        statusEl.textContent = 'Server: unreachable (check URL or CORS)';
+        const isTimeout = e.name === 'AbortError';
+        statusEl.textContent = isTimeout
+          ? 'Server: waking up on Render — refresh in ~30s'
+          : 'Server: unreachable (check URL or CORS)';
         statusEl.className = 'status fail';
         executeAvailable = false;
         if (btnExecute) btnExecute.disabled = true;
@@ -419,83 +433,86 @@
     let lastSql = '';
     let schemaData = null;
 
+    const SCHEMA_FALLBACK = {
+      title: 'TPC-H Schema',
+      description: 'Click a table to see columns · click a column to copy its name.',
+      tables: [
+        { name: 'REGION',   emoji: '🌍', hint: 'Geographic regions',                  columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
+        { name: 'NATION',   emoji: '🏳️', hint: 'Countries, linked to regions',         columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
+        { name: 'CUSTOMER', emoji: '👤', hint: 'Customers and their balances',         columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
+        { name: 'SUPPLIER', emoji: '🏭', hint: 'Suppliers',                            columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
+        { name: 'PART',     emoji: '🔩', hint: 'Parts / products',                    columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
+        { name: 'ORDERS',   emoji: '📦', hint: 'Orders (dates, totals, customer)',    columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
+        { name: 'LINEITEM', emoji: '📋', hint: 'Order line items (L_* columns)',      columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
+        { name: 'PARTSUPP', emoji: '🔗', hint: 'Part–supplier links and supply cost', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
+      ],
+    };
+
+    function renderSchemaGrid(data) {
+      const d = (data && data.tables) ? data : SCHEMA_FALLBACK;
+      if (data && data.title) {
+        document.getElementById('schemaToggleLabel').textContent = d.title + ' 🎮';
+      }
+      if (data && data.description) {
+        document.getElementById('schemaDesc').textContent = d.description;
+      }
+      const grid = document.getElementById('schemaGrid');
+      grid.innerHTML = d.tables.map(t => {
+        const cols = (t.columns || []).map(c =>
+          '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
+        ).join('');
+        return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
+          '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
+          '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
+          '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
+          '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
+      }).join('');
+    }
+
+    // Show fallback schema immediately — never hang on "Loading schema…"
+    schemaData = SCHEMA_FALLBACK;
+    renderSchemaGrid(SCHEMA_FALLBACK);
+
     async function loadSchema() {
-      const fallback = {
-        title: 'TPC-H — Tables you can play with',
-        description: 'Click a table to see columns; click a column to copy its name.',
-        tables: [
-          { name: 'REGION', emoji: '🌍', hint: 'Geographic regions', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
-          { name: 'NATION', emoji: '🏳️', hint: 'Countries, linked to regions', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
-          { name: 'CUSTOMER', emoji: '👤', hint: 'Customers and their balances', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
-          { name: 'SUPPLIER', emoji: '🏭', hint: 'Suppliers', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
-          { name: 'PART', emoji: '🔩', hint: 'Parts / products', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
-          { name: 'ORDERS', emoji: '📦', hint: 'Orders (dates, totals, customer)', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
-          { name: 'LINEITEM', emoji: '📋', hint: 'Order line items (L_* columns)', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
-          { name: 'PARTSUPP', emoji: '🔗', hint: 'Part–supplier links and supply cost', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
-        ],
-      };
       try {
-        const r = await fetch(MCP_URL + '/schema');
-        schemaData = r.ok ? await r.json() : fallback;
-      } catch (_) {
-        schemaData = fallback;
-      }
-      if (schemaData && schemaData.tables) {
-        document.getElementById('schemaToggleLabel').textContent =
-          (schemaData.title || 'Tables you can play with') + ' 🎮';
-        document.getElementById('schemaDesc').textContent =
-          schemaData.description || 'Click a table to see columns; click a column to copy its name.';
-        const grid = document.getElementById('schemaGrid');
-        grid.innerHTML = (schemaData.tables || []).map(t => {
-          const cols = (t.columns || []).map(c =>
-            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
-          ).join('');
-          return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
-            '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
-            '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
-            '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
-            '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
-        }).join('');
-      } else {
-        schemaData = fallback;
-        document.getElementById('schemaToggleLabel').textContent = 'Tables you can play with 🎮';
-        document.getElementById('schemaDesc').textContent = 'Schema could not be loaded from server; showing default TPC-H tables.';
-        const grid = document.getElementById('schemaGrid');
-        grid.innerHTML = (fallback.tables || []).map(t => {
-          const cols = (t.columns || []).map(c =>
-            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
-          ).join('');
-          return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
-            '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
-            '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
-            '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
-            '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
-        }).join('');
-      }
-      document.getElementById('schemaSection').addEventListener('click', function schemaClick(e) {
-        const card = e.target.closest('.schema-card');
-        const pill = e.target.closest('.col-pill');
-        if (card && !pill) {
-          card.classList.toggle('open');
-          document.getElementById('schemaSection').classList.add('open');
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const r = await fetch(MCP_URL + '/schema', { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (r.ok) {
+          const data = await r.json();
+          if (data && data.tables && data.tables.length > 0) {
+            schemaData = data;
+            renderSchemaGrid(data);
+          }
         }
-        if (pill) {
-          const col = pill.getAttribute('data-col');
-          navigator.clipboard.writeText(col).then(() => {
-            pill.classList.add('copied');
-            pill.textContent = '✓ ' + col;
-            setTimeout(() => { pill.classList.remove('copied'); pill.textContent = col; }, 1200);
-          });
-        }
-      });
+      } catch (_) { /* keep fallback already rendered */ }
     }
     loadSchema();
+
+    document.getElementById('schemaSection').addEventListener('click', function (e) {
+      const card = e.target.closest('.schema-card');
+      const pill = e.target.closest('.col-pill');
+      if (card && !pill) {
+        card.classList.toggle('open');
+        document.getElementById('schemaSection').classList.add('open');
+      }
+      if (pill) {
+        const col = pill.getAttribute('data-col');
+        navigator.clipboard.writeText(col).then(() => {
+          pill.classList.add('copied');
+          pill.textContent = '✓ ' + col;
+          setTimeout(() => { pill.classList.remove('copied'); pill.textContent = col; }, 1200);
+        });
+      }
+    });
 
     document.getElementById('schemaToggle').addEventListener('click', () => {
       document.getElementById('schemaSection').classList.toggle('open');
       document.getElementById('schemaGrid').style.display =
         document.getElementById('schemaSection').classList.contains('open') ? 'grid' : 'none';
     });
+    // Start collapsed — user opens on demand
     document.getElementById('schemaGrid').style.display = 'none';
 
     btnGenerate.addEventListener('click', async () => {
@@ -595,7 +612,6 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'sqlcl-mcp' && !mcpToolsLoaded) loadMcpTools();
       });
     });
 
@@ -613,7 +629,10 @@
       mcpToolsLoaded = true;
       const toolsEl = document.getElementById('mcpTools');
       try {
-        const r = await fetch(MCP_URL + '/sqlcl-real/status');
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const r = await fetch(MCP_URL + '/sqlcl-real/status', { signal: ctrl.signal });
+        clearTimeout(timer);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const data = await r.json();
         sqlclReady = !!data.ready;
@@ -642,11 +661,16 @@
           mcpStatusEl.className = 'status fail';
         }
       } catch (e) {
-        document.getElementById('mcpTools').innerHTML = '<span style="color:#f85149">Cannot reach server</span>';
-        mcpStatusEl.textContent = 'Server unreachable';
+        const isTimeout = e.name === 'AbortError';
+        document.getElementById('mcpTools').innerHTML =
+          '<span style="color:#f85149">' + (isTimeout ? 'Server timed out — it may be waking up on Render. Try again in 30s.' : 'Cannot reach server') + '</span>';
+        mcpStatusEl.textContent = isTimeout ? '● Server waking up — please wait and retry' : '● Server unreachable';
         mcpStatusEl.className = 'status fail';
       }
     }
+
+    // Eagerly init Database Chat tab so it's ready when user clicks it
+    loadMcpTools();
 
     function removeWelcome() {
       const w = chatHistoryEl.querySelector('.chat-welcome');
@@ -660,7 +684,7 @@
         '<div style="font-size:0.83rem;line-height:1.7;color:#c9d1d9">' +
 
         '<strong style="color:#58a6ff">&#9312; Plain English query (e.g. “find top 10 orders”)</strong><br>' +
-        '<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">You type natural language
+        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">You type natural language
     ↓  classifyInput() → kind = “natural”
     ↓  POST /generate-sql  { question, mode:”hybrid” }
            └─ 1. Lookup test_questions.json  → exact/partial match?
@@ -673,26 +697,26 @@
     ↓  POST /mcp/invoke  { tool:”run-sql”, params:{sql} }
            └─ oracledb.getConnection({ dsn, wallet })
            └─ conn.execute(sql, maxRows:500)
-    ↓  Rows rendered as table</pre>' +
+    ↓  Rows rendered as table</pre>` +
 
         '<strong style="color:#58a6ff">&#9313; Direct SQL (e.g. <code>SELECT * FROM ORDERS</code>)</strong><br>' +
-        '<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">classifyInput() → kind = “sql”  (starts with SELECT/WITH)
+        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">classifyInput() → kind = “sql”  (starts with SELECT/WITH)
     ↓  No LLM call — straight to execution
     ↓  POST /mcp/invoke  { tool:”run-sql”, params:{sql} }
            └─ oracledb (Node.js Oracle driver over JDBC-thin)
            └─ Wallet/TNS_ADMIN from ORACLE_WALLET_PATH env
            └─ DSN: DB_DSN (e.g. prishivdb1_high)
-    ↓  Rows rendered as table</pre>' +
+    ↓  Rows rendered as table</pre>` +
 
         '<strong style="color:#58a6ff">&#9314; SQLcl commands (DESC / SHOW TABLES)</strong><br>' +
-        '<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">classifyInput() → kind = “desc” / “show_tables”
+        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">classifyInput() → kind = “desc” / “show_tables”
     ↓  POST /mcp/invoke  { tool:”run-sqlcl”, params:{command} }
            └─ DESC  → SELECT from USER_TAB_COLUMNS
            └─ SHOW TABLES → SELECT from USER_TABLES
-    ↓  Rendered as column structure table</pre>' +
+    ↓  Rendered as column structure table</pre>` +
 
         '<strong style="color:#58a6ff">&#9315; How SQLcl MCP normally works (vs this server)</strong><br>' +
-        '<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">GitHub Copilot Chat (VS Code)
+        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">GitHub Copilot Chat (VS Code)
     ↓  MCP Protocol  (JSON-RPC over stdio)
     ↓  SQLcl binary  —  sql mcp
            └─ Tools: connect, run-sql, run-sqlcl,
@@ -701,7 +725,7 @@
     ↓  Oracle Autonomous DB  (TLS 1522, wallet)
 
 This web server reimplements the same 4 tools over HTTP
-so you can use them from any browser, not just VS Code.</pre>' +
+so you can use them from any browser, not just VS Code.</pre>` +
         '</div>';
       appendBotDiv(html);
     }
@@ -771,7 +795,7 @@ so you can use them from any browser, not just VS Code.</pre>' +
       return (source
         ? '<div class="chat-label">Generated SQL <span class="chat-source">via ' + escapeHtml(source) + '</span></div>'
         : '<div class="chat-label">SQL</div>') +
-        '<pre class="chat-code">' + escapeHtml(sql) + '</pre>' +
+        `<pre class="chat-code">' + escapeHtml(sql) + '</pre>` +
         '<button class="chat-copy-btn" data-sql-idx="' + idx + '" onclick="chatCopyByIdx(this)">Copy SQL</button>';
     }
 
