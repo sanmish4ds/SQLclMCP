@@ -9,10 +9,10 @@ services:
 
     buildCommand: >
       npm install &&
-      curl -sL https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip -o sqlcl.zip &&
-      unzip -q sqlcl.zip -d . &&
-      chmod +x sqlcl/bin/sql &&
-      rm sqlcl.zip
+      wget -q https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip &&
+      unzip -q sqlcl-latest.zip -d /opt/ &&
+      chmod +x /opt/sqlcl/bin/sql &&
+      rm sqlcl-latest.zip
     startCommand: npm start
 
     envVars:
@@ -21,7 +21,7 @@ services:
       - key: LLM_MODEL
         value: gpt-4o-mini
       - key: SQLCL_BIN
-        value: ./sqlcl/bin/sql
+        value: /opt/sqlcl/bin/sql
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
       # - LLM_API_URL (optional, default OpenAI)
