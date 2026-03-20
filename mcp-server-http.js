@@ -286,7 +286,7 @@ class SqlclMcpBridge {
 
     // Build args: -mcp flag + optional credentials so SQLcl connects on startup
     const sqlArgs = ['-mcp'];
-    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
+        if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
       const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;
       sqlArgs.push(`${config.dbUser}/${config.dbPassword}@${dsn}`);
     } else {
@@ -323,6 +323,15 @@ class SqlclMcpBridge {
     console.log('[SQLcl-MCP] Initialized, server:', JSON.stringify((init || {}).serverInfo || {}));
     this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + '\n');
     this.ready = true;
+    // If started with credentials directly, mark as connected to the DSN
+    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
+      this.connectedTo = config.dbDsn || `${config.dbUser}@${config.dbHost}:${config.dbPort || '1521'}/${config.dbSid}`;
+      console.log('[SQLcl-MCP] Auto-connected to:', this.connectedTo);
+    }
+    // If we started with credentials, mark as connected
+    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
+      this.connectedTo = config.dbDsn || `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`;
+    }
   }
 
   _onData(chunk) {

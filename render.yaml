@@ -12,8 +12,14 @@ services:
       wget -q https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip &&
       unzip -o -q sqlcl-latest.zip -d /opt/render/project/src/ &&
       chmod +x /opt/render/project/src/sqlcl/bin/sql &&
-      echo "SQLcl path: /opt/render/project/src/sqlcl/bin/sql"
-    startCommand: npm start
+      wget -q https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz -O jdk.tar.gz &&
+      tar -xzf jdk.tar.gz -C /opt/render/project/src/ &&
+      rm jdk.tar.gz &&
+      echo "SQLcl ready at /opt/render/project/src/sqlcl/bin/sql, Java at /opt/render/project/src/jdk-17.0.2"
+    startCommand: >
+      export JAVA_HOME=/opt/render/project/src/jdk-17.0.2 &&
+      export PATH=$JAVA_HOME/bin:$PATH &&
+      npm start
 
     envVars:
       - key: ENABLE_LLM_SQL_GEN
@@ -22,6 +28,8 @@ services:
         value: gpt-4o-mini
       - key: SQLCL_BIN
         value: /opt/render/project/src/sqlcl/bin/sql
+      - key: JAVA_HOME
+        value: /opt/render/project/src/jdk-17.0.2
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
       # - LLM_API_URL (optional, default OpenAI)
