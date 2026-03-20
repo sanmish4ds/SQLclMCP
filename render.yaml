@@ -4,9 +4,16 @@
 services:
   - type: web
     name: sqlclmcp-server
-    runtime: docker
+    runtime: node
     plan: free
-    dockerfilePath: ./Dockerfile
+
+    buildCommand: >
+      npm install &&
+      wget -q https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip &&
+      unzip -o -q sqlcl-latest.zip -d /opt/render/project/src/ &&
+      chmod +x /opt/render/project/src/sqlcl/bin/sql &&
+      echo "SQLcl path: /opt/render/project/src/sqlcl/bin/sql"
+    startCommand: npm start
 
     envVars:
       - key: ENABLE_LLM_SQL_GEN
@@ -14,7 +21,7 @@ services:
       - key: LLM_MODEL
         value: gpt-4o-mini
       - key: SQLCL_BIN
-        value: /app/sqlcl/bin/sql
+        value: /opt/render/project/src/sqlcl/bin/sql
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
       # - LLM_API_URL (optional, default OpenAI)
