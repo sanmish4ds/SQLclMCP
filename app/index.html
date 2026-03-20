@@ -474,6 +474,12 @@
           <button type="button" class="chat-chip" onclick="showHowItWorks()">How it works</button>
         </div>
 
+        <div class="chat-input-row">
+          <textarea id="chatInput" class="chat-textarea" rows="1"
+            placeholder="Ask a question or type SQL. (Enter to send, Shift+Enter for newline)"></textarea>
+          <button type="button" id="btnChatSend" class="chat-send-btn">Send</button>
+        </div>
+
         <div class="upload-panel">
           <div class="upload-row">
             <label class="upload-label">Excel</label>
@@ -495,12 +501,6 @@
           </div>
           <div id="excelPlan" style="margin-top:0.75rem;"></div>
           <div id="excelStatus" class="chat-meta"></div>
-        </div>
-
-        <div class="chat-input-row">
-          <textarea id="chatInput" class="chat-textarea" rows="1"
-            placeholder="Ask a question or type SQL. (Enter to send, Shift+Enter for newline)"></textarea>
-          <button type="button" id="btnChatSend" class="chat-send-btn">Send</button>
         </div>
       </div>
     </div>
@@ -1315,16 +1315,31 @@ so you can use them from any browser, not just VS Code.</pre>` +
         excelPlanEl.innerHTML = excelPlan.map(t => {
           const dropPart = t.dropSql ? 'Drop included' : 'No drop';
           const insChunks = (t.insertSqlChunks || []).length;
+          const dropSqlBlock = t.dropSql ? (t.dropSql + '\n\n') : '';
+          const fullCreateSql = dropSqlBlock + (t.createSql || '');
           return (
             '<div style="margin-top:0.9rem;">' +
               '<div class="chat-label">Table ' + escapeHtml(t.tableName) + '</div>' +
               '<div class="chat-meta">Rows: ' + (t.rowCount || 0) + ' · Inserts: ' + insChunks + '</div>' +
               '<div class="chat-meta">' + dropPart + '</div>' +
-              '<pre class="chat-code">' + escapeHtml(t.createSql || '') + '</pre>' +
+              '<pre class="chat-code">' + escapeHtml(fullCreateSql) + '</pre>' +
             '</div>'
           );
         }).join('');
         if (excelStatusEl) excelStatusEl.textContent = 'Plan ready';
+
+        // Also show generated SQL inside the chat
+        const chatSqlHtml = excelPlan.map(t => {
+          const dropSqlBlock = t.dropSql ? (t.dropSql + '\n\n') : '';
+          const fullCreateSql = dropSqlBlock + (t.createSql || '');
+          return (
+            '<div style="margin-top:0.9rem;">' +
+            '<div class="chat-label">Create SQL · ' + escapeHtml(t.tableName) + '</div>' +
+            '<pre class="chat-code">' + escapeHtml(fullCreateSql) + '</pre>' +
+            '</div>'
+          );
+        }).join('');
+        appendBotDiv(chatSqlHtml);
       } catch (e) {
         excelPlanEl.innerHTML = '<div class="chat-error">Convert error: ' + escapeHtml(e.message || String(e)) + '</div>';
         if (excelStatusEl) excelStatusEl.textContent = '';
