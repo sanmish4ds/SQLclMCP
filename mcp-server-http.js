@@ -42,6 +42,7 @@ const config = {
   dbPassword: process.env.DB_PASSWORD || null,
   dbDsn: process.env.DB_DSN || null, // e.g. "prishivdb1_high"
   dbWalletPath: walletPath, // directory containing tnsnames.ora + wallet files
+  sqlclConnectionName: process.env.SQLCL_CONNECTION_NAME || process.env.DB_DSN || null, // saved connection name for SQLcl MCP connect tool
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
@@ -284,14 +285,9 @@ class SqlclMcpBridge {
     const env = { ...process.env };
     if (config.dbWalletPath) env.TNS_ADMIN = config.dbWalletPath;
 
-    // Build args: -mcp flag + optional credentials so SQLcl connects on startup
-    const sqlArgs = ['-mcp'];
-        if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
-      const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;
-      sqlArgs.push(`${config.dbUser}/${config.dbPassword}@${dsn}`);
-    } else {
-      sqlArgs.push('/nolog');
-    }
+    // SQLcl MCP mode does NOT establish DB connections from command-line credentials.
+    // Always start with /nolog; the MCP connect tool is called after init.
+    const sqlArgs = ['-mcp', '/nolog'];
 
     await new Promise((resolve, reject) => {
       this.proc = spawn(sqlBin, sqlArgs, { stdio: ['pipe', 'pipe', 'pipe'], env });
@@ -323,14 +319,25 @@ class SqlclMcpBridge {
     console.log('[SQLcl-MCP] Initialized, server:', JSON.stringify((init || {}).serverInfo || {}));
     this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + '\n');
     this.ready = true;
-    // If started with credentials directly, mark as connected to the DSN
-    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
-      this.connectedTo = config.dbDsn || `${config.dbUser}@${config.dbHost}:${config.dbPort || '1521'}/${config.dbSid}`;
-      console.log('[SQLcl-MCP] Auto-connected to:', this.connectedTo);
-    }
-    // If we started with credentials, mark as connected
-    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
-      this.connectedTo = config.dbDsn || `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`;
+    // Auto-connect: call SQLcl MCP's connect tool using the saved connection name.
+    // SQLcl requires a pre-saved connection (conn save …) or the connection alias from tnsnames.
+    // Use SQLCL_CONNECTION_NAME env var if set, otherwise fall back to DB_DSN.
+    const connName = process.env.SQLCL_CONNECTION_NAME || config.dbDsn;
+    if (connName) {
+      console.log('[SQLcl-MCP] Auto-connecting to saved connection:', connName);
+      try {
+        const connectResult = await this._rpc('tools/call', { name: 'connect', arguments: { connection_name: connName, model: process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5' } });
+        const isErr = !!(connectResult || {}).isError;
+        if (isErr) {
+          const errText = ((connectResult.content || []).map(c => c.text || '').join(' ')).trim();
+          console.warn('[SQLcl-MCP] connect tool reported error:', errText);
+        } else {
+          this.connectedTo = connName;
+          console.log('[SQLcl-MCP] Connected to:', connName);
+        }
+      } catch (err) {
+        console.warn('[SQLcl-MCP] Auto-connect failed:', err.message);
+      }
     }
   }
 
@@ -370,7 +377,9 @@ class SqlclMcpBridge {
 
   async callTool(name, args) {
     await this.ensureReady();
-    return this._rpc('tools/call', { name, arguments: args });
+    // SQLcl MCP tools require a `model` argument identifying the calling LLM.
+    const argsWithModel = { model: process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5', ...args };
+    return this._rpc('tools/call', { name, arguments: argsWithModel });
   }
 
   async listTools() {
