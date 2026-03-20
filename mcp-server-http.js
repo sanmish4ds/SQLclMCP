@@ -22,14 +22,41 @@ try {
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
-// Configuration (Render sets PORT; DB prefers DB_DSN/ORACLE_WALLET_* for Autonomous)
-const rawWalletPath = process.env.ORACLE_WALLET_PATH || process.env.TNS_ADMIN || null;
+// ── Wallet bootstrap ─────────────────────────────────────────────────────────
+// On Render (or any cloud env) the wallet can't be a local path.
+// Set ORACLE_WALLET_ZIP_B64 to the base64-encoded contents of your wallet zip
+// (e.g. `base64 -i Wallet_prishivdb.zip | tr -d '\n'`).
+// The server will extract it to a temp dir and set TNS_ADMIN automatically.
+function extractWalletFromEnv() {
+  const b64 = process.env.ORACLE_WALLET_ZIP_B64;
+  if (!b64) return null;
+  try {
+    const tmpDir = path.join(os.tmpdir(), 'oracle_wallet_' + process.pid);
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const zipPath = path.join(tmpDir, 'wallet.zip');
+    fs.writeFileSync(zipPath, Buffer.from(b64, 'base64'));
+    // Use unzip (available on Linux/macOS/Render)
+    require('child_process').execSync(`unzip -o -q "${zipPath}" -d "${tmpDir}"`);
+    fs.unlinkSync(zipPath);
+    console.log('[MCP-Server] Wallet extracted to:', tmpDir);
+    return tmpDir;
+  } catch (err) {
+    console.warn('[MCP-Server] Failed to extract wallet from ORACLE_WALLET_ZIP_B64:', err.message);
+    return null;
+  }
+}
+
+const rawWalletPath = extractWalletFromEnv()
+  || process.env.ORACLE_WALLET_PATH
+  || process.env.TNS_ADMIN
+  || null;
 const walletPath = rawWalletPath ? path.resolve(rawWalletPath) : null;
 if (walletPath) process.env.TNS_ADMIN = walletPath; // Oracle native layer looks for tnsnames.ora here
 
@@ -41,7 +68,7 @@ const config = {
   dbUser: process.env.DB_USER || null,
   dbPassword: process.env.DB_PASSWORD || null,
   dbDsn: process.env.DB_DSN || null, // e.g. "prishivdb1_high"
-  dbWalletPath: walletPath, // directory containing tnsnames.ora + wallet files
+  dbWalletPath: walletPath, // directory containing tnsnames.ora + wallet files (auto-set from ORACLE_WALLET_ZIP_B64)
   sqlclConnectionName: process.env.SQLCL_CONNECTION_NAME || process.env.DB_DSN || null, // saved connection name for SQLcl MCP connect tool
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
@@ -1062,6 +1089,16 @@ const requestHandler = (request, response) => {
 // ── Start Server ──────────────────────────────────────────────────────────────
 
 const server = http.createServer(requestHandler);
+
+// Keep-alive: ping /health every 14 min to prevent Render free-tier spin-down
+const RENDER_KEEP_ALIVE_URL = process.env.RENDER_EXTERNAL_URL
+  ? process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '') + '/health'
+  : null;
+if (RENDER_KEEP_ALIVE_URL) {
+  setInterval(() => {
+    fetch(RENDER_KEEP_ALIVE_URL).catch(() => {});
+  }, 14 * 60 * 1000);
+}
 
 server.listen(config.httpPort, () => {
   console.log(`[MCP-Server] HTTP API listening on http://localhost:${config.httpPort}`);

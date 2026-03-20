@@ -420,11 +420,12 @@
       } catch (e) {
         const isTimeout = e.name === 'AbortError';
         statusEl.textContent = isTimeout
-          ? 'Server: waking up on Render — refresh in ~30s'
+          ? 'Server: waking up — retrying in 15s…'
           : 'Server: unreachable (check URL or CORS)';
         statusEl.className = 'status fail';
         executeAvailable = false;
         if (btnExecute) btnExecute.disabled = true;
+        if (isTimeout) setTimeout(checkServer, 15000);
       }
     }
 
@@ -663,9 +664,10 @@
       } catch (e) {
         const isTimeout = e.name === 'AbortError';
         document.getElementById('mcpTools').innerHTML =
-          '<span style="color:#f85149">' + (isTimeout ? 'Server timed out — it may be waking up on Render. Try again in 30s.' : 'Cannot reach server') + '</span>';
-        mcpStatusEl.textContent = isTimeout ? '● Server waking up — please wait and retry' : '● Server unreachable';
+          '<span style="color:#f85149">' + (isTimeout ? 'Server waking up — retrying in 15s…' : 'Cannot reach server') + '</span>';
+        mcpStatusEl.textContent = isTimeout ? '● Server waking up — retrying…' : '● Server unreachable';
         mcpStatusEl.className = 'status fail';
+        if (isTimeout) setTimeout(loadMcpTools, 15000);
       }
     }
 
