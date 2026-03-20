@@ -319,21 +319,24 @@ class SqlclMcpBridge {
     console.log('[SQLcl-MCP] Initialized, server:', JSON.stringify((init || {}).serverInfo || {}));
     this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + '\n');
     this.ready = true;
-    // Auto-connect: call SQLcl MCP's connect tool using the saved connection name.
-    // SQLcl requires a pre-saved connection (conn save …) or the connection alias from tnsnames.
-    // Use SQLCL_CONNECTION_NAME env var if set, otherwise fall back to DB_DSN.
-    const connName = process.env.SQLCL_CONNECTION_NAME || config.dbDsn;
-    if (connName) {
-      console.log('[SQLcl-MCP] Auto-connecting to saved connection:', connName);
+    // Auto-connect via run-sqlcl CONNECT command (does not require saved connections).
+    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
+      const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;
+      const connectCmd = `CONNECT ${config.dbUser}/${config.dbPassword}@${dsn}`;
+      console.log('[SQLcl-MCP] Auto-connecting with run-sqlcl CONNECT to:', dsn);
       try {
-        const connectResult = await this._rpc('tools/call', { name: 'connect', arguments: { connection_name: connName, model: process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5' } });
+        const model = process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
+        const connectResult = await this._rpc('tools/call', {
+          name: 'run-sqlcl',
+          arguments: { sql: connectCmd, model },
+        });
         const isErr = !!(connectResult || {}).isError;
-        if (isErr) {
-          const errText = ((connectResult.content || []).map(c => c.text || '').join(' ')).trim();
-          console.warn('[SQLcl-MCP] connect tool reported error:', errText);
+        const rawText = ((connectResult || {}).content || []).map(c => c.text || '').join('').trim();
+        if (isErr || /error|invalid|denied|failed/i.test(rawText)) {
+          console.warn('[SQLcl-MCP] Auto-connect run-sqlcl error:', rawText);
         } else {
-          this.connectedTo = connName;
-          console.log('[SQLcl-MCP] Connected to:', connName);
+          this.connectedTo = dsn;
+          console.log('[SQLcl-MCP] Connected to:', dsn, '|', rawText.slice(0, 80));
         }
       } catch (err) {
         console.warn('[SQLcl-MCP] Auto-connect failed:', err.message);
