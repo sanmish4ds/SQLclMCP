@@ -71,6 +71,15 @@ secrets/
 *.pem
 password*
 credentials*
+wallet/
+Wallet_*.zip
+cwallet.sso
+ewallet.p12
+tnsnames.ora
+sqlnet.ora
+keystore.jks
+truststore.jks
+ojdbc.properties
 
 # Database files
 *.db

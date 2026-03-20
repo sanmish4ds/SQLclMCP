@@ -19,6 +19,12 @@ services:
     startCommand: >
       export JAVA_HOME=/opt/render/project/src/jdk-17.0.2 &&
       export PATH=$JAVA_HOME/bin:$PATH &&
+      export TNS_ADMIN=${TNS_ADMIN:-/opt/render/project/src/wallet} &&
+      export ORACLE_WALLET_PATH=${ORACLE_WALLET_PATH:-$TNS_ADMIN} &&
+      echo "Using wallet path: $TNS_ADMIN" &&
+      test -f "$TNS_ADMIN/tnsnames.ora" &&
+      test -f "$TNS_ADMIN/sqlnet.ora" &&
+      test -f "$TNS_ADMIN/cwallet.sso" &&
       npm start
 
     envVars:
@@ -30,7 +36,12 @@ services:
         value: /opt/render/project/src/sqlcl/bin/sql
       - key: JAVA_HOME
         value: /opt/render/project/src/jdk-17.0.2
+      - key: TNS_ADMIN
+        value: /opt/render/project/src/wallet
+      - key: ORACLE_WALLET_PATH
+        value: /opt/render/project/src/wallet
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
       # - LLM_API_URL (optional, default OpenAI)
-      # - DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_SID (optional, for /health display)
+      # - DB_DSN (e.g. prishivdb1_high), DB_USER, DB_PASSWORD
+      # - DB_HOST, DB_PORT, DB_SID (optional, for /health display)
