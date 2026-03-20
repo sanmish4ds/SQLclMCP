@@ -236,6 +236,17 @@
       letter-spacing: 0.04em;
       margin-bottom: 0.3rem;
     }
+    .chat-meta {
+      color: #8b949e;
+      font-size: 0.78rem;
+      margin-top: 0.35rem;
+      margin-bottom: 0.1rem;
+      line-height: 1.35;
+    }
+    .chat-section-sep {
+      border-top: 1px solid #30363d;
+      margin: 0.75rem 0;
+    }
     .chat-source { color: #58a6ff; font-size: 0.7rem; text-transform: none; letter-spacing: 0; }
     .chat-code {
       background: #0d1117;
@@ -851,11 +862,61 @@ so you can use them from any browser, not just VS Code.</pre>` +
 
         if (kind === 'sql') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: text });
-          setBotContent(botDiv, d.success
-            ? '<div class="chat-label">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
-            : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
-          );
+          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: text });
+          if (d0.success) {
+            setBotContent(botDiv, '<div class="chat-label">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d0.result));
+          } else {
+            const err = String(d0.error || '');
+            const shouldAutoCorrect = /ORA-(00903|00904|00933|00942|00905)\b/i.test(err);
+            if (!shouldAutoCorrect) {
+              setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(d0.error || 'Error') + '</div>');
+              return;
+            }
+
+            // One-shot auto-correction: ask our server LLM to fix the Oracle SQL.
+            setBotContent(
+              botDiv,
+              '<div class="chat-label">SQL auto-correction</div>' +
+              '<div class="chat-meta">Oracle error detected: <span style="color:#f85149">' + escapeHtml(err) + '</span></div>' +
+              sqlBlock(text, null)
+            );
+            try {
+              const fixQuestion =
+                'Fix this Oracle SQL. Return only the corrected SQL statement (exactly one SELECT or WITH statement; no explanation). ' +
+                'Original SQL: ' + text + '. Oracle error: ' + err;
+
+              const genR = await fetch(MCP_URL + '/generate-sql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: fixQuestion, mode: 'llm' }),
+              });
+              const genData = await genR.json();
+              if (!genData.success || !genData.generated_sql) {
+                setBotContent(botDiv, '<div class="chat-error">❌ Could not auto-correct. ' + escapeHtml(d0.error || 'Error') + '</div>');
+                return;
+              }
+
+              const correctedSql = genData.generated_sql;
+              const d1 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: correctedSql });
+              setBotContent(
+                botDiv,
+                '<div class="chat-meta" style="color:#3fb950">' +
+                  'Auto-corrected SQL generated' +
+                  (genData.mode ? ' · mode: ' + escapeHtml(genData.mode) : '') +
+                '</div>' +
+                '<div class="chat-section-sep"></div>' +
+                (d1.success
+                  ? (sqlBlock(correctedSql, genData.source) +
+                      '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via SQLcl run-sql</span></div>' +
+                      resultsHtml(d1.result))
+                  : (sqlBlock(correctedSql, genData.source) +
+                      '<div class="chat-error" style="margin-top:0.5rem">❌ ' + escapeHtml(d1.error || 'Error') + '</div>')
+                )
+              );
+            } catch (e) {
+              setBotContent(botDiv, '<div class="chat-error">❌ Auto-correct failed: ' + escapeHtml(e.message || String(e)) + '</div>');
+            }
+          }
 
         } else if (kind === 'desc') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
