@@ -29,6 +29,147 @@ const { spawn } = require('child_process');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
+// Excel parser (used for XLSX->CREATE TABLE/INSERT SQL generation)
+let XLSX;
+try { XLSX = require('xlsx'); } catch (_) { XLSX = null; }
+
+function sanitizeIdentifier(raw, fallback = 'COL') {
+  let s = String(raw == null ? '' : raw)
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!s) s = String(fallback).toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  if (!/^[A-Z]/.test(s)) s = 'C_' + s;
+  if (s.length > 30) s = s.slice(0, 30);
+  return s;
+}
+
+function escapeSqlString(str) {
+  return String(str)
+    .replace(/\r\n/g, '\n')
+    .replace(/'/g, "''");
+}
+
+function sqlLiteral(value, oracleType) {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return 'NULL';
+    // For numeric columns, try to coerce
+    if (oracleType.kind === 'NUMBER' || oracleType.kind === 'NUMBER_BOOLEAN') {
+      const n = Number(trimmed);
+      return Number.isFinite(n) ? String(n) : 'NULL';
+    }
+    if (oracleType.kind === 'DATE') {
+      // Best-effort parse for YYYY-MM-DD-ish strings
+      const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `DATE '${m[1]}-${m[2]}-${m[3]}'`;
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) return `DATE '${d.toISOString().slice(0, 10)}'`;
+      return 'NULL';
+    }
+    const esc = escapeSqlString(trimmed);
+    if (oracleType.kind === 'CLOB') return `TO_CLOB('${esc}')`;
+    return `'${esc}'`;
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return 'NULL';
+    if (oracleType.kind === 'NUMBER' || oracleType.kind === 'NUMBER_BOOLEAN') return String(value);
+    if (oracleType.kind === 'DATE') {
+      // If xlsx returns excel serial date as number, we can't reliably convert without workbook metadata.
+      // Treat as NULL to avoid wrong dates.
+      return 'NULL';
+    }
+    // For strings
+    const esc = escapeSqlString(String(value));
+    if (oracleType.kind === 'CLOB') return `TO_CLOB('${esc}')`;
+    return `'${esc}'`;
+  }
+
+  if (typeof value === 'boolean') {
+    if (oracleType.kind === 'NUMBER' || oracleType.kind === 'NUMBER_BOOLEAN') return value ? '1' : '0';
+    const esc = escapeSqlString(value ? 'TRUE' : 'FALSE');
+    if (oracleType.kind === 'CLOB') return `TO_CLOB('${esc}')`;
+    return `'${esc}'`;
+  }
+
+  if (value instanceof Date) {
+    if (oracleType.kind === 'DATE') return `DATE '${value.toISOString().slice(0, 10)}'`;
+    const esc = escapeSqlString(value.toISOString());
+    if (oracleType.kind === 'CLOB') return `TO_CLOB('${esc}')`;
+    return `'${esc}'`;
+  }
+
+  // Fallback: string
+  const esc = escapeSqlString(String(value));
+  if (oracleType.kind === 'CLOB') return `TO_CLOB('${esc}')`;
+  return `'${esc}'`;
+}
+
+function inferOracleTypeForColumn(sampleValues) {
+  const values = sampleValues.filter(v => v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === ''));
+  if (values.length === 0) return { kind: 'VARCHAR2', length: 100 };
+
+  const allDates = values.every(v => v instanceof Date);
+  if (allDates) return { kind: 'DATE' };
+
+  const allBools = values.every(v => typeof v === 'boolean');
+  if (allBools) return { kind: 'NUMBER_BOOLEAN' }; // maps to NUMBER(1)
+
+  const allNumbers = values.every(v => typeof v === 'number' && Number.isFinite(v));
+  if (allNumbers) return { kind: 'NUMBER' };
+
+  // Otherwise treat as string
+  let maxLen = 0;
+  for (const v of values) {
+    const s = (v instanceof Date) ? v.toISOString() : String(v);
+    maxLen = Math.max(maxLen, s.length);
+  }
+  if (maxLen > 4000) return { kind: 'CLOB' };
+  return { kind: 'VARCHAR2', length: Math.max(1, Math.min(4000, maxLen)) };
+}
+
+function oracleTypeSql(oracleType) {
+  if (oracleType.kind === 'DATE') return 'DATE';
+  if (oracleType.kind === 'NUMBER') return 'NUMBER';
+  if (oracleType.kind === 'NUMBER_BOOLEAN') return 'NUMBER(1)';
+  if (oracleType.kind === 'CLOB') return 'CLOB';
+  if (oracleType.kind === 'VARCHAR2') return `VARCHAR2(${oracleType.length})`;
+  return 'VARCHAR2(100)';
+}
+
+function buildCreateTableSql(tableName, columns) {
+  const colsSql = columns.map(c => `"${c.name}" ${oracleTypeSql(c.type)}`).join(', ');
+  return `CREATE TABLE "${tableName}" (${colsSql})`;
+}
+
+function buildDropTableSql(tableName) {
+  // Drop table safely without failing if it doesn't exist
+  return `BEGIN
+  EXECUTE IMMEDIATE 'DROP TABLE "${tableName}" PURGE';
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;`;
+}
+
+function buildInsertUnionSql(tableName, columns, rows) {
+  const colNames = columns.map(c => `"${c.name}"`);
+  const selectRows = rows.map(rowArr => {
+    const literals = columns.map((col, idx) => sqlLiteral(rowArr[idx], col.type));
+    return `SELECT ${literals.join(', ')} FROM dual`;
+  });
+  return `INSERT INTO "${tableName}" (${colNames.join(', ')})
+${selectRows.join('\nUNION ALL\n')}`;
+}
+
+function arrayToBase64String(buffer) {
+  // not used currently; kept for completeness
+  return Buffer.from(buffer).toString('base64');
+}
+
 // ── Wallet bootstrap ─────────────────────────────────────────────────────────
 // On Render (or any cloud env) the wallet can't be a local path.
 // Set ORACLE_WALLET_ZIP_B64 to the base64-encoded contents of your wallet zip
@@ -751,6 +892,153 @@ const requestHandler = (request, response) => {
       } catch (error) {
         response.writeHead(400);
         response.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /excel-to-sql
+  // Converts an uploaded Excel sheet into:
+  // - CREATE TABLE statements
+  // - INSERT statements (generated as UNION ALL SELECT chunks)
+  if (pathname === '/excel-to-sql' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('end', async () => {
+      try {
+        if (!XLSX) {
+          response.writeHead(501);
+          response.end(JSON.stringify({ success: false, error: 'xlsx parser not installed' }));
+          return;
+        }
+
+        // Base64 of the Excel file (sent from the web UI)
+        const data = JSON.parse(body || '{}');
+        const fileBase64 = data.fileBase64 || '';
+        const fileName = data.fileName || 'upload.xlsx';
+        const hasHeader = data.hasHeader !== false; // default true
+        const maxRows = Number(data.maxRows || 2000);
+        const insertChunkSize = Number(data.insertChunkSize || 200);
+        const dropIfExists = data.dropIfExists !== false; // default true
+
+        if (!fileBase64) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, error: 'Missing fileBase64' }));
+          return;
+        }
+
+        // Basic size guard (base64 inflates by ~33%)
+        if (fileBase64.length > 20 * 1024 * 1024) {
+          response.writeHead(413);
+          response.end(JSON.stringify({ success: false, error: 'File too large' }));
+          return;
+        }
+
+        const buf = Buffer.from(fileBase64, 'base64');
+        const workbook = XLSX.read(buf, { type: 'buffer', cellDates: true });
+
+        const sheetNames = workbook.SheetNames || [];
+        if (sheetNames.length === 0) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, error: 'No sheets found' }));
+          return;
+        }
+
+        const tables = [];
+
+        for (const sheetName of sheetNames) {
+          const ws = workbook.Sheets[sheetName];
+          if (!ws) continue;
+
+          // Convert sheet to 2D array: rows -> arrays of cells
+          const rows2d = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            raw: true,
+            defval: null,
+          }) || [];
+
+          const colCount = rows2d.reduce((m, r) => Math.max(m, (r || []).length), 0);
+          if (colCount === 0) continue;
+
+          const tableName = sanitizeIdentifier(sheetName, 'TABLE_' + sanitizeIdentifier(sheetName, 'T'));
+          const startRow = hasHeader ? 1 : 0;
+
+          let headerRow = null;
+          if (hasHeader && rows2d.length > 0) headerRow = rows2d[0];
+
+          // Column names
+          const columns = [];
+          const usedColNames = new Set();
+          for (let c = 0; c < colCount; c++) {
+            const rawName = hasHeader ? (headerRow ? headerRow[c] : null) : null;
+            const fallback = 'column_' + (c + 1);
+            const baseName = sanitizeIdentifier(
+              rawName && String(rawName).trim() ? rawName : fallback,
+              fallback
+            );
+            let colName = baseName;
+            let k = 1;
+            while (usedColNames.has(colName)) {
+              colName = sanitizeIdentifier(baseName + '_' + k, fallback);
+              k++;
+            }
+            usedColNames.add(colName);
+            columns.push({ name: colName, type: { kind: 'VARCHAR2', length: 100 } });
+          }
+
+          // Find non-empty data rows
+          const dataRowsAll = [];
+          for (let r = startRow; r < rows2d.length; r++) {
+            const rowArr = rows2d[r] || [];
+            let hasAny = false;
+            for (let c = 0; c < colCount; c++) {
+              const v = rowArr[c];
+              if (v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')) {
+                hasAny = true;
+                break;
+              }
+            }
+            if (hasAny) dataRowsAll.push(rowArr);
+          }
+
+          const truncated = dataRowsAll.length > maxRows;
+          const dataRows = truncated ? dataRowsAll.slice(0, maxRows) : dataRowsAll;
+
+          // Infer column types from the first N sample rows
+          const sampleN = Math.min(50, dataRows.length);
+          for (let c = 0; c < colCount; c++) {
+            const sample = [];
+            for (let i = 0; i < sampleN; i++) sample.push(dataRows[i][c]);
+            const inferred = inferOracleTypeForColumn(sample);
+            columns[c].type = inferred;
+          }
+
+          const createSql = buildCreateTableSql(tableName, columns);
+
+          // Chunk inserts to avoid huge SQL statements
+          const insertSqlChunks = [];
+          for (let i = 0; i < dataRows.length; i += insertChunkSize) {
+            const chunk = dataRows.slice(i, i + insertChunkSize);
+            insertSqlChunks.push(buildInsertUnionSql(tableName, columns, chunk));
+          }
+
+          tables.push({
+            tableName,
+            sheetName,
+            rowCount: dataRows.length,
+            truncated,
+            columns: columns.map(c => ({ name: c.name, typeSql: oracleTypeSql(c.type) })),
+            dropSql: dropIfExists ? buildDropTableSql(tableName) : null,
+            createSql,
+            insertSqlChunks,
+          });
+        }
+
+        response.writeHead(200);
+        response.end(JSON.stringify({ success: true, fileName, tables }));
+      } catch (err) {
+        response.writeHead(400);
+        response.end(JSON.stringify({ success: false, error: err.message || String(err) }));
       }
     });
     return;

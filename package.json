@@ -10,6 +10,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "oracledb": "^6.0.0"
+    "oracledb": "^6.0.0",
+    "xlsx": "^0.18.5"
   }
 }
