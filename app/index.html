@@ -851,7 +851,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
 
         if (kind === 'sql') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { sql: text });
+          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: text });
           setBotContent(botDiv, d.success
             ? '<div class="chat-label">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
             : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
@@ -863,7 +863,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
           const tbl = (match ? match[1] : text).toUpperCase();
           // Query USER_TAB_COLUMNS via run-sql (real SQLcl MCP only has run-sql, not DESC command)
           const sql = "SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, NULLABLE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = '" + tbl + "' ORDER BY COLUMN_ID";
-          const d = await sqlclInvoke('run-sql', { sql });
+          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql });
           setBotContent(botDiv, d.success
             ? '<div class="chat-label">Structure of ' + escapeHtml(tbl) + ' <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
             : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
@@ -871,7 +871,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
 
         } else if (kind === 'show_tables') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { sql: 'SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME' });
+          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: 'SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME' });
           setBotContent(botDiv, d.success
             ? '<div class="chat-label">Tables <span class="chat-source">via SQLcl run-sql → USER_TABLES</span></div>' + resultsHtml(d.result)
             : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
@@ -903,7 +903,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
 
         } else if (kind === 'schema') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { sql: 'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME' });
+          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: 'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME' });
           if (!d.success) { setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'); return; }
           const tables = (d.result.rows || []).map(r => Object.values(r)[0] || '').filter(Boolean);
           setBotContent(botDiv,
@@ -939,7 +939,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
             return;
           }
           setBotContent(botDiv, sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running via SQLcl MCP (Java JDBC)…</span>');
-          const d = await sqlclInvoke('run-sql', { sql });
+          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql });
           setBotContent(botDiv, d.success
             ? sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
             : sb + '<div class="chat-error" style="margin-top:0.5rem">❌ SQLcl execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
