@@ -487,6 +487,20 @@ class SqlclMcpBridge {
     console.log('[SQLcl-MCP] Initialized, server:', JSON.stringify((init || {}).serverInfo || {}));
     this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + '\n');
     this.ready = true;
+
+    // Disable SQLcl DEFINE substitution so trailing '&' in user text doesn't get treated as bind/variables.
+    try {
+      const model = process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
+      await this._rpc('tools/call', {
+        name: 'run-sqlcl',
+        arguments: { sqlcl: 'SET DEFINE OFF', model },
+      });
+      console.log('[SQLcl-MCP] SET DEFINE OFF applied');
+    } catch (e) {
+      // Non-fatal: proceed even if SQLcl rejects the command for some reason.
+      console.warn('[SQLcl-MCP] Could not apply SET DEFINE OFF:', e.message);
+    }
+
     // Auto-connect via run-sqlcl CONNECT command (does not require saved connections).
     if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
       const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;

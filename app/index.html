@@ -318,6 +318,7 @@
       border-radius: 8px;
       padding: 0.75rem 1rem;
       margin-bottom: 1rem;
+      display: none;
     }
     .upload-row {
       display: flex;
@@ -741,6 +742,12 @@
       mcpLoading = false;
     }
 
+    function setExcelPanelVisible(visible) {
+      const panel = document.querySelector('.upload-panel');
+      if (!panel) return;
+      panel.style.display = visible ? 'block' : 'none';
+    }
+
     // ── Tab switching ─────────────────────────────────────────
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -779,6 +786,7 @@
         sqlclReady = !!data.ready;
         chatConnectedTo = data.connected_to || null;
         if (data.success) {
+          setExcelPanelVisible(!!chatConnectedTo);
           const connBadge = chatConnectedTo
             ? '<span class="conn-badge on">Connected</span>'
             : '<span class="conn-badge off">Not connected</span>';
@@ -803,13 +811,20 @@
         }
       } catch (e) {
         const isTimeout = e.name === 'AbortError';
+        setExcelPanelVisible(false);
         document.getElementById('mcpTools').innerHTML =
           '<span style="color:#f85149">' + (isTimeout ? 'Server waking up. Retry in 15s.' : 'Cannot reach server') + '</span>';
         mcpStatusEl.textContent = isTimeout ? 'Waking up. Retry in 15s.' : 'Server unreachable';
         mcpStatusEl.className = 'status fail';
         if (isTimeout) setTimeout(loadMcpTools, 15000);
       } finally {
-        clearMcpLoader();
+        // Keep loader visible until we actually have a DB connection
+        if (sqlclReady && chatConnectedTo) {
+          clearMcpLoader();
+        } else {
+          renderMcpLoader('Waiting for connection');
+          setExcelPanelVisible(false);
+        }
       }
     }
 
@@ -993,9 +1008,15 @@ so you can use them from any browser, not just VS Code.</pre>` +
           return;
         }
 
+        // Strip accidental trailing '&' (SQLcl DEFINE substitution marker)
+        let sqlText = text;
+        if (kind === 'sql_select' || kind === 'sql_exec') {
+          sqlText = String(sqlText || '').replace(/&\s*$/g, '').trim();
+        }
+
         if (kind === 'sql_select') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: text });
+          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: sqlText });
           if (d0.success) {
             setBotContent(botDiv, '<div class="chat-label">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d0.result));
           } else {
@@ -1011,12 +1032,12 @@ so you can use them from any browser, not just VS Code.</pre>` +
               botDiv,
               '<div class="chat-label">SQL auto-correction</div>' +
               '<div class="chat-meta">Oracle error detected: <span style="color:#f85149">' + escapeHtml(err) + '</span></div>' +
-              sqlBlock(text, null)
+              sqlBlock(sqlText, null)
             );
             try {
               const fixQuestion =
                 'Fix this Oracle SQL. Return only the corrected SQL statement (exactly one SELECT or WITH statement; no explanation). ' +
-                'Original SQL: ' + text + '. Oracle error: ' + err;
+                'Original SQL: ' + sqlText + '. Oracle error: ' + err;
 
               const genR = await fetch(MCP_URL + '/generate-sql', {
                 method: 'POST',
@@ -1058,7 +1079,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
             setBotContent(botDiv, '<div class="chat-error">Cancelled</div>');
             return;
           }
-          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: text });
+          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: sqlText });
           if (d0.success) {
             setBotContent(
               botDiv,
