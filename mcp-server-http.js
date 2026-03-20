@@ -328,7 +328,7 @@ class SqlclMcpBridge {
         const model = process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
         const connectResult = await this._rpc('tools/call', {
           name: 'run-sqlcl',
-          arguments: { sql: connectCmd, model },
+          arguments: { sqlcl: connectCmd, model },
         });
         const isErr = !!(connectResult || {}).isError;
         const rawText = ((connectResult || {}).content || []).map(c => c.text || '').join('').trim();
