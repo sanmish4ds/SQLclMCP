@@ -1360,26 +1360,44 @@ so you can use them from any browser, not just VS Code.</pre>` +
         btnExcelRunEl.disabled = true;
         if (excelStatusEl) excelStatusEl.textContent = 'Running…';
 
+        async function runSqlcl(sql) {
+          // One retry on ORA-17008: closed connection
+          const runOnce = async () => {
+            return (await fetch(MCP_URL + '/sqlcl-real/invoke', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tool: 'run-sql', params: { connection: chatConnectedTo, sql } }),
+            })).json();
+          };
+
+          const first = await runOnce();
+          if (first.success) return first;
+
+          const err = String(first.error || '');
+          if (/ORA-17008/i.test(err)) {
+            excelStatusEl.textContent = 'Connection lost. Reconnecting…';
+            // Reconnect once, then retry statement once.
+            await (await fetch(MCP_URL + '/sqlcl-real/invoke', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tool: 'connect', params: { connection_name: chatConnectedTo } }),
+            })).json();
+
+            return await runOnce();
+          }
+
+          return first;
+        }
+
         for (const t of excelPlan) {
           excelStatusEl.textContent = 'Running ' + t.tableName;
           if (t.dropSql) {
-            const dDrop = await (await fetch(MCP_URL + '/sqlcl-real/invoke', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tool: 'run-sql', params: { connection: chatConnectedTo, sql: t.dropSql } }),
-            })).json();
+            const dDrop = await runSqlcl(t.dropSql);
             if (!dDrop.success) throw new Error(dDrop.error || 'Drop failed');
           }
-          const dCreate = await (await fetch(MCP_URL + '/sqlcl-real/invoke', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tool: 'run-sql', params: { connection: chatConnectedTo, sql: t.createSql } }),
-          })).json();
+          const dCreate = await runSqlcl(t.createSql);
           if (!dCreate.success) throw new Error(dCreate.error || 'Create failed');
 
           for (const insertSql of (t.insertSqlChunks || [])) {
-            const dIns = await (await fetch(MCP_URL + '/sqlcl-real/invoke', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tool: 'run-sql', params: { connection: chatConnectedTo, sql: insertSql } }),
-            })).json();
+            const dIns = await runSqlcl(insertSql);
             if (!dIns.success) throw new Error(dIns.error || 'Insert failed');
           }
         }
