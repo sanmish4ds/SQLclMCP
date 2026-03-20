@@ -73,6 +73,7 @@ password*
 credentials*
 wallet/
 Wallet_*.zip
+wallet.b64
 cwallet.sso
 ewallet.p12
 tnsnames.ora
