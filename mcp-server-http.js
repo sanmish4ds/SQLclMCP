@@ -397,6 +397,10 @@ function parseSqlclOutput(text) {
   if (!text) return { columns: [], rows: [], rowCount: 0 };
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 2) return { columns: [], rows: [], rowCount: 0, raw: text };
+  // SQLcl commonly appends a footer like: "16 rows selected."
+  // Our simple CSV parser should ignore that footer, otherwise it becomes
+  // a bogus row with missing columns (rendered as NULL in the UI).
+  const isSqlclRowsFooter = (line) => /\b\d*\s*rows?\s+selected\b/i.test(line);
   function parseCsvLine(line) {
     const out = [];
     let cur = '', inQ = false;
@@ -413,7 +417,9 @@ function parseSqlclOutput(text) {
   try {
     const headers = parseCsvLine(lines[0]);
     if (headers.length > 0) {
-      const rows = lines.slice(1).map(line => {
+      const rows = lines.slice(1)
+        .filter(line => !isSqlclRowsFooter(line))
+        .map(line => {
         const vals = parseCsvLine(line);
         const obj = {};
         headers.forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : null; });
