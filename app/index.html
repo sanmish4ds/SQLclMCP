@@ -172,7 +172,7 @@
       border: 1px solid #30363d;
       border-radius: 8px;
       padding: 0.75rem 1rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 0.75rem;
       font-size: 0.85rem;
     }
     .tool-tag {
@@ -217,12 +217,14 @@
     /* ── Chat Interface ───────────────────────────────────────── */
     .chat-wrap { display: flex; flex-direction: column; }
     .chat-history {
-      height: 800px;
+      /* Keep the chat input visible: cap history height to viewport */
+      height: auto;
+      max-height: calc(100vh - 330px);
       overflow-y: auto;
       padding: 0.75rem 0;
       scroll-behavior: smooth;
     }
-    .chat-welcome { text-align: center; padding: 2.5rem 1rem; color: #8b949e; }
+    .chat-welcome { text-align: center; padding: 1.8rem 1rem; color: #8b949e; }
     .chat-welcome-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
     .chat-welcome p { margin: 0.4rem 0; font-size: 0.88rem; }
     .chat-msg { display: flex; align-items: flex-start; margin-bottom: 1rem; }
