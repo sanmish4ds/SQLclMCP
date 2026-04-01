@@ -194,12 +194,37 @@ function extractWalletFromEnv() {
   }
 }
 
+// OCI Autonomous DB wallets ship sqlnet.ora with DIRECTORY="?/network/admin". The "?" does not
+// resolve reliably for JDBC/SQLcl on Linux (e.g. Render), which can drop the TLS session as
+// ORA-17902 (end of TNS data channel). Rewrite to the real wallet directory when "?" is present.
+function ensureSqlnetWalletDirectory(walletDir) {
+  if (!walletDir) return;
+  const sqlnetPath = path.join(walletDir, 'sqlnet.ora');
+  if (!fs.existsSync(sqlnetPath)) return;
+  try {
+    const s = fs.readFileSync(sqlnetPath, 'utf8');
+    if (!s.includes('?')) return;
+    const norm = path.resolve(walletDir).replace(/\\/g, '/');
+    const next = s.replace(
+      /DIRECTORY\s*=\s*"[^"]*\?[^"]*"/gi,
+      `DIRECTORY="${norm}"`,
+    );
+    if (next !== s) {
+      fs.writeFileSync(sqlnetPath, next, 'utf8');
+      console.log('[MCP-Server] Patched sqlnet.ora WALLET DIRECTORY ->', norm);
+    }
+  } catch (err) {
+    console.warn('[MCP-Server] Could not patch sqlnet.ora:', err.message);
+  }
+}
+
 const rawWalletPath = extractWalletFromEnv()
   || process.env.ORACLE_WALLET_PATH
   || process.env.TNS_ADMIN
   || null;
 const walletPath = rawWalletPath ? path.resolve(rawWalletPath) : null;
 if (walletPath) process.env.TNS_ADMIN = walletPath; // Oracle native layer looks for tnsnames.ora here
+ensureSqlnetWalletDirectory(walletPath);
 
 const config = {
   httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
@@ -441,9 +466,86 @@ class SqlclMcpBridge {
     this.ready = false;
     this.starting = null;
     this.connectedTo = null;
+    this._restartingPromise = null;
+    this._keepaliveTimer = null;
+  }
+
+  _mcpModel() {
+    return process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
+  }
+
+  /** JDBC / Net drops idle sessions (NAT, LB, ADB); detect and restart SQLcl once. */
+  _isStaleConnectionMessage(s) {
+    if (!s || typeof s !== 'string') return false;
+    return /ORA-17008|ORA-17902|ORA-03113|ORA-03114|ORA-12537|ORA-12547|ORA-12570|End of TNS data channel|Closed connection|NetException|Broken pipe|Connection reset|No more data to read/i.test(s);
+  }
+
+  _isStaleConnectionError(err) {
+    return this._isStaleConnectionMessage(err && err.message);
+  }
+
+  _toolResultText(result) {
+    if (!result || !Array.isArray(result.content)) return '';
+    return result.content.map(c => c.text || '').join('');
+  }
+
+  _toolResultLooksStale(result) {
+    if (!result) return false;
+    const text = this._toolResultText(result);
+    return result.isError && this._isStaleConnectionMessage(text);
+  }
+
+  _clearKeepalive() {
+    if (this._keepaliveTimer) {
+      clearInterval(this._keepaliveTimer);
+      this._keepaliveTimer = null;
+    }
+  }
+
+  _scheduleKeepalive() {
+    this._clearKeepalive();
+    const keepMs = Number(process.env.SQLCL_KEEPALIVE_MS || 0);
+    if (keepMs <= 0 || !this.connectedTo || !this.proc) return;
+    this._keepaliveTimer = setInterval(() => {
+      if (!this.ready || !this.proc) return;
+      const model = this._mcpModel();
+      this._rpc('tools/call', {
+        name: 'run-sql',
+        arguments: { sql: 'SELECT 1 FROM DUAL', model },
+      }).catch(err => {
+        console.warn('[SQLcl-MCP] keepalive ping failed:', err.message);
+      });
+    }, keepMs);
+    if (typeof this._keepaliveTimer.unref === 'function') this._keepaliveTimer.unref();
+  }
+
+  /** Single-flight restart after the DB session died while the MCP process stayed up. */
+  async _restartAfterStaleConnection() {
+    if (this._restartingPromise) return this._restartingPromise;
+    const run = async () => {
+      try {
+        console.warn('[SQLcl-MCP] Stale Oracle session detected; restarting SQLcl subprocess...');
+        this.ready = false;
+        this.connectedTo = null;
+        this._clearKeepalive();
+        if (this.proc) {
+          try { this.proc.kill('SIGTERM'); } catch (_) {}
+          this.proc = null;
+        }
+        await new Promise(r => setTimeout(r, 400));
+        if (this.starting) await this.starting;
+        this.starting = this._start().finally(() => { this.starting = null; });
+        await this.starting;
+      } finally {
+        this._restartingPromise = null;
+      }
+    };
+    this._restartingPromise = run();
+    return this._restartingPromise;
   }
 
   async ensureReady() {
+    if (this._restartingPromise) await this._restartingPromise;
     if (this.ready && this.proc) return;
     if (this.starting) return this.starting;
     this.starting = this._start().finally(() => { this.starting = null; });
@@ -451,6 +553,7 @@ class SqlclMcpBridge {
   }
 
   async _start() {
+    this._clearKeepalive();
     if (this.proc) { try { this.proc.kill(); } catch (_) {} this.proc = null; }
     this.buf = '';
     this.pending.clear();
@@ -496,10 +599,9 @@ class SqlclMcpBridge {
 
     // Disable SQLcl DEFINE substitution so trailing '&' in user text doesn't get treated as bind/variables.
     try {
-      const model = process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
       await this._rpc('tools/call', {
         name: 'run-sqlcl',
-        arguments: { sqlcl: 'SET DEFINE OFF', model },
+        arguments: { sqlcl: 'SET DEFINE OFF', model: this._mcpModel() },
       });
       console.log('[SQLcl-MCP] SET DEFINE OFF applied');
     } catch (e) {
@@ -513,10 +615,9 @@ class SqlclMcpBridge {
       const connectCmd = `CONNECT ${config.dbUser}/${config.dbPassword}@${dsn}`;
       console.log('[SQLcl-MCP] Auto-connecting with run-sqlcl CONNECT to:', dsn);
       try {
-        const model = process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
         const connectResult = await this._rpc('tools/call', {
           name: 'run-sqlcl',
-          arguments: { sqlcl: connectCmd, model },
+          arguments: { sqlcl: connectCmd, model: this._mcpModel() },
         });
         const isErr = !!(connectResult || {}).isError;
         const rawText = ((connectResult || {}).content || []).map(c => c.text || '').join('').trim();
@@ -525,6 +626,7 @@ class SqlclMcpBridge {
         } else {
           this.connectedTo = dsn;
           console.log('[SQLcl-MCP] Connected to:', dsn, '|', rawText.slice(0, 80));
+          this._scheduleKeepalive();
         }
       } catch (err) {
         console.warn('[SQLcl-MCP] Auto-connect failed:', err.message);
@@ -568,9 +670,23 @@ class SqlclMcpBridge {
 
   async callTool(name, args) {
     await this.ensureReady();
-    // SQLcl MCP tools require a `model` argument identifying the calling LLM.
-    const argsWithModel = { model: process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5', ...args };
-    return this._rpc('tools/call', { name, arguments: argsWithModel });
+    const argsWithModel = { model: this._mcpModel(), ...args };
+    const payload = { name, arguments: argsWithModel };
+    const invoke = () => this._rpc('tools/call', payload);
+
+    let result;
+    try {
+      result = await invoke();
+    } catch (err) {
+      if (!this._isStaleConnectionError(err)) throw err;
+      await this._restartAfterStaleConnection();
+      return invoke();
+    }
+    if (this._toolResultLooksStale(result)) {
+      await this._restartAfterStaleConnection();
+      return invoke();
+    }
+    return result;
   }
 
   async listTools() {
@@ -579,6 +695,7 @@ class SqlclMcpBridge {
   }
 
   stop() {
+    this._clearKeepalive();
     if (this.proc) { try { this.proc.kill(); } catch (_) {} this.proc = null; }
     this.ready = false; this.connectedTo = null;
   }

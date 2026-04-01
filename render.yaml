@@ -61,3 +61,4 @@ services:
       # - DB_DSN (e.g. prishivdb1_high), DB_USER, DB_PASSWORD
       # - DB_HOST, DB_PORT, DB_SID (optional, for /health display)
       # - ORACLE_WALLET_ZIP_B64 (base64 of your Autonomous DB wallet zip)
+      # - SQLCL_KEEPALIVE_MS (optional, e.g. 240000 = ping DB every 4 min to avoid idle TCP/session drops)
