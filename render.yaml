@@ -1,9 +1,18 @@
-# Render Blueprint: MCP server as a Docker web service (see Dockerfile).
+# Render: Docker MCP server (see ./Dockerfile).
 #
-# If builds still run python-env.sh on commit 2dfea0e+:
-#   Dashboard → Settings → Build & Deploy → Root Directory MUST be empty (repo root).
-#   If Root Directory is "experiments", Render ignores the root Dockerfile, finds
-#   requirements.txt there, and uses Python — rename avoided (use eval-requirements.txt).
+# ── If logs show /home/render/python-env.sh (NOT "docker build") ─────────────
+# Your SERVICE is still on the **Python native** runtime. Changing only this file
+# does nothing until Render applies it. You CANNOT switch Python → Docker from the
+# service Settings UI — see: https://render.com/docs/native-runtimes#changing-a-services-runtime
+#
+# Do ONE of:
+#   1) Blueprint: Dashboard → Blueprints → this repo → **Sync** (or apply pending changes).
+#   2) API: PATCH /v1/services/{id} with serviceDetails.runtime = "docker" + dockerDetails.
+#   3) New Web Service → Environment **Docker**, connect same repo, Dockerfile path ./Dockerfile,
+#      then delete the old Python service (fastest if Blueprint was never linked).
+#
+# Also ensure **Root Directory** is EMPTY (repo root). If it is `experiments`, the
+# Dockerfile is invisible and Render may fall back to native Python.
 #
 # Python eval deps: experiments/eval-requirements.txt — never add requirements.txt at repo root.
 
