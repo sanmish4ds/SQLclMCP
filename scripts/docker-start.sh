@@ -58,4 +58,6 @@ test -f "$WALLET_DIR/sqlnet.ora"
 test -f "$WALLET_DIR/cwallet.sso"
 
 cd /app
-exec npm start
+# Run node directly as PID 1 (not npm). Render sends SIGTERM on redeploy; npm often logs
+# "signal SIGTERM" even when the instance is healthy — direct exec improves signal handling.
+exec node mcp-server-http.js

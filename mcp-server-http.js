@@ -1576,8 +1576,9 @@ if (RENDER_KEEP_ALIVE_URL) {
   }, 14 * 60 * 1000);
 }
 
-server.listen(config.httpPort, () => {
-  console.log(`[MCP-Server] HTTP API listening on http://localhost:${config.httpPort}`);
+const listenHost = process.env.BIND_HOST || '0.0.0.0';
+server.listen(config.httpPort, listenHost, () => {
+  console.log(`[MCP-Server] HTTP API listening on http://${listenHost}:${config.httpPort}`);
   console.log(`[MCP-Server] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
   console.log(`[MCP-Server] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
   console.log(`[MCP-Server] Endpoints:`);
@@ -1592,8 +1593,12 @@ server.on('error', (error) => {
   process.exit(1);
 });
 
-process.on('SIGINT', () => {
-  console.log('[MCP-Server] Shutting down...');
-  server.close();
-  process.exit(0);
-});
+function shutdown(signal) {
+  console.log(`[MCP-Server] ${signal} received, closing HTTP server…`);
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 8000);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
