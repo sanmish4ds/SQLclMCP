@@ -2,8 +2,11 @@ Render build shows: python-env.sh / render-build-tool not found
 ================================================================
 
 That log means this Web Service is still the NATIVE PYTHON runtime.
-Your repo already has runtime: docker + ./Dockerfile; Git cannot switch
-an existing Render service to Docker by itself.
+Your repo has runtime: docker + ./Dockerfile in render.yaml, but:
+
+  • New → Web Service (manual): Render IGNORES render.yaml unless you pick Docker.
+  • Blueprint: render.yaml applies — if the service was FIRST created as Python,
+    sync alone may not change runtime (Render limitation).
 
 Do this (order matters):
 

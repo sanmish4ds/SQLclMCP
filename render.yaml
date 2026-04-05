@@ -1,11 +1,14 @@
-# Render: Docker MCP server (./Dockerfile). Repo `render.yaml` does NOT change an
-# existing service by itself.
+# Render: Docker MCP server (./Dockerfile).
 #
-# If logs show python-env.sh + render-build-tool: Render is building a NATIVE service
-# that is still classified as Python—which IGNORES this file's runtime: docker.
+# IMPORTANT — this file is used only for Blueprint / IaC deploys. If you created the
+# service with Dashboard → New → Web Service (not Blueprint), Render IGNORES render.yaml
+# and uses whatever Environment you picked (Python → python-env.sh + render-build-tool).
+#
+# If logs show python-env.sh + render-build-tool: the service is still NATIVE Python,
+# not Docker. Editing this repo cannot flip that runtime; see RENDER_FIX.txt.
 #
 # FASTEST fix (no Blueprint required):
-#   Dashboard → New + → Web Service → repo sanmish4ds/SQLclMCP → branch main
+#   Dashboard → New + → Web Service → repo → branch main
 #   → Environment: **Docker** → Dockerfile Path: Dockerfile → Root Directory: (empty)
 #   → copy env vars from broken service → Create. When healthy, delete OLD service and
 #   point your *.onrender.com / custom domain at the new one. Update MCP_URL in app/ if URL changes.
@@ -25,6 +28,7 @@ services:
     runtime: docker
     plan: free
     branch: main
+    healthCheckPath: /health
     dockerfilePath: ./Dockerfile
     dockerContext: .
 
