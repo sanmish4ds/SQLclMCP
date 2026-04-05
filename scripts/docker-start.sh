@@ -4,28 +4,50 @@ set -e
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
 export PATH="$JAVA_HOME/bin:$PATH"
 export SQLCL_BIN="${SQLCL_BIN:-/opt/sqlcl-bundle/sqlcl/bin/sql}"
-export TNS_ADMIN="${TNS_ADMIN:-/app/wallet}"
-export ORACLE_WALLET_PATH="${ORACLE_WALLET_PATH:-$TNS_ADMIN}"
 
-mkdir -p "$TNS_ADMIN"
+# Always use an app-local wallet dir. If TNS_ADMIN is mis-set to /tmp (or /) in the
+# dashboard, `rm -rf "$TNS_ADMIN"` becomes dangerous and fails on Linux (/tmp busy).
+WALLET_DIR=/app/wallet
+export TNS_ADMIN="$WALLET_DIR"
+export ORACLE_WALLET_PATH="${ORACLE_WALLET_PATH:-$WALLET_DIR}"
 
-if [ ! -f "$TNS_ADMIN/tnsnames.ora" ] || [ ! -f "$TNS_ADMIN/sqlnet.ora" ] || [ ! -f "$TNS_ADMIN/cwallet.sso" ]; then
+mkdir -p "$WALLET_DIR"
+
+if [ ! -f "$WALLET_DIR/tnsnames.ora" ] || [ ! -f "$WALLET_DIR/sqlnet.ora" ] || [ ! -f "$WALLET_DIR/cwallet.sso" ]; then
   if [ -n "${ORACLE_WALLET_ZIP_B64:-}" ]; then
-    echo "Wallet missing; decoding ORACLE_WALLET_ZIP_B64 into $TNS_ADMIN"
-    rm -rf "$TNS_ADMIN"
-    mkdir -p "$TNS_ADMIN"
-    echo "$ORACLE_WALLET_ZIP_B64" | base64 -d > /tmp/oracle_wallet.zip
-    unzip -o -q /tmp/oracle_wallet.zip -d "$TNS_ADMIN"
-    rm -f /tmp/oracle_wallet.zip
+    echo "Wallet missing; decoding ORACLE_WALLET_ZIP_B64 into $WALLET_DIR"
+    find "$WALLET_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    tmpzip="/tmp/oracle_wallet.$$"
+    echo "$ORACLE_WALLET_ZIP_B64" | base64 -d > "$tmpzip"
+    unzip -o -q "$tmpzip" -d "$WALLET_DIR"
+    rm -f "$tmpzip"
+
+    # Zip often wraps files in Wallet_<name>/; flatten so *.ora are under WALLET_DIR.
+    if [ ! -f "$WALLET_DIR/tnsnames.ora" ]; then
+      inner=""
+      for candidate in "$WALLET_DIR"/*; do
+        [ -d "$candidate" ] || continue
+        [ -f "$candidate/tnsnames.ora" ] || continue
+        inner=$candidate
+        break
+      done
+      if [ -n "$inner" ]; then
+        for f in "$inner"/*; do
+          [ -e "$f" ] || continue
+          mv "$f" "$WALLET_DIR/"
+        done
+        rmdir "$inner" 2>/dev/null || rm -rf "$inner"
+      fi
+    fi
   else
     echo "Wallet missing and ORACLE_WALLET_ZIP_B64 not set; startup will fail." >&2
   fi
 fi
 
-echo "Using wallet path: $TNS_ADMIN"
-test -f "$TNS_ADMIN/tnsnames.ora"
-test -f "$TNS_ADMIN/sqlnet.ora"
-test -f "$TNS_ADMIN/cwallet.sso"
+echo "Using wallet path: $WALLET_DIR"
+test -f "$WALLET_DIR/tnsnames.ora"
+test -f "$WALLET_DIR/sqlnet.ora"
+test -f "$WALLET_DIR/cwallet.sso"
 
 cd /app
 exec npm start
