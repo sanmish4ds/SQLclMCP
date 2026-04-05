@@ -1,27 +1,30 @@
-# Render: Docker MCP server (see ./Dockerfile).
+# Render: Docker MCP server (./Dockerfile). Repo `render.yaml` does NOT change an
+# existing service by itself.
 #
-# ── If logs show /home/render/python-env.sh (NOT "docker build") ─────────────
-# Your SERVICE is still on the **Python native** runtime. Changing only this file
-# does nothing until Render applies it. You CANNOT switch Python → Docker from the
-# service Settings UI — see: https://render.com/docs/native-runtimes#changing-a-services-runtime
+# If logs show python-env.sh + render-build-tool: Render is building a NATIVE service
+# that is still classified as Python—which IGNORES this file's runtime: docker.
 #
-# Do ONE of:
-#   1) Blueprint: Dashboard → Blueprints → this repo → **Sync** (or apply pending changes).
-#   2) API: PATCH /v1/services/{id} with serviceDetails.runtime = "docker" + dockerDetails.
-#   3) New Web Service → Environment **Docker**, connect same repo, Dockerfile path ./Dockerfile,
-#      then delete the old Python service (fastest if Blueprint was never linked).
+# FASTEST fix (no Blueprint required):
+#   Dashboard → New + → Web Service → repo sanmish4ds/SQLclMCP → branch main
+#   → Environment: **Docker** → Dockerfile Path: Dockerfile → Root Directory: (empty)
+#   → copy env vars from broken service → Create. When healthy, delete OLD service and
+#   point your *.onrender.com / custom domain at the new one. Update MCP_URL in app/ if URL changes.
 #
-# Also ensure **Root Directory** is EMPTY (repo root). If it is `experiments`, the
-# Dockerfile is invisible and Render may fall back to native Python.
+# If you use Blueprints: Blueprints → sync this repo; runtime change must apply there
+# (Dashboard cannot edit runtime on an existing service). See:
+# https://render.com/docs/native-runtimes#changing-a-services-runtime
 #
-# Python eval deps: experiments/eval-requirements.txt — never add requirements.txt at repo root.
+# Clone line "403": GitHub access (private repo). Account Settings → GitHub → reconnect
+# or grant this repo to the Render app.
+#
+# Python eval deps: experiments/eval-requirements.txt — never commit requirements.txt at repo root.
 
 services:
   - type: web
     name: sqlclmcp-server
     runtime: docker
     plan: free
-    # Paths are relative to Root Directory (repository root when that field is empty).
+    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
 
