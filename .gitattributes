@@ -1,0 +1,2 @@
+# Avoid CRLF in shell scripts (Render/Linux entrypoint exit 127)
+*.sh text eol=lf

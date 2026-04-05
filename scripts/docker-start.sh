@@ -46,5 +46,14 @@ if [ -n "${ORACLE_WALLET_ZIP_B64:-}" ]; then
   }
 fi
 
-cd /app
-exec node mcp-server-http.js
+cd /app || exit 1
+# Use absolute path — minimal PATH in some runtimes causes exit 127 on bare "node"
+NODE_BIN=/usr/local/bin/node
+if [ ! -x "$NODE_BIN" ]; then
+  NODE_BIN="$(command -v node 2>/dev/null || true)"
+fi
+if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
+  echo "FATAL: node not found (tried /usr/local/bin/node and PATH)" >&2
+  exit 127
+fi
+exec "$NODE_BIN" /app/mcp-server-http.js

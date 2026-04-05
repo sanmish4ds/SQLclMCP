@@ -53,3 +53,8 @@ Docs: https://render.com/docs/native-runtimes#changing-a-services-runtime
 
 Legacy SQLcl note (removed from this project): the app uses Node oracledb only.
   Ensure EXECUTE_SQL_ENABLED, DB_*, and wallet env vars are set; Docker image is Node slim.
+
+Deploy "Exited with status 127" (command not found)
+  Common causes: (1) unzip missing while ORACLE_WALLET_ZIP_B64 is set — Dockerfile must
+  install unzip. (2) CRLF line endings in scripts/docker-start.sh — use LF only (.gitattributes).
+  (3) node not on PATH — entrypoint uses /usr/local/bin/node when present.

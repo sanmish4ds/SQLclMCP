@@ -1,8 +1,10 @@
 # Node NL2SQL server; Oracle access uses node-oracledb (thin) + wallet from env.
 FROM node:20-bookworm-slim
 
+# unzip: required by scripts/docker-start.sh and wallet extraction in mcp-server-http.js
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
