@@ -1,12 +1,21 @@
 Render build shows: python-env.sh / render-build-tool not found
 ================================================================
 
-That log means this Web Service is still the NATIVE PYTHON runtime.
-Your repo has runtime: docker + ./Dockerfile in render.yaml, but:
+TL;DR
+-----
+python-env.sh ONLY runs for a Web Service whose build is still NATIVE PYTHON.
+Your repo cannot fix that by itself. You must use Docker in the Render UI,
+or Sync a Blueprint that actually manages this service.
 
-  • New → Web Service (manual): Render IGNORES render.yaml unless you pick Docker.
-  • Blueprint: render.yaml applies — if the service was FIRST created as Python,
-    sync alone may not change runtime (Render limitation).
+Verify (30 seconds)
+-------------------
+Render Dashboard → open THIS service → Settings (or Environment).
+If you see Python / a Python version, that is why python-env.sh runs.
+Docker services show Docker / Dockerfile — build logs say "docker build",
+never python-env.sh.
+
+render.yaml applies only to Blueprint-managed infrastructure. A service you
+created with "New → Web Service" and Python never reads runtime: docker from git.
 
 Do this (order matters):
 
@@ -34,7 +43,10 @@ Do this (order matters):
 5) Programmatic clients: machine-readable root is GET /api-info (not GET /).
 
 6) Blueprint users only
-   Dashboard -> Blueprints -> repo -> Sync / apply pending changes.
-   If logs still show python-env.sh, use step (2) anyway.
+   Dashboard -> Blueprints -> select the blueprint for this repo -> Sync /
+   apply pending changes. Confirm this Web Service is listed under that
+   blueprint (not a standalone service you created separately).
+   If logs still show python-env.sh, the service is not Docker yet — use step (2).
 
 Docs: https://render.com/docs/native-runtimes#changing-a-services-runtime
+        https://render.com/docs/docker

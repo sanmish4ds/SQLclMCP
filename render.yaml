@@ -26,6 +26,7 @@ services:
   - type: web
     name: sqlclmcp-server
     runtime: docker
+    repo: https://github.com/sanmish4ds/SQLclMCP
     plan: free
     branch: main
     healthCheckPath: /health
