@@ -1,48 +1,15 @@
-# Render Blueprint: one web service for the MCP server
-# Deploy: connect this repo in Render and use "Blueprint" or set the fields below manually.
-# Do not put requirements.txt at repo root — Render may pick the Python runtime and fail
-# (python-env.sh / render-build-tool). Python eval deps live in experiments/requirements.txt.
+# Render Blueprint: MCP server as a Docker web service (see Dockerfile).
+# Docker avoids native build scripts (python-env.sh / render-build-tool) if the dashboard
+# was ever on Python or the Node native builder misbehaves.
+# Python eval deps: experiments/requirements.txt (do not add root requirements.txt).
 
 services:
   - type: web
     name: sqlclmcp-server
-    runtime: node
+    runtime: docker
     plan: free
-
-    buildCommand: >
-      npm install &&
-      wget -q https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip &&
-      unzip -o -q sqlcl-latest.zip -d /opt/render/project/src/ &&
-      chmod +x /opt/render/project/src/sqlcl/bin/sql &&
-      wget -q https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz -O jdk.tar.gz &&
-      tar -xzf jdk.tar.gz -C /opt/render/project/src/ &&
-      rm jdk.tar.gz &&
-      echo "SQLcl ready at /opt/render/project/src/sqlcl/bin/sql, Java at /opt/render/project/src/jdk-17.0.2"
-    startCommand: >
-      export JAVA_HOME=/opt/render/project/src/jdk-17.0.2 &&
-      export PATH=$JAVA_HOME/bin:$PATH &&
-      export TNS_ADMIN=${TNS_ADMIN:-/opt/render/project/src/wallet} &&
-      export ORACLE_WALLET_PATH=${ORACLE_WALLET_PATH:-$TNS_ADMIN} &&
-      mkdir -p "$TNS_ADMIN" &&
-      # If wallet files are missing, optionally bootstrap them from a base64-encoded zip.
-      # Set ORACLE_WALLET_ZIP_B64 in Render Dashboard → Environment (recommended over committing wallet files).
-      if [ ! -f "$TNS_ADMIN/tnsnames.ora" ] || [ ! -f "$TNS_ADMIN/sqlnet.ora" ] || [ ! -f "$TNS_ADMIN/cwallet.sso" ]; then
-        if [ -n "${ORACLE_WALLET_ZIP_B64:-}" ]; then
-          echo "Wallet missing; decoding ORACLE_WALLET_ZIP_B64 into $TNS_ADMIN" &&
-          rm -rf "$TNS_ADMIN" &&
-          mkdir -p "$TNS_ADMIN" &&
-          echo "$ORACLE_WALLET_ZIP_B64" | base64 -d > /tmp/oracle_wallet.zip &&
-          unzip -o -q /tmp/oracle_wallet.zip -d "$TNS_ADMIN" &&
-          rm -f /tmp/oracle_wallet.zip ;
-        else
-          echo "Wallet missing and ORACLE_WALLET_ZIP_B64 not set; startup will fail." ;
-        fi ;
-      fi &&
-      echo "Using wallet path: $TNS_ADMIN" &&
-      test -f "$TNS_ADMIN/tnsnames.ora" &&
-      test -f "$TNS_ADMIN/sqlnet.ora" &&
-      test -f "$TNS_ADMIN/cwallet.sso" &&
-      npm start
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
 
     envVars:
       - key: ENABLE_LLM_SQL_GEN
@@ -50,13 +17,13 @@ services:
       - key: LLM_MODEL
         value: gpt-4o-mini
       - key: SQLCL_BIN
-        value: /opt/render/project/src/sqlcl/bin/sql
+        value: /opt/sqlcl-bundle/sqlcl/bin/sql
       - key: JAVA_HOME
-        value: /opt/render/project/src/jdk-17.0.2
+        value: /usr/lib/jvm/java-17-openjdk-amd64
       - key: TNS_ADMIN
-        value: /opt/render/project/src/wallet
+        value: /app/wallet
       - key: ORACLE_WALLET_PATH
-        value: /opt/render/project/src/wallet
+        value: /app/wallet
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
       # - LLM_API_URL (optional, default OpenAI)
