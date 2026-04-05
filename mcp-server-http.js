@@ -483,6 +483,9 @@ function resolveSqlclBin() {
   }
   if (isExecutableFile(dockerDefault)) return dockerDefault;
 
+  const projectBundle = path.join(__dirname, '.sqlcl-bundle', 'sqlcl', 'bin', 'sql');
+  if (isExecutableFile(projectBundle)) return projectBundle;
+
   const home = os.homedir();
   const common = [
     path.join(home, 'sqlcl', 'sqlcl', 'bin', 'sql'),
@@ -635,7 +638,7 @@ class SqlclMcpBridge {
         this.ready = false; this.connectedTo = null; this.proc = null;
         let msg = 'SQLcl MCP process exited (code ' + code + ')';
         if (code === 126 || code === 127) {
-          msg += '. Not found or not executable — install SQLcl, put `sql` on PATH, or set SQLCL_BIN to the full path of the `sql` launcher (e.g. ~/sqlcl/sqlcl/bin/sql).';
+          msg += '. Not found or not executable — run `npm run setup-sqlcl` in this repo, put `sql` on PATH, or set SQLCL_BIN to the `sql` launcher path.';
         }
         for (const [, p] of this.pending) p.reject(new Error(msg));
         this.pending.clear();

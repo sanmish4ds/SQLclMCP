@@ -4,7 +4,8 @@
   "description": "MCP HTTP server for SQLclMCP NL2SQL evaluation (health + generate-sql)",
   "main": "mcp-server-http.js",
   "scripts": {
-    "start": "node mcp-server-http.js"
+    "start": "node mcp-server-http.js",
+    "setup-sqlcl": "sh scripts/install-sqlcl.sh"
   },
   "engines": {
     "node": ">=18"
