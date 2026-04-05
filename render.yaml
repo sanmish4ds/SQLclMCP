@@ -1,5 +1,7 @@
 # Render Blueprint: one web service for the MCP server
 # Deploy: connect this repo in Render and use "Blueprint" or set the fields below manually.
+# Do not put requirements.txt at repo root — Render may pick the Python runtime and fail
+# (python-env.sh / render-build-tool). Python eval deps live in experiments/requirements.txt.
 
 services:
   - type: web

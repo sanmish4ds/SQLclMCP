@@ -1,0 +1,8 @@
+# Python deps for local evaluation & visualization only.
+# Keep this under experiments/ so Render (Node web service) does not auto-select Python.
+# Install: pip install -r experiments/requirements.txt
+oracledb>=2.0.0
+python-dotenv>=1.0.0
+requests>=2.28.0
+matplotlib>=3.7.0
+numpy>=1.24.0
