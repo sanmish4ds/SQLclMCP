@@ -3,177 +3,353 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PhraseSQL — Natural language to Oracle SQL</title>
+  <!-- Leave empty for same-origin API (e.g. Netlify proxies in netlify.toml). For direct cross-origin calls, set your backend origin, e.g. https://example.onrender.com -->
+  <meta name="phrasesql-api" content="">
+  <title>PhraseSQL — Ask in plain language</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #f6f4f1;
+      --bg-elevated: #ffffff;
+      --text: #1a1d21;
+      --text-muted: #5c636e;
+      --border: #e2ddd4;
+      --accent: #0d4f4c;
+      --accent-hover: #0a3f3c;
+      --accent-soft: #e8f2f1;
+      --danger: #b42318;
+      --danger-bg: #fef3f2;
+      --success: #0d4f4c;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 2px rgba(26, 29, 33, 0.06), 0 4px 16px rgba(26, 29, 33, 0.06);
+    }
     * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      background: #0f1419;
-      color: #e6edf3;
+      font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
+      margin: 0;
       min-height: 100vh;
-    }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .sub { color: #8b949e; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.35rem; color: #8b949e; font-size: 0.85rem; }
-    textarea {
-      width: 100%;
-      min-height: 100px;
-      padding: 0.75rem;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      background: #161b22;
-      color: #e6edf3;
-      font-size: 1rem;
-      resize: vertical;
-    }
-    textarea::placeholder { color: #6e7681; }
-    select {
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      background: #161b22;
-      color: #e6edf3;
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-    }
-    button {
-      background: #238636;
-      color: #fff;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-right: 0.5rem;
-    }
-    button:hover { background: #2ea043; }
-    button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
-    button.secondary { background: #21262d; color: #e6edf3; }
-    button.secondary:hover { background: #30363d; }
-    .result {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border-radius: 6px;
-      background: #161b22;
-      border: 1px solid #30363d;
-      white-space: pre-wrap;
-      font-family: ui-monospace, monospace;
-      font-size: 0.9rem;
+      background: var(--bg);
+      color: var(--text);
       line-height: 1.5;
     }
-    .result.success { border-color: #238636; }
-    .result.error { border-color: #da3633; color: #f85149; }
-    .meta { color: #8b949e; font-size: 0.8rem; margin-top: 0.5rem; }
-    .server-url-row { margin-bottom: 1rem; }
-    .server-url-inputs { display: flex; gap: 0.5rem; margin-bottom: 0.35rem; }
-    .server-url-inputs input {
-      flex: 1;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      background: #161b22;
-      color: #e6edf3;
-      font-size: 0.9rem;
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
     }
-    .server-url-row code { background: #21262d; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.8rem; }
-    .status { font-size: 0.85rem; color: #8b949e; margin-bottom: 1rem; }
-    .status.ok { color: #3fb950; }
-    .status.fail { color: #f85149; }
-    a { color: #58a6ff; }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
-    th, td { border: 1px solid #30363d; padding: 0.4rem 0.6rem; text-align: left; }
-    th { background: #21262d; color: #8b949e; }
-    .execute-hint { color: #8b949e; font-size: 0.8rem; margin-top: 0.5rem; }
-    .schema-section { margin-bottom: 1.5rem; }
-    .schema-toggle {
-      background: transparent;
-      border: 1px dashed #30363d;
-      color: #8b949e;
-      padding: 0.5rem 0.75rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      width: 100%;
-      text-align: left;
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+    h1 {
+      font-size: clamp(1.65rem, 4vw, 2rem);
+      font-weight: 700;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 36em;
+    }
+    .panel {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.35rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .status-line {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      font-size: 0.95rem;
+      color: var(--text-muted);
     }
-    .schema-toggle:hover { border-color: #58a6ff; color: #58a6ff; }
-    .schema-toggle .arrow { transition: transform 0.2s; }
-    .schema-section.open .schema-toggle .arrow { transform: rotate(90deg); }
-    .schema-desc { color: #8b949e; font-size: 0.8rem; margin-top: 0.35rem; margin-bottom: 0.75rem; }
-    .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
-    .schema-card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 10px;
-      padding: 0.75rem;
+    .status-line strong { color: var(--text); font-weight: 600; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .status-line.ok .dot { background: #1b7f3a; }
+    .status-line.fail .dot { background: var(--danger); }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 112px;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    textarea::placeholder { color: #9a9ea6; }
+    select {
+      width: 100%;
+      max-width: 100%;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
     }
-    .schema-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-color: #58a6ff; }
-    .schema-card.open { border-color: #238636; }
-    .schema-card-emoji { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .schema-card-name { font-weight: 600; font-family: ui-monospace, monospace; color: #e6edf3; }
-    .schema-card-hint { font-size: 0.7rem; color: #8b949e; margin-top: 0.2rem; }
-    .schema-cols { display: none; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #21262d; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+    button {
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1.25rem;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.98); }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover { background: var(--accent-hover); }
+    button.primary:disabled {
+      background: #c5cbc9;
+      cursor: not-allowed;
+      transform: none;
+    }
+    button.ghost {
+      background: var(--bg-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.ghost:hover { background: var(--bg); }
+    button.ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+    .result {
+      margin-top: 1.25rem;
+      padding: 1rem 1.1rem;
+      border-radius: var(--radius-sm);
+      background: #faf9f7;
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+    .result.success { border-color: #8faaa8; background: var(--accent-soft); }
+    .result.error {
+      border-color: #f3cbc8;
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+    .meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin: 0.65rem 0 0;
+    }
+    .schema-section { margin-bottom: 0; }
+    .schema-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .schema-toggle:hover { color: var(--accent); }
+    .schema-toggle .chevron {
+      display: inline-flex;
+      transition: transform 0.2s;
+      color: var(--text-muted);
+    }
+    .schema-section.open .schema-toggle .chevron { transform: rotate(90deg); }
+    .schema-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0.5rem 0 1rem;
+    }
+    .schema-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 0.75rem;
+    }
+    .schema-card {
+      background: #faf9f7;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .schema-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 2px 8px rgba(13, 79, 76, 0.08);
+    }
+    .schema-card.open { border-color: var(--accent); }
+    .schema-card-name {
+      font-weight: 600;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.9rem;
+    }
+    .schema-card-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .schema-cols {
+      display: none;
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+    }
     .schema-card.open .schema-cols { display: block; }
-    .schema-cols-title { font-size: 0.7rem; color: #8b949e; margin-bottom: 0.35rem; }
+    .schema-cols-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
     .col-pill {
       display: inline-block;
-      font-size: 0.7rem;
-      font-family: ui-monospace, monospace;
-      background: #21262d;
-      color: #8b949e;
-      padding: 0.2rem 0.4rem;
+      font-size: 0.68rem;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.2rem 0.45rem;
       border-radius: 4px;
       margin: 0.15rem 0.15rem 0 0;
       cursor: pointer;
     }
-    .col-pill:hover { background: #30363d; color: #58a6ff; }
-    .col-pill.copied { background: #238636; color: #fff; }
+    .col-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .col-pill.copied { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .execute-hint {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-top: 0.65rem;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.82rem; }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.65rem;
+      text-align: left;
+    }
+    th { background: var(--bg); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
-  <h1>MCP SQL Assistant</h1>
-  <p class="sub">Powered by Model Context Protocol. Ask in plain English — generate &amp; execute Oracle SQL.</p>
+  <div class="page">
+    <header>
+      <p class="brand">PhraseSQL</p>
+      <h1>Ask in plain language</h1>
+      <p class="tagline">Turn everyday questions into database queries. Review the result, then run it when you are ready.</p>
+    </header>
 
-  <p class="status" id="serverStatus">Checking server…</p>
+    <div class="panel status-line" id="serverStatusRow">
+      <span class="dot"></span>
+      <span id="serverStatus">Checking connection…</span>
+    </div>
 
-  <div class="schema-section" id="schemaSection">
-    <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
-      <span class="arrow">▶</span>
-      <span id="schemaToggleLabel">Loading schema…</span>
-    </button>
-    <p class="schema-desc" id="schemaDesc"></p>
-    <div class="schema-grid" id="schemaGrid"></div>
+    <div class="panel schema-section" id="schemaSection">
+      <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
+        <span class="chevron" aria-hidden="true">›</span>
+        <span id="schemaToggleLabel">Loading reference data…</span>
+      </button>
+      <p class="schema-desc" id="schemaDesc"></p>
+      <div class="schema-grid" id="schemaGrid"></div>
+    </div>
+
+    <div class="panel">
+      <label for="question">What would you like to know?</label>
+      <textarea id="question" placeholder="For example: show the ten largest orders by total amount"></textarea>
+
+      <label for="mode" style="margin-top:1rem">How should we draft your query?</label>
+      <select id="mode">
+        <option value="hybrid">Balanced — reuse past examples when helpful</option>
+        <option value="llm">Full interpretation — best for novel questions</option>
+        <option value="lookup">Match past examples only</option>
+      </select>
+
+      <div class="actions">
+        <button type="button" class="primary" id="btnGenerate">Draft query</button>
+        <button type="button" class="ghost" id="btnCopy" disabled>Copy</button>
+        <button type="button" class="ghost" id="btnExecute" disabled>Run sample</button>
+      </div>
+
+      <div id="result"></div>
+      <div id="executeResult"></div>
+    </div>
+
+    <footer>
+      PhraseSQL produces draft queries for review. Always confirm output before use in production.
+    </footer>
   </div>
 
-  <label for="question">Your question (in plain English)</label>
-  <textarea id="question" placeholder="e.g. List top 10 customers by total order value"></textarea>
-
-  <label for="mode">Mode</label>
-  <select id="mode">
-    <option value="hybrid">Hybrid (lookup then LLM)</option>
-    <option value="llm">LLM only</option>
-    <option value="lookup">Lookup only</option>
-  </select>
-
-  <button type="button" id="btnGenerate">Generate SQL</button>
-  <button type="button" id="btnCopy" class="secondary" disabled>Copy SQL</button>
-  <button type="button" id="btnExecute" class="secondary" disabled>Execute SQL</button>
-
-  <div id="result"></div>
-  <div id="executeResult"></div>
-
   <script>
-    const MCP_URL = (typeof location !== 'undefined' && location.protocol !== 'file:')
-      ? ''
-      : 'https://your-phrasesql.onrender.com';
+    function getApiBase() {
+      const meta = document.querySelector('meta[name="phrasesql-api"]');
+      const raw = (meta && meta.getAttribute('content') || '').trim().replace(/\/$/, '');
+      const placeholder =
+        !raw ||
+        /your-phrasesql|YOUR_RENDER_SERVICE/i.test(raw);
+      if (typeof location !== 'undefined' && location.protocol === 'file:') {
+        return placeholder ? 'https://sqlclmcp-1.onrender.com' : raw;
+      }
+      if (!placeholder) return raw;
+      return '';
+    }
+
+    const MCP_URL = getApiBase();
+
     const questionEl = document.getElementById('question');
     const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
@@ -182,8 +358,14 @@
     const resultEl = document.getElementById('result');
     const executeResultEl = document.getElementById('executeResult');
     const statusEl = document.getElementById('serverStatus');
+    const statusRow = document.getElementById('serverStatusRow');
 
     let executeAvailable = false;
+
+    function friendlyMode(mode) {
+      const m = { hybrid: 'Balanced', llm: 'Full interpretation', lookup: 'Examples only' };
+      return m[mode] || mode;
+    }
 
     async function checkHealth() {
       const base = MCP_URL;
@@ -191,15 +373,17 @@
         const r = await fetch(base + '/health');
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
-        statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
-          ' · Rules: ' + (data.loaded_rules || '—') +
-          ' · LLM: ' + (data.llm_enabled ? 'on' : 'off') +
-          ' · Execute: ' + (executeAvailable ? 'on' : 'off');
-        statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
+        const parts = [];
+        if (data.status === 'ok') {
+          parts.push('Connected');
+          if (!executeAvailable) parts.push('running queries from this page is turned off');
+        } else parts.push('Service status unclear');
+        statusEl.innerHTML = parts.join(' — ');
+        statusRow.className = 'panel status-line ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
       } catch (e) {
-        statusEl.textContent = 'Server: unreachable (check URL or CORS)';
-        statusEl.className = 'status fail';
+        statusEl.textContent = 'We could not reach the service. If you just published this page, confirm it is connected to your backend.';
+        statusRow.className = 'panel status-line fail';
         executeAvailable = false;
         if (btnExecute) btnExecute.disabled = true;
       }
@@ -212,17 +396,17 @@
 
     async function loadSchema() {
       const fallback = {
-        title: 'TPC-H — Tables you can play with',
-        description: 'Click a table to see columns; click a column to copy its name.',
+        title: 'Sample tables',
+        description: 'Open a table to see column names. Select a name to copy it.',
         tables: [
-          { name: 'REGION', emoji: '🌍', hint: 'Geographic regions', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
-          { name: 'NATION', emoji: '🏳️', hint: 'Countries, linked to regions', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
-          { name: 'CUSTOMER', emoji: '👤', hint: 'Customers and their balances', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
-          { name: 'SUPPLIER', emoji: '🏭', hint: 'Suppliers', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
-          { name: 'PART', emoji: '🔩', hint: 'Parts / products', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
-          { name: 'ORDERS', emoji: '📦', hint: 'Orders (dates, totals, customer)', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
-          { name: 'LINEITEM', emoji: '📋', hint: 'Order line items (L_* columns)', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
-          { name: 'PARTSUPP', emoji: '🔗', hint: 'Part–supplier links and supply cost', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
+          { name: 'REGION', emoji: '', hint: 'Regions', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
+          { name: 'NATION', emoji: '', hint: 'Countries', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
+          { name: 'CUSTOMER', emoji: '', hint: 'Customers', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
+          { name: 'SUPPLIER', emoji: '', hint: 'Suppliers', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
+          { name: 'PART', emoji: '', hint: 'Parts', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
+          { name: 'ORDERS', emoji: '', hint: 'Orders', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
+          { name: 'LINEITEM', emoji: '', hint: 'Line items', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
+          { name: 'PARTSUPP', emoji: '', hint: 'Part and supplier links', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
         ],
       };
       try {
@@ -232,32 +416,30 @@
         schemaData = fallback;
       }
       if (schemaData && schemaData.tables) {
-        document.getElementById('schemaToggleLabel').textContent =
-          (schemaData.title || 'Tables you can play with') + ' 🎮';
+        document.getElementById('schemaToggleLabel').textContent = schemaData.title || 'Sample tables';
         document.getElementById('schemaDesc').textContent =
-          schemaData.description || 'Click a table to see columns; click a column to copy its name.';
+          schemaData.description || 'Open a table to see column names.';
         const grid = document.getElementById('schemaGrid');
         grid.innerHTML = (schemaData.tables || []).map(t => {
           const cols = (t.columns || []).map(c =>
-            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
+            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Copy name">' + escapeHtml(c) + '</span>'
           ).join('');
           return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
-            '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
+            (t.emoji ? '<div style="font-size:1.25rem;margin-bottom:0.2rem">' + escapeHtml(t.emoji) + '</div>' : '') +
             '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
             '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
             '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
         }).join('');
       } else {
         schemaData = fallback;
-        document.getElementById('schemaToggleLabel').textContent = 'Tables you can play with 🎮';
-        document.getElementById('schemaDesc').textContent = 'Schema could not be loaded from server; showing default TPC-H tables.';
+        document.getElementById('schemaToggleLabel').textContent = 'Sample tables';
+        document.getElementById('schemaDesc').textContent = 'Showing built-in reference tables.';
         const grid = document.getElementById('schemaGrid');
         grid.innerHTML = (fallback.tables || []).map(t => {
           const cols = (t.columns || []).map(c =>
-            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Click to copy">' + escapeHtml(c) + '</span>'
+            '<span class="col-pill" data-col="' + escapeHtml(c) + '" title="Copy name">' + escapeHtml(c) + '</span>'
           ).join('');
           return '<div class="schema-card" data-table="' + escapeHtml(t.name) + '">' +
-            '<div class="schema-card-emoji">' + (t.emoji || '📋') + '</div>' +
             '<div class="schema-card-name">' + escapeHtml(t.name) + '</div>' +
             '<div class="schema-card-hint">' + escapeHtml(t.hint || '') + '</div>' +
             '<div class="schema-cols"><div class="schema-cols-title">Columns</div>' + cols + '</div></div>';
@@ -274,7 +456,7 @@
           const col = pill.getAttribute('data-col');
           navigator.clipboard.writeText(col).then(() => {
             pill.classList.add('copied');
-            pill.textContent = '✓ ' + col;
+            pill.textContent = 'Copied';
             setTimeout(() => { pill.classList.remove('copied'); pill.textContent = col; }, 1200);
           });
         }
@@ -292,11 +474,11 @@
     btnGenerate.addEventListener('click', async () => {
       const question = questionEl.value.trim();
       if (!question) {
-        resultEl.innerHTML = '<div class="result error">Enter a question.</div>';
+        resultEl.innerHTML = '<div class="result error">Please enter a question.</div>';
         return;
       }
       btnGenerate.disabled = true;
-      resultEl.innerHTML = '<div class="result">Generating…</div>';
+      resultEl.innerHTML = '<div class="result">Drafting…</div>';
       try {
         const r = await fetch(MCP_URL + '/generate-sql', {
           method: 'POST',
@@ -311,17 +493,17 @@
         if (data.success && data.generated_sql) {
           resultEl.innerHTML =
             '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
-            '<p class="meta">Source: ' + (data.source || '—') + ' · Mode: ' + (data.mode || '—') + '</p>';
+            '<p class="meta">Prepared using ' + friendlyMode(data.mode || modeEl.value) + '.</p>';
           btnCopy.disabled = false;
           btnExecute.disabled = false;
           executeResultEl.innerHTML = '';
         } else {
-          resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No SQL generated') + '</div>';
+          resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No query was produced. Try rephrasing your question.') + '</div>';
           btnCopy.disabled = true;
           btnExecute.disabled = true;
         }
       } catch (e) {
-        resultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
+        resultEl.innerHTML = '<div class="result error">Something went wrong. Check your connection and try again.</div>';
         btnCopy.disabled = true;
         btnExecute.disabled = true;
       }
@@ -331,14 +513,14 @@
     btnCopy.addEventListener('click', () => {
       if (!lastSql) return;
       navigator.clipboard.writeText(lastSql).then(() => {
-        btnCopy.textContent = 'Copied!';
-        setTimeout(() => { btnCopy.textContent = 'Copy SQL'; }, 1500);
+        btnCopy.textContent = 'Copied';
+        setTimeout(() => { btnCopy.textContent = 'Copy'; }, 1500);
       });
     });
 
     btnExecute.addEventListener('click', async () => {
       if (!lastSql) return;
-      executeResultEl.innerHTML = '<p class="meta">Running query…</p>';
+      executeResultEl.innerHTML = '<p class="meta">Running…</p>';
       btnExecute.disabled = true;
       try {
         const r = await fetch(MCP_URL + '/execute-sql', {
@@ -349,7 +531,7 @@
         const data = await r.json();
         if (data.success && data.rows) {
           const cols = data.columns || [];
-          let table = '<p class="meta">Rows: ' + data.rowCount + '</p><table><thead><tr>';
+          let table = '<p class="meta">' + (data.rowCount != null ? data.rowCount + ' row(s)' : 'Results') + '</p><table><thead><tr>';
           cols.forEach(c => { table += '<th>' + escapeHtml(String(c)) + '</th>'; });
           table += '</tr></thead><tbody>';
           data.rows.forEach(row => {
@@ -363,12 +545,12 @@
           table += '</tbody></table>';
           executeResultEl.innerHTML = table;
         } else {
-          const msg = data.error || 'Execution failed';
+          const msg = data.error || 'Could not run the query.';
           executeResultEl.innerHTML = '<div class="result error">' + escapeHtml(msg) + '</div>' +
-            (msg.indexOf('disabled') !== -1 ? '<p class="execute-hint">Copy the SQL above and run it in SQL Developer or your Oracle client.</p>' : '');
+            (msg.indexOf('disabled') !== -1 ? '<p class="execute-hint">You can still copy the draft above and run it in your own environment.</p>' : '');
         }
       } catch (e) {
-        executeResultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
+        executeResultEl.innerHTML = '<div class="result error">Something went wrong while running the query.</div>';
       }
       btnExecute.disabled = false;
     });

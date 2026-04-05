@@ -1,0 +1,29 @@
+# Static site: publish the docs folder. Proxies API routes to Render so the page can use same-origin fetch().
+# Optional: set <meta name="phrasesql-api" content="https://..."> in docs/index.html instead (CORS allows it).
+
+[build]
+  publish = "docs"
+
+[[redirects]]
+  from = "/health"
+  to = "https://sqlclmcp-1.onrender.com/health"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/schema"
+  to = "https://sqlclmcp-1.onrender.com/schema"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/generate-sql"
+  to = "https://sqlclmcp-1.onrender.com/generate-sql"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/execute-sql"
+  to = "https://sqlclmcp-1.onrender.com/execute-sql"
+  status = 200
+  force = true
