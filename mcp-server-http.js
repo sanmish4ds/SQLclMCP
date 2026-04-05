@@ -711,7 +711,6 @@ const requestHandler = (request, response) => {
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  response.setHeader('Content-Type', 'application/json');
 
   if (request.method === 'OPTIONS') {
     response.writeHead(200);
@@ -722,14 +721,31 @@ const requestHandler = (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const pathname = url.pathname;
 
-  // GET / (root) — friendly info so the deploy URL doesn't show "Not found"
+  // GET / — chat UI (same origin as API; avoids hardcoding Render URL after service rename)
   if ((pathname === '/' || pathname === '') && request.method === 'GET') {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'app', 'index.html'), 'utf8');
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(html);
+    } catch (err) {
+      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Missing app/index.html: ' + err.message);
+    }
+    return;
+  }
+
+  response.setHeader('Content-Type', 'application/json');
+
+  // GET /api-info — machine-readable root (formerly GET /)
+  if (pathname === '/api-info' && request.method === 'GET') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({
       name: 'SQLclMCP MCP Server',
       status: 'running',
       offer: 'Natural language to Oracle SQL over HTTP. Send a question, get generated SQL.',
       endpoints: {
+        ui: 'GET / — browser UI',
+        api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
         egress_ip: 'GET /egress-ip — this server\'s outbound IP (for Oracle DB allow list)',
         generate_sql: 'POST /generate-sql — body: { "question": "your question", "mode": "llm|lookup|hybrid" }',

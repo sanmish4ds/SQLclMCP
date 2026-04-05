@@ -171,7 +171,9 @@
   <div id="executeResult"></div>
 
   <script>
-    const MCP_URL = 'https://sqlclmcp.onrender.com';
+    const MCP_URL = (typeof location !== 'undefined' && location.protocol !== 'file:')
+      ? ''
+      : 'https://sqlclmcp.onrender.com';
     const questionEl = document.getElementById('question');
     const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
