@@ -27,6 +27,9 @@
       --shadow: 0 1px 2px rgba(26, 29, 33, 0.06), 0 4px 16px rgba(26, 29, 33, 0.06);
     }
     * { box-sizing: border-box; }
+    html {
+      overflow-x: hidden;
+    }
     body {
       font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
       margin: 0;
@@ -34,11 +37,13 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
+      overflow-x: hidden;
     }
     .page {
+      width: 100%;
       max-width: 720px;
       margin: 0 auto;
-      padding: 2.5rem 1.5rem 4rem;
+      padding: 2.5rem max(1rem, env(safe-area-inset-left)) 4rem max(1rem, env(safe-area-inset-right));
     }
     header {
       margin-bottom: 2rem;
@@ -72,6 +77,8 @@
       box-shadow: var(--shadow);
       padding: 1.35rem 1.5rem;
       margin-bottom: 1.25rem;
+      max-width: 100%;
+      min-width: 0;
     }
     .status-line {
       display: flex;
@@ -169,9 +176,13 @@
       background: #faf9f7;
       border: 1px solid var(--border);
       white-space: pre-wrap;
+      word-break: break-word;
+      overflow-x: auto;
+      max-width: 100%;
       font-family: "JetBrains Mono", ui-monospace, monospace;
       font-size: 0.85rem;
       line-height: 1.55;
+      -webkit-overflow-scrolling: touch;
     }
     .result.success { border-color: #8faaa8; background: var(--accent-soft); }
     .result.error {
@@ -184,6 +195,7 @@
       color: var(--text-muted);
       margin: 0.65rem 0 0;
     }
+    .meta strong { color: var(--text); font-weight: 600; }
     .schema-section { margin-bottom: 0; }
     .schema-toggle {
       display: flex;
@@ -210,11 +222,20 @@
     .schema-desc {
       font-size: 0.9rem;
       color: var(--text-muted);
-      margin: 0.5rem 0 1rem;
+      margin: 0.5rem 0 0.75rem;
     }
+    .schema-tips {
+      margin: 0 0 1rem;
+      padding-left: 1.15rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .schema-tips li { margin-bottom: 0.4rem; }
+    .schema-tips li:last-child { margin-bottom: 0; }
     .schema-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr));
       gap: 0.75rem;
     }
     .schema-card {
@@ -224,6 +245,7 @@
       padding: 0.9rem;
       cursor: pointer;
       transition: border-color 0.15s, box-shadow 0.15s;
+      min-width: 0;
     }
     .schema-card:hover {
       border-color: var(--accent);
@@ -235,7 +257,13 @@
       font-family: "JetBrains Mono", ui-monospace, monospace;
       font-size: 0.9rem;
     }
-    .schema-card-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .schema-card-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+      line-height: 1.35;
+      word-wrap: break-word;
+    }
     .schema-cols {
       display: none;
       margin-top: 0.65rem;
@@ -270,13 +298,52 @@
       color: var(--text-muted);
       margin-top: 0.65rem;
     }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.82rem; }
-    th, td {
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      max-width: 100%;
+      margin-top: 0.5rem;
       border: 1px solid var(--border);
-      padding: 0.45rem 0.65rem;
-      text-align: left;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      -webkit-overflow-scrolling: touch;
     }
-    th { background: var(--bg); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .table-wrap table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+      font-size: 0.78rem;
+    }
+    .table-wrap th,
+    .table-wrap td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.55rem;
+      text-align: left;
+      vertical-align: top;
+      max-width: 14rem;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    .table-wrap th {
+      background: var(--bg);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    #result, #executeResult {
+      max-width: 100%;
+      min-width: 0;
+    }
+    .results-summary {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin: 0.75rem 0 0.35rem;
+    }
+    .results-summary strong { color: var(--text); font-weight: 600; }
     footer {
       margin-top: 2.5rem;
       padding-top: 1.25rem;
@@ -305,6 +372,7 @@
         <span id="schemaToggleLabel">Loading reference data…</span>
       </button>
       <p class="schema-desc" id="schemaDesc"></p>
+      <ul class="schema-tips" id="schemaTips" hidden></ul>
       <div class="schema-grid" id="schemaGrid"></div>
     </div>
 
@@ -367,6 +435,38 @@
       return m[mode] || mode;
     }
 
+    function formatRowCount(n) {
+      if (n == null || n === '') return 'Results';
+      const num = Number(n);
+      if (num === 1) return '1 row';
+      if (!isNaN(num)) return num + ' rows';
+      return String(n);
+    }
+
+    function formatDisplayValue(v) {
+      if (v === null || v === undefined) return '—';
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d/.test(v)) {
+        try {
+          const d = new Date(v);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+          }
+        } catch (_) { /* ignore */ }
+      }
+      return String(v);
+    }
+
+    function renderSchemaTips(tips) {
+      const el = document.getElementById('schemaTips');
+      if (!tips || !tips.length) {
+        el.hidden = true;
+        el.innerHTML = '';
+        return;
+      }
+      el.hidden = false;
+      el.innerHTML = tips.map(t => '<li>' + escapeHtml(t) + '</li>').join('');
+    }
+
     async function checkHealth() {
       const base = MCP_URL;
       try {
@@ -396,17 +496,28 @@
 
     async function loadSchema() {
       const fallback = {
-        title: 'Sample tables',
-        description: 'Open a table to see column names. Select a name to copy it.',
+        title: 'Reference tables',
+        description:
+          'These tables mirror a standard analytics warehouse shape. Use the exact names below when you ask questions—the app turns your wording into Oracle SQL using this layout.',
+        tips: [
+          'Identifiers must match this list exactly (same spelling and prefix: C_ for CUSTOMER, O_ for ORDERS, L_ for LINEITEM, P_ for PART, etc.).',
+          'LINEITEM is one row per order line: join to ORDERS on L_ORDERKEY = O_ORDERKEY, to PART on L_PARTKEY = P_PARTKEY, to SUPPLIER on L_SUPPKEY = S_SUPPKEY.',
+          'ORDERS holds order headers (customer, date, total); LINEITEM holds quantities, discounts, ship dates, and line revenue.',
+          'PARTSUPP links each part to suppliers (PS_PARTKEY, PS_SUPPKEY) with availability and supply cost—use it for sourcing or cost questions.',
+          'CUSTOMER.C_CUSTKEY joins to ORDERS.O_CUSTKEY; NATION.N_NATIONKEY links CUSTOMER, SUPPLIER, and REGION for geography.',
+          'Money-like fields include O_TOTALPRICE, L_EXTENDEDPRICE, L_DISCOUNT, L_TAX, C_ACCTBAL, S_ACCTBAL, P_RETAILPRICE, PS_SUPPLYCOST.',
+          'Dates on LINEITEM include L_SHIPDATE, L_COMMITDATE, L_RECEIPTDATE; order date is O_ORDERDATE on ORDERS.',
+          'For aggregates (totals, counts, averages), prefer grouping by keys you join on so results stay one row per grain you care about.',
+        ],
         tables: [
-          { name: 'REGION', emoji: '', hint: 'Regions', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
-          { name: 'NATION', emoji: '', hint: 'Countries', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
-          { name: 'CUSTOMER', emoji: '', hint: 'Customers', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
-          { name: 'SUPPLIER', emoji: '', hint: 'Suppliers', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
-          { name: 'PART', emoji: '', hint: 'Parts', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
-          { name: 'ORDERS', emoji: '', hint: 'Orders', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
-          { name: 'LINEITEM', emoji: '', hint: 'Line items', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
-          { name: 'PARTSUPP', emoji: '', hint: 'Part and supplier links', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
+          { name: 'REGION', hint: 'Regions: R_REGIONKEY is the key. Join NATION.N_REGIONKEY here for country-to-region rollups.', columns: ['R_REGIONKEY', 'R_NAME', 'R_COMMENT'] },
+          { name: 'NATION', hint: 'Countries: N_NATIONKEY primary key; N_REGIONKEY → REGION for continent/region.', columns: ['N_NATIONKEY', 'N_NAME', 'N_REGIONKEY', 'N_COMMENT'] },
+          { name: 'CUSTOMER', hint: 'Customers: C_CUSTKEY joins ORDERS.O_CUSTKEY. C_NATIONKEY → NATION. C_ACCTBAL is account balance.', columns: ['C_CUSTKEY', 'C_NAME', 'C_ADDRESS', 'C_NATIONKEY', 'C_PHONE', 'C_ACCTBAL', 'C_MKTSEGMENT', 'C_COMMENT'] },
+          { name: 'SUPPLIER', hint: 'Suppliers: S_SUPPKEY joins LINEITEM.L_SUPPKEY and PARTSUPP.PS_SUPPKEY. S_NATIONKEY → NATION.', columns: ['S_SUPPKEY', 'S_NAME', 'S_ADDRESS', 'S_NATIONKEY', 'S_PHONE', 'S_ACCTBAL', 'S_COMMENT'] },
+          { name: 'PART', hint: 'Parts/products: P_PARTKEY joins LINEITEM.L_PARTKEY and PARTSUPP.PS_PARTKEY. P_RETAILPRICE is list price.', columns: ['P_PARTKEY', 'P_NAME', 'P_MFGR', 'P_BRAND', 'P_TYPE', 'P_SIZE', 'P_CONTAINER', 'P_RETAILPRICE', 'P_COMMENT'] },
+          { name: 'ORDERS', hint: 'Order header: O_ORDERKEY is the key to LINEITEM. O_CUSTKEY → CUSTOMER. O_TOTALPRICE and O_ORDERDATE are common filters.', columns: ['O_ORDERKEY', 'O_CUSTKEY', 'O_ORDERSTATUS', 'O_TOTALPRICE', 'O_ORDERDATE', 'O_ORDERPRIORITY', 'O_CLERK', 'O_SHIPPRIORITY', 'O_COMMENT'] },
+          { name: 'LINEITEM', hint: 'Line-level detail per order: L_LINENUMBER + L_ORDERKEY uniquely define a line. Revenue ≈ L_EXTENDEDPRICE × (1 − L_DISCOUNT) × (1 + L_TAX) (adjust per your conventions).', columns: ['L_ORDERKEY', 'L_PARTKEY', 'L_SUPPKEY', 'L_LINENUMBER', 'L_QUANTITY', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_TAX', 'L_RETURNFLAG', 'L_LINESTATUS', 'L_SHIPDATE', 'L_COMMITDATE', 'L_RECEIPTDATE', 'L_SHIPINSTRUCT', 'L_SHIPMODE', 'L_COMMENT'] },
+          { name: 'PARTSUPP', hint: 'Bridge part ↔ supplier: composite key PS_PARTKEY + PS_SUPPKEY. PS_AVAILQTY and PS_SUPPLYCOST support inventory and costing questions.', columns: ['PS_PARTKEY', 'PS_SUPPKEY', 'PS_AVAILQTY', 'PS_SUPPLYCOST', 'PS_COMMENT'] },
         ],
       };
       try {
@@ -416,9 +527,10 @@
         schemaData = fallback;
       }
       if (schemaData && schemaData.tables) {
-        document.getElementById('schemaToggleLabel').textContent = schemaData.title || 'Sample tables';
+        document.getElementById('schemaToggleLabel').textContent = schemaData.title || 'Reference tables';
         document.getElementById('schemaDesc').textContent =
           schemaData.description || 'Open a table to see column names.';
+        renderSchemaTips(schemaData.tips);
         const grid = document.getElementById('schemaGrid');
         grid.innerHTML = (schemaData.tables || []).map(t => {
           const cols = (t.columns || []).map(c =>
@@ -432,8 +544,9 @@
         }).join('');
       } else {
         schemaData = fallback;
-        document.getElementById('schemaToggleLabel').textContent = 'Sample tables';
+        document.getElementById('schemaToggleLabel').textContent = 'Reference tables';
         document.getElementById('schemaDesc').textContent = 'Showing built-in reference tables.';
+        renderSchemaTips(fallback.tips);
         const grid = document.getElementById('schemaGrid');
         grid.innerHTML = (fallback.tables || []).map(t => {
           const cols = (t.columns || []).map(c =>
@@ -493,7 +606,7 @@
         if (data.success && data.generated_sql) {
           resultEl.innerHTML =
             '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
-            '<p class="meta">Prepared using ' + friendlyMode(data.mode || modeEl.value) + '.</p>';
+            '<p class="meta">Draft style: <strong>' + escapeHtml(friendlyMode(data.mode || modeEl.value)) + '</strong>.</p>';
           btnCopy.disabled = false;
           btnExecute.disabled = false;
           executeResultEl.innerHTML = '';
@@ -531,18 +644,22 @@
         const data = await r.json();
         if (data.success && data.rows) {
           const cols = data.columns || [];
-          let table = '<p class="meta">' + (data.rowCount != null ? data.rowCount + ' row(s)' : 'Results') + '</p><table><thead><tr>';
+          let table =
+            '<p class="results-summary"><strong>' +
+            escapeHtml(formatRowCount(data.rowCount)) +
+            '</strong> · Swipe or scroll to see every column.</p>' +
+            '<div class="table-wrap"><table><thead><tr>';
           cols.forEach(c => { table += '<th>' + escapeHtml(String(c)) + '</th>'; });
           table += '</tr></thead><tbody>';
           data.rows.forEach(row => {
             table += '<tr>';
             cols.forEach(col => {
               const v = row[col];
-              table += '<td>' + escapeHtml(v === null || v === undefined ? '—' : String(v)) + '</td>';
+              table += '<td>' + escapeHtml(formatDisplayValue(v)) + '</td>';
             });
             table += '</tr>';
           });
-          table += '</tbody></table>';
+          table += '</tbody></table></div>';
           executeResultEl.innerHTML = table;
         } else {
           const msg = data.error || 'Could not run the query.';

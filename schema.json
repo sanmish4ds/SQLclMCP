@@ -1,53 +1,55 @@
 {
-  "title": "TPC-H — Tables you can play with",
-  "description": "Ask questions in plain English; we turn them into Oracle SQL against these tables.",
+  "title": "Reference tables",
+  "description": "These tables mirror a standard analytics warehouse shape. Use the exact names below when you ask questions—the app turns your wording into Oracle SQL using this layout.",
+  "tips": [
+    "Identifiers must match this list exactly (same spelling and prefix: C_ for CUSTOMER, O_ for ORDERS, L_ for LINEITEM, P_ for PART, etc.).",
+    "LINEITEM is one row per order line: join to ORDERS on L_ORDERKEY = O_ORDERKEY, to PART on L_PARTKEY = P_PARTKEY, to SUPPLIER on L_SUPPKEY = S_SUPPKEY.",
+    "ORDERS holds order headers (customer, date, total); LINEITEM holds quantities, discounts, ship dates, and line revenue.",
+    "PARTSUPP links each part to suppliers (PS_PARTKEY, PS_SUPPKEY) with availability and supply cost—use it for sourcing or cost questions.",
+    "CUSTOMER.C_CUSTKEY joins to ORDERS.O_CUSTKEY; NATION.N_NATIONKEY links CUSTOMER, SUPPLIER, and REGION for geography.",
+    "Money-like fields include O_TOTALPRICE, L_EXTENDEDPRICE, L_DISCOUNT, L_TAX, C_ACCTBAL, S_ACCTBAL, P_RETAILPRICE, PS_SUPPLYCOST.",
+    "Dates on LINEITEM include L_SHIPDATE, L_COMMITDATE, L_RECEIPTDATE; order date is O_ORDERDATE on ORDERS.",
+    "For aggregates (totals, counts, averages), prefer grouping by keys you join on so results stay one row per grain you care about."
+  ],
   "tables": [
     {
       "name": "REGION",
-      "emoji": "🌍",
-      "hint": "Geographic regions",
+      "hint": "Regions: R_REGIONKEY is the key. Join NATION.N_REGIONKEY here for country-to-region rollups.",
       "columns": ["R_REGIONKEY", "R_NAME", "R_COMMENT"]
     },
     {
       "name": "NATION",
-      "emoji": "🏳️",
-      "hint": "Countries, linked to regions",
+      "hint": "Countries: N_NATIONKEY primary key; N_REGIONKEY → REGION for continent/region.",
       "columns": ["N_NATIONKEY", "N_NAME", "N_REGIONKEY", "N_COMMENT"]
     },
     {
       "name": "CUSTOMER",
-      "emoji": "👤",
-      "hint": "Customers and their balances",
+      "hint": "Customers: C_CUSTKEY joins ORDERS.O_CUSTKEY. C_NATIONKEY → NATION. C_ACCTBAL is account balance.",
       "columns": ["C_CUSTKEY", "C_NAME", "C_ADDRESS", "C_NATIONKEY", "C_PHONE", "C_ACCTBAL", "C_MKTSEGMENT", "C_COMMENT"]
     },
     {
       "name": "SUPPLIER",
-      "emoji": "🏭",
-      "hint": "Suppliers",
+      "hint": "Suppliers: S_SUPPKEY joins LINEITEM.L_SUPPKEY and PARTSUPP.PS_SUPPKEY. S_NATIONKEY → NATION.",
       "columns": ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_NATIONKEY", "S_PHONE", "S_ACCTBAL", "S_COMMENT"]
     },
     {
       "name": "PART",
-      "emoji": "🔩",
-      "hint": "Parts / products",
+      "hint": "Parts/products: P_PARTKEY joins LINEITEM.L_PARTKEY and PARTSUPP.PS_PARTKEY. P_RETAILPRICE is list price.",
       "columns": ["P_PARTKEY", "P_NAME", "P_MFGR", "P_BRAND", "P_TYPE", "P_SIZE", "P_CONTAINER", "P_RETAILPRICE", "P_COMMENT"]
     },
     {
       "name": "ORDERS",
-      "emoji": "📦",
-      "hint": "Orders (dates, totals, customer)",
+      "hint": "Order header: O_ORDERKEY is the key to LINEITEM. O_CUSTKEY → CUSTOMER. O_TOTALPRICE and O_ORDERDATE are common filters.",
       "columns": ["O_ORDERKEY", "O_CUSTKEY", "O_ORDERSTATUS", "O_TOTALPRICE", "O_ORDERDATE", "O_ORDERPRIORITY", "O_CLERK", "O_SHIPPRIORITY", "O_COMMENT"]
     },
     {
       "name": "LINEITEM",
-      "emoji": "📋",
-      "hint": "Order line items (L_* columns, not P_*)",
+      "hint": "Line-level detail per order: L_LINENUMBER + L_ORDERKEY uniquely define a line. Revenue ≈ L_EXTENDEDPRICE × (1 − L_DISCOUNT) × (1 + L_TAX) (adjust per your conventions).",
       "columns": ["L_ORDERKEY", "L_PARTKEY", "L_SUPPKEY", "L_LINENUMBER", "L_QUANTITY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_TAX", "L_RETURNFLAG", "L_LINESTATUS", "L_SHIPDATE", "L_COMMITDATE", "L_RECEIPTDATE", "L_SHIPINSTRUCT", "L_SHIPMODE", "L_COMMENT"]
     },
     {
       "name": "PARTSUPP",
-      "emoji": "🔗",
-      "hint": "Part–supplier links and supply cost",
+      "hint": "Bridge part ↔ supplier: composite key PS_PARTKEY + PS_SUPPKEY. PS_AVAILQTY and PS_SUPPLYCOST support inventory and costing questions.",
       "columns": ["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY", "PS_SUPPLYCOST", "PS_COMMENT"]
     }
   ]
