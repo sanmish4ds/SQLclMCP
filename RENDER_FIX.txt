@@ -1,0 +1,36 @@
+Render build shows: python-env.sh / render-build-tool not found
+================================================================
+
+That log means this Web Service is still the NATIVE PYTHON runtime.
+Your repo already has runtime: docker + ./Dockerfile; Git cannot switch
+an existing Render service to Docker by itself.
+
+Do this (order matters):
+
+1) GITHUB 403 on "Cloning" (optional cache error)
+   Render Dashboard -> your avatar -> Account Settings -> GitHub.
+   Reconnect GitHub and grant access to sanmish4ds/SQLclMCP (private repos).
+
+2) FASTEST: create a NEW Docker service (5 min)
+   Dashboard -> New + -> Web Service
+   - Connect: sanmish4ds/SQLclMCP, branch main
+   - Root Directory: leave EMPTY
+   - Environment: Docker (NOT Python, NOT Node)
+   - Dockerfile Path: Dockerfile
+   - Copy all Environment variables from the OLD broken service
+   - Create Web Service
+   Open the new deploy log: you MUST see "docker build", NOT python-env.sh.
+
+3) Cut over
+   When the new service is live: move Custom Domains from old -> new if any,
+   then delete the OLD Python service.
+
+4) Update the browser UI URL if your public URL changed
+   app/index.html and docs/index.html use MCP_URL = https://sqlclmcp.onrender.com
+   If your new default URL is different, change MCP_URL to match.
+
+5) Blueprint users only
+   Dashboard -> Blueprints -> repo -> Sync / apply pending changes.
+   If logs still show python-env.sh, use step (2) anyway.
+
+Docs: https://render.com/docs/native-runtimes#changing-a-services-runtime
