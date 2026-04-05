@@ -3,10 +3,18 @@
 /** Product id used in API responses and logs (override: APP_DISPLAY_NAME). */
 const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'PhraseSQL';
 
+function normalizeSqlGenerationMode(raw) {
+  const m = String(raw == null ? 'hybrid' : raw).trim().toLowerCase();
+  if (m === 'lookup' || m === 'llm' || m === 'hybrid') return m;
+  console.warn(`[${APP_DISPLAY_NAME}] Invalid SQL_GENERATION_MODE "${raw}", using hybrid`);
+  return 'hybrid';
+}
+
+
 /**
  * PhraseSQL — NL2SQL HTTP server (Node.js): lookup / LLM SQL generation + optional Oracle execution via oracledb.
  *
- * SQL generation modes:
+ * SQL generation modes (server-side only; set SQL_GENERATION_MODE=lookup|llm|hybrid, default hybrid):
  *   lookup  – exact/partial match against in-memory rules loaded from test_questions.json
  *   llm     – OpenAI-compatible LLM generation
  *   hybrid  – lookup first, LLM fallback
@@ -241,7 +249,15 @@ const config = {
   llmApiKey: process.env.LLM_API_KEY || '',
   llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
   llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS || 15000),
+  sqlGenerationMode: normalizeSqlGenerationMode(process.env.SQL_GENERATION_MODE),
 };
+
+/** Server default from SQL_GENERATION_MODE; body may still pass mode for API overrides (e.g. batch eval, SQL fix). */
+function resolveSqlModeFromRequest(bodyMode) {
+  const raw = typeof bodyMode === 'string' ? bodyMode.trim().toLowerCase() : '';
+  if (raw === 'lookup' || raw === 'llm' || raw === 'hybrid') return raw;
+  return config.sqlGenerationMode;
+}
 
 // ── SQL Rule Store ────────────────────────────────────────────────────────────
 
@@ -463,8 +479,8 @@ const requestHandler = (request, response) => {
         api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
         egress_ip: 'GET /egress-ip — this server\'s outbound IP (for Oracle DB allow list)',
-        generate_sql: 'POST /generate-sql — body: { "question": "your question", "mode": "llm|lookup|hybrid" }',
-        generate_batch: 'POST /generate-batch — body: { "questions": ["q1", "q2"], "mode": "llm|lookup|hybrid" }',
+        generate_sql: 'POST /generate-sql — body: { "question": "…" } (optional mode; default SQL_GENERATION_MODE)',
+        generate_batch: 'POST /generate-batch — body: { "questions": ["q1"] } (optional mode; default SQL_GENERATION_MODE)',
         execute_sql: 'POST /execute-sql — body: { "sql": "SELECT ..." } (opt-in, SELECT only)',
         schema: 'GET /schema — tables and columns for the UI',
         reload_rules: 'POST /reload-rules',
@@ -594,6 +610,7 @@ const requestHandler = (request, response) => {
       loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
       llm_enabled: config.enableLLMSqlGeneration,
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
+      sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
       timestamp: new Date().toISOString(),
     }));
@@ -644,7 +661,7 @@ const requestHandler = (request, response) => {
       try {
         const data = JSON.parse(body);
         const question = data.question || '';
-        const mode = (data.mode || 'hybrid').toLowerCase();
+        const mode = resolveSqlModeFromRequest(data.mode);
 
         if (!question) {
           response.writeHead(400);
@@ -759,7 +776,7 @@ const requestHandler = (request, response) => {
       try {
         const data = JSON.parse(body);
         const questions = data.questions || [];
-        const mode = (data.mode || 'hybrid').toLowerCase();
+        const mode = resolveSqlModeFromRequest(data.mode);
 
         const results = await Promise.all(
           questions.map(async (q) => {
@@ -1243,8 +1260,8 @@ server.listen(config.httpPort, listenHost, () => {
   console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
   console.log(`  GET  /health          - Server health check`);
   console.log(`  POST /reload-rules    - Reload SQL rules from test_questions.json`);
-  console.log(`  POST /generate-sql    - Generate SQL (mode: lookup|llm|hybrid)`);
-  console.log(`  POST /generate-batch  - Batch SQL generation (mode: lookup|llm|hybrid)`);
+  console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
+  console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
 });
 
 server.on('error', (error) => {

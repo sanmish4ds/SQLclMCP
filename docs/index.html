@@ -218,11 +218,18 @@
       transition: transform 0.2s;
       color: var(--text-muted);
     }
-    .schema-section.open .schema-toggle .chevron { transform: rotate(90deg); }
-    .schema-desc {
+    .schema-section.is-expanded .schema-toggle .chevron { transform: rotate(90deg); }
+    .schema-collapsible {
+      display: none;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .schema-section.is-expanded .schema-collapsible { display: block; }
+    .schema-collapsible .schema-desc {
       font-size: 0.9rem;
       color: var(--text-muted);
-      margin: 0.5rem 0 0.75rem;
+      margin: 0 0 0.75rem;
     }
     .schema-tips {
       margin: 0 0 1rem;
@@ -367,30 +374,25 @@
     </div>
 
     <div class="panel schema-section" id="schemaSection">
-      <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false">
+      <button type="button" class="schema-toggle" id="schemaToggle" aria-expanded="false" aria-controls="schemaCollapsible">
         <span class="chevron" aria-hidden="true">›</span>
         <span id="schemaToggleLabel">Loading reference data…</span>
       </button>
-      <p class="schema-desc" id="schemaDesc"></p>
-      <ul class="schema-tips" id="schemaTips" hidden></ul>
-      <div class="schema-grid" id="schemaGrid"></div>
+      <div class="schema-collapsible" id="schemaCollapsible">
+        <p class="schema-desc" id="schemaDesc"></p>
+        <ul class="schema-tips" id="schemaTips" hidden></ul>
+        <div class="schema-grid" id="schemaGrid"></div>
+      </div>
     </div>
 
     <div class="panel">
       <label for="question">What would you like to know?</label>
       <textarea id="question" placeholder="For example: show the ten largest orders by total amount"></textarea>
 
-      <label for="mode" style="margin-top:1rem">How should we draft your query?</label>
-      <select id="mode">
-        <option value="hybrid">Balanced — reuse past examples when helpful</option>
-        <option value="llm">Full interpretation — best for novel questions</option>
-        <option value="lookup">Match past examples only</option>
-      </select>
-
       <div class="actions">
-        <button type="button" class="primary" id="btnGenerate">Draft query</button>
+        <button type="button" class="primary" id="btnGenerate">Show SQL</button>
         <button type="button" class="ghost" id="btnCopy" disabled>Copy</button>
-        <button type="button" class="ghost" id="btnExecute" disabled>Run sample</button>
+        <button type="button" class="ghost" id="btnExecute" disabled>Run SQL</button>
       </div>
 
       <div id="result"></div>
@@ -419,7 +421,6 @@
     const MCP_URL = getApiBase();
 
     const questionEl = document.getElementById('question');
-    const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
     const btnCopy = document.getElementById('btnCopy');
     const btnExecute = document.getElementById('btnExecute');
@@ -563,7 +564,6 @@
         const pill = e.target.closest('.col-pill');
         if (card && !pill) {
           card.classList.toggle('open');
-          document.getElementById('schemaSection').classList.add('open');
         }
         if (pill) {
           const col = pill.getAttribute('data-col');
@@ -577,12 +577,19 @@
     }
     loadSchema();
 
-    document.getElementById('schemaToggle').addEventListener('click', () => {
-      document.getElementById('schemaSection').classList.toggle('open');
-      document.getElementById('schemaGrid').style.display =
-        document.getElementById('schemaSection').classList.contains('open') ? 'grid' : 'none';
-    });
-    document.getElementById('schemaGrid').style.display = 'none';
+    (function setupSchemaCollapse() {
+      const section = document.getElementById('schemaSection');
+      const btn = document.getElementById('schemaToggle');
+      function syncAria() {
+        const expanded = section.classList.contains('is-expanded');
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+      btn.addEventListener('click', () => {
+        section.classList.toggle('is-expanded');
+        syncAria();
+      });
+      syncAria();
+    })();
 
     btnGenerate.addEventListener('click', async () => {
       const question = questionEl.value.trim();
@@ -591,22 +598,19 @@
         return;
       }
       btnGenerate.disabled = true;
-      resultEl.innerHTML = '<div class="result">Drafting…</div>';
+      resultEl.innerHTML = '<div class="result">Generating SQL…</div>';
       try {
         const r = await fetch(MCP_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question,
-            mode: modeEl.value,
-          }),
+          body: JSON.stringify({ question }),
         });
         const data = await r.json();
         lastSql = data.generated_sql || '';
         if (data.success && data.generated_sql) {
           resultEl.innerHTML =
             '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
-            '<p class="meta">Draft style: <strong>' + escapeHtml(friendlyMode(data.mode || modeEl.value)) + '</strong>.</p>';
+            '<p class="meta">Draft style: <strong>' + escapeHtml(friendlyMode(data.mode || 'hybrid')) + '</strong>.</p>';
           btnCopy.disabled = false;
           btnExecute.disabled = false;
           executeResultEl.innerHTML = '';

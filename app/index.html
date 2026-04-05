@@ -447,16 +447,9 @@
   <label for="question">Your question (in plain English)</label>
   <textarea id="question" placeholder="e.g. List top 10 customers by total order value"></textarea>
 
-  <label for="mode">Mode</label>
-  <select id="mode">
-    <option value="hybrid">Hybrid (lookup then LLM)</option>
-    <option value="llm">LLM only</option>
-    <option value="lookup">Lookup only</option>
-  </select>
-
-  <button type="button" id="btnGenerate">Generate SQL</button>
-  <button type="button" id="btnCopy" class="secondary" disabled>Copy SQL</button>
-  <button type="button" id="btnExecute" class="secondary" disabled>Execute SQL</button>
+  <button type="button" id="btnGenerate">Show SQL</button>
+  <button type="button" id="btnCopy" class="secondary" disabled>Copy</button>
+  <button type="button" id="btnExecute" class="secondary" disabled>Run SQL</button>
 
   <div id="result"></div>
   <div id="executeResult"></div>
@@ -522,7 +515,6 @@
       ? ''
       : 'https://your-phrasesql.onrender.com';
     const questionEl = document.getElementById('question');
-    const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
     const btnCopy = document.getElementById('btnCopy');
     const btnExecute = document.getElementById('btnExecute');
@@ -650,15 +642,12 @@
         return;
       }
       btnGenerate.disabled = true;
-      resultEl.innerHTML = '<div class="result">Generating…</div>';
+      resultEl.innerHTML = '<div class="result">Generating SQL…</div>';
       try {
         const r = await fetch(MCP_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question,
-            mode: modeEl.value,
-          }),
+          body: JSON.stringify({ question }),
         });
         const data = await r.json();
         lastSql = data.generated_sql || '';
@@ -723,7 +712,7 @@
       if (!lastSql) return;
       navigator.clipboard.writeText(lastSql).then(() => {
         btnCopy.textContent = 'Copied!';
-        setTimeout(() => { btnCopy.textContent = 'Copy SQL'; }, 1500);
+        setTimeout(() => { btnCopy.textContent = 'Copy'; }, 1500);
       });
     });
 
