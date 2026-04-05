@@ -482,6 +482,18 @@ function resolveSqlclBin() {
     );
   }
   if (isExecutableFile(dockerDefault)) return dockerDefault;
+
+  const home = os.homedir();
+  const common = [
+    path.join(home, 'sqlcl', 'sqlcl', 'bin', 'sql'),
+    '/opt/homebrew/opt/sqlcl/libexec/bin/sql',
+    '/opt/homebrew/opt/sqlcl/bin/sql',
+    '/usr/local/opt/sqlcl/libexec/bin/sql',
+    '/usr/local/opt/sqlcl/bin/sql',
+  ];
+  for (const p of common) {
+    if (isExecutableFile(p)) return p;
+  }
   return 'sql';
 }
 
@@ -609,14 +621,23 @@ class SqlclMcpBridge {
       this.proc.stderr.on('data', d => console.warn('[SQLcl-MCP stderr]', d.trimEnd()));
       this.proc.on('error', err => {
         this.proc = null;
-        for (const [, p] of this.pending) p.reject(err);
+        const wrapped = err && err.code === 'ENOENT'
+          ? new Error(
+            `Cannot run SQLcl (${sqlBin}): ${err.message}. Install SQLcl or set SQLCL_BIN.`,
+          )
+          : err;
+        for (const [, p] of this.pending) p.reject(wrapped);
         this.pending.clear();
-        reject(err);
+        reject(wrapped);
       });
       this.proc.on('exit', code => {
-        console.log('[SQLcl-MCP] Process exited:', code);
+        console.log('[SQLcl-MCP] Process exited:', code, 'binary:', sqlBin);
         this.ready = false; this.connectedTo = null; this.proc = null;
-        for (const [, p] of this.pending) p.reject(new Error('SQLcl MCP process exited (code ' + code + ')'));
+        let msg = 'SQLcl MCP process exited (code ' + code + ')';
+        if (code === 126 || code === 127) {
+          msg += '. Not found or not executable — install SQLcl, put `sql` on PATH, or set SQLCL_BIN to the full path of the `sql` launcher (e.g. ~/sqlcl/sqlcl/bin/sql).';
+        }
+        for (const [, p] of this.pending) p.reject(new Error(msg));
         this.pending.clear();
       });
       setTimeout(resolve, 300); // give spawn time to fail
