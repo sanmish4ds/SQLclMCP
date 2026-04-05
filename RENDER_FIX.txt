@@ -50,3 +50,8 @@ Do this (order matters):
 
 Docs: https://render.com/docs/native-runtimes#changing-a-services-runtime
         https://render.com/docs/docker
+
+SQLcl "spawn ... /opt/render/project/.../sql ENOENT"
+  You set SQLCL_BIN to a path under the native Render checkout; SQLcl is not
+  there. Fix: remove SQLCL_BIN from Dashboard env (Dockerfile sets it), or set
+  SQLCL_BIN=/opt/sqlcl-bundle/sqlcl/bin/sql for Docker only.

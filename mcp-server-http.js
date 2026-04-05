@@ -456,6 +456,29 @@ function parseSqlclOutput(text) {
   return { columns: [], rows: [], rowCount: 0, raw: text };
 }
 
+/** Prefer a real file; ignore broken SQLCL_BIN (e.g. /opt/render/project/... on native Render). */
+function resolveSqlclBin() {
+  const dockerDefault = '/opt/sqlcl-bundle/sqlcl/bin/sql';
+  const isExecutableFile = (p) => {
+    try {
+      return fs.existsSync(p) && fs.statSync(p).isFile();
+    } catch (_) {
+      return false;
+    }
+  };
+  const fromEnv = process.env.SQLCL_BIN;
+  if (fromEnv && isExecutableFile(fromEnv)) return fromEnv;
+  if (fromEnv) {
+    console.warn(
+      '[SQLcl-MCP] SQLCL_BIN not found on disk:',
+      fromEnv,
+      '— using Docker path or sql from PATH',
+    );
+  }
+  if (isExecutableFile(dockerDefault)) return dockerDefault;
+  return 'sql';
+}
+
 // ── Real SQLcl MCP Bridge (spawns `sql mcp` as a child process) ───────────────
 class SqlclMcpBridge {
   constructor() {
@@ -558,7 +581,8 @@ class SqlclMcpBridge {
     this.buf = '';
     this.pending.clear();
     this.ready = false;
-    const sqlBin = process.env.SQLCL_BIN || 'sql';
+    const sqlBin = resolveSqlclBin();
+    console.log('[SQLcl-MCP] Using SQLcl binary:', sqlBin);
     const env = { ...process.env };
     if (config.dbWalletPath) env.TNS_ADMIN = config.dbWalletPath;
 
