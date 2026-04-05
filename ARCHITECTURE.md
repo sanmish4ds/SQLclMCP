@@ -1,12 +1,12 @@
-# SQLclMCP — Project Architecture
+# PhraseSQL — Project Architecture
 
-This document describes the architecture of the SQLclMCP project and what it achieves.
+This document describes the architecture of the **PhraseSQL** NL2SQL project (LLM + Node.js Oracle) and what it achieves.
 
 ---
 
 ## What This Project Achieves
 
-SQLclMCP is an **empirical evaluation framework** for **LLM-based natural language to SQL (NL2SQL)** using the **Model Context Protocol (MCP)**. It provides:
+PhraseSQL is an **empirical evaluation framework** for **LLM-based natural language to SQL (NL2SQL)** using HTTP tools (historically described as MCP-style). It provides:
 
 1. **Rigorous correctness evaluation** — Compares LLM-generated SQL against human-written baseline SQL on Oracle (TPC-H) by checking semantic match, exact row/order match, and canonical string match.
 2. **Execution and optimization metrics** — Measures execution latency (baseline vs MCP), Oracle EXPLAIN PLAN (cost, cardinality, bytes), and identifies optimization gaps.
@@ -21,7 +21,7 @@ The project answers four research questions (RQ1–RQ4) and produces both **eval
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           SQLclMCP System                                   │
+│                           PhraseSQL NL2SQL System                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐     NL question      ┌─────────────────────────────────┐ │
@@ -87,7 +87,7 @@ The project answers four research questions (RQ1–RQ4) and produces both **eval
 ## Repository Layout (Key Paths)
 
 ```
-SQLclMCP/
+phrasesql/
 ├── mcp-server-http.js          # MCP HTTP server (LLM SQL generation)
 ├── .env                         # Config: LLM_API_KEY, ENABLE_LLM_SQL_GEN, DB_*, etc.
 ├── ARCHITECTURE.md              # This file

@@ -16,7 +16,7 @@ Loads:
   LINEITEM    4,000,000 rows
 
 Run:
-    cd /Users/sanjaymishra/SQLclMCP
+    cd /path/to/phrasesql  # your clone of this repo
     python3 experiments/data_setup.py
 """
 

@@ -1,7 +1,7 @@
 {
-  "name": "sqlclmcp-mcp-server",
+  "name": "phrasesql",
   "version": "1.0.0",
-  "description": "NL2SQL HTTP server: LLM + Node oracledb against Oracle",
+  "description": "PhraseSQL — NL2SQL for Oracle (LLM + Node oracledb)",
   "main": "mcp-server-http.js",
   "scripts": {
     "start": "node mcp-server-http.js"

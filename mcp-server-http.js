@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
+/** Product id used in API responses and logs (override: APP_DISPLAY_NAME). */
+const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'PhraseSQL';
+
 /**
- * NL2SQL HTTP server (Node.js): lookup / LLM SQL generation + optional Oracle execution via oracledb.
+ * PhraseSQL — NL2SQL HTTP server (Node.js): lookup / LLM SQL generation + optional Oracle execution via oracledb.
  *
  * SQL generation modes:
  *   lookup  – exact/partial match against in-memory rules loaded from test_questions.json
@@ -183,16 +186,16 @@ function extractWalletFromEnv() {
     // Use unzip (available on Linux/macOS/Render)
     require('child_process').execSync(`unzip -o -q "${zipPath}" -d "${tmpDir}"`);
     fs.unlinkSync(zipPath);
-    console.log('[MCP-Server] Wallet extracted to:', tmpDir);
+    console.log(`[${APP_DISPLAY_NAME}] Wallet extracted to:`, tmpDir);
     return tmpDir;
   } catch (err) {
-    console.warn('[MCP-Server] Failed to extract wallet from ORACLE_WALLET_ZIP_B64:', err.message);
+    console.warn(`[${APP_DISPLAY_NAME}] Failed to extract wallet from ORACLE_WALLET_ZIP_B64:`, err.message);
     return null;
   }
 }
 
 // OCI Autonomous DB wallets ship sqlnet.ora with DIRECTORY="?/network/admin". The "?" does not
-// resolve reliably for JDBC/SQLcl on Linux (e.g. Render), which can drop the TLS session as
+// resolve reliably for JDBC/thin on Linux (e.g. Render), which can drop the TLS session as
 // ORA-17902 (end of TNS data channel). Rewrite to the real wallet directory when "?" is present.
 function ensureSqlnetWalletDirectory(walletDir) {
   if (!walletDir) return;
@@ -208,10 +211,10 @@ function ensureSqlnetWalletDirectory(walletDir) {
     );
     if (next !== s) {
       fs.writeFileSync(sqlnetPath, next, 'utf8');
-      console.log('[MCP-Server] Patched sqlnet.ora WALLET DIRECTORY ->', norm);
+      console.log(`[${APP_DISPLAY_NAME}] Patched sqlnet.ora WALLET DIRECTORY ->`, norm);
     }
   } catch (err) {
-    console.warn('[MCP-Server] Could not patch sqlnet.ora:', err.message);
+    console.warn(`[${APP_DISPLAY_NAME}] Could not patch sqlnet.ora:`, err.message);
   }
 }
 
@@ -259,10 +262,10 @@ function loadSQLRules() {
     });
 
     rulesLastMtimeMs = stats.mtimeMs;
-    console.log(`[MCP-Server] Loaded ${Object.keys(SQL_GENERATION_RULES).length} SQL generation rules`);
+    console.log(`[${APP_DISPLAY_NAME}] Loaded ${Object.keys(SQL_GENERATION_RULES).length} SQL generation rules`);
     return true;
   } catch (error) {
-    console.warn('[MCP-Server] Could not load test_questions.json:', error.message);
+    console.warn(`[${APP_DISPLAY_NAME}] Could not load test_questions.json:`, error.message);
     loadBasicRules();
     return false;
   }
@@ -272,11 +275,11 @@ function maybeReloadSQLRules() {
   try {
     const stats = fs.statSync(testQuestionsPath);
     if (stats.mtimeMs > rulesLastMtimeMs) {
-      console.log('[MCP-Server] Detected test_questions.json update, reloading rules...');
+      console.log(`[${APP_DISPLAY_NAME}] Detected test_questions.json update, reloading rules...`);
       loadSQLRules();
     }
   } catch (error) {
-    console.warn('[MCP-Server] Could not check rules file mtime:', error.message);
+    console.warn(`[${APP_DISPLAY_NAME}] Could not check rules file mtime:`, error.message);
   }
 }
 
@@ -451,9 +454,10 @@ const requestHandler = (request, response) => {
   if (pathname === '/api-info' && request.method === 'GET') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({
-      name: 'NL2SQL MCP HTTP Server',
+      name: APP_DISPLAY_NAME,
+      tagline: 'Natural language → Oracle SQL',
       status: 'running',
-      offer: 'Natural language to Oracle SQL over HTTP (LLM + Node oracledb).',
+      offer: 'Turn plain English into Oracle SQL — LLM plus Node.js oracledb.',
       endpoints: {
         ui: 'GET / — browser UI',
         api_info: 'GET /api-info — this JSON',
@@ -465,7 +469,7 @@ const requestHandler = (request, response) => {
         schema: 'GET /schema — tables and columns for the UI',
         reload_rules: 'POST /reload-rules',
       },
-      docs: 'https://github.com/your-org/SQLclMCP',
+      docs: process.env.APP_DOCS_URL || '',
     }));
     return;
   }
@@ -537,7 +541,7 @@ const requestHandler = (request, response) => {
             await conn.close();
           }
         } catch (err) {
-          console.warn('[MCP-Server] Schema from DB failed:', err.message);
+          console.warn(`[${APP_DISPLAY_NAME}] Schema from DB failed:`, err.message);
         }
       }
 
@@ -562,7 +566,7 @@ const requestHandler = (request, response) => {
     response.writeHead(200);
     response.end(JSON.stringify({
       status: 'ok',
-      server: 'MCP Server',
+      server: APP_DISPLAY_NAME,
       database: `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`,
       db_connection: (execOk && config.dbUser && config.dbDsn)
         ? `${config.dbUser}@${config.dbDsn}`
@@ -917,7 +921,7 @@ const requestHandler = (request, response) => {
     const dbReady = !!(config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword);
     response.writeHead(200);
     response.end(JSON.stringify({
-      server: 'NL2SQL over HTTP (Node.js + oracledb)',
+      server: `${APP_DISPLAY_NAME} (Node.js + oracledb)`,
       db_ready: dbReady,
       connection: dbReady ? `${config.dbUser}@${config.dbDsn}` : null,
       tools: [
@@ -930,7 +934,7 @@ const requestHandler = (request, response) => {
     return;
   }
 
-  // POST /mcp/invoke — same tools for browser chat (no SQLcl subprocess)
+  // POST /mcp/invoke — tools for browser chat (oracledb)
   if (pathname === '/mcp/invoke' && request.method === 'POST') {
     let body = '';
     request.on('data', chunk => { body += chunk.toString(); });
@@ -1213,10 +1217,10 @@ if (RENDER_KEEP_ALIVE_URL) {
 
 const listenHost = process.env.BIND_HOST || '0.0.0.0';
 server.listen(config.httpPort, listenHost, () => {
-  console.log(`[MCP-Server] HTTP API listening on http://${listenHost}:${config.httpPort}`);
-  console.log(`[MCP-Server] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
-  console.log(`[MCP-Server] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
-  console.log(`[MCP-Server] Endpoints:`);
+  console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
+  console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
+  console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
+  console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
   console.log(`  GET  /health          - Server health check`);
   console.log(`  POST /reload-rules    - Reload SQL rules from test_questions.json`);
   console.log(`  POST /generate-sql    - Generate SQL (mode: lookup|llm|hybrid)`);
@@ -1224,12 +1228,12 @@ server.listen(config.httpPort, listenHost, () => {
 });
 
 server.on('error', (error) => {
-  console.error('[MCP-Server] Error:', error);
+  console.error(`[${APP_DISPLAY_NAME}] Error:`, error);
   process.exit(1);
 });
 
 function shutdown(signal) {
-  console.log(`[MCP-Server] ${signal} received, closing HTTP server…`);
+  console.log(`[${APP_DISPLAY_NAME}] ${signal} received, closing HTTP server…`);
   server.close(() => {
     process.exit(0);
   });

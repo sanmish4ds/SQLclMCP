@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NL2SQL Assistant — Oracle + LLM</title>
+  <title>PhraseSQL — Natural language to Oracle SQL</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -166,7 +166,7 @@
     /* Hide the Custom MCP tab UI (NL to SQL via custom) */
     .nl-custom-tab { display: none !important; }
     #tab-nl-sql { display: none !important; }
-    /* ── SQLcl MCP Tab ─────────────────────────────────────────── */
+    /* ── NL2SQL Chat tab ───────────────────────────────────────── */
     .tools-panel {
       background: #161b22;
       border: 1px solid #30363d;
@@ -425,12 +425,12 @@
   </style>
 </head>
 <body>
-  <h1>NL2SQL Assistant</h1>
-  <p class="sub">Oracle SQL via LLM and Node.js (no SQLcl).</p>
+  <h1>PhraseSQL</h1>
+  <p class="sub">Ask in plain English — get Oracle SQL with an LLM, run it with Node.js.</p>
 
   <div class="tabs">
     <button class="tab-btn active nl-custom-tab" data-tab="nl-sql">NL to SQL (Custom)</button>
-    <button class="tab-btn sqlcl-tab" data-tab="sqlcl-mcp">NL to SQL (Chat)</button>
+    <button class="tab-btn nl2sql-chat-tab" data-tab="nl2sql-chat">NL to SQL (Chat)</button>
   </div>
 
   <div id="tab-nl-sql" class="tab-panel active">
@@ -462,7 +462,7 @@
   <div id="executeResult"></div>
   </div><!-- /tab-nl-sql -->
 
-  <div id="tab-sqlcl-mcp" class="tab-panel">
+  <div id="tab-nl2sql-chat" class="tab-panel">
     <p class="status" id="mcpStatus">Checking database connection…</p>
     <div id="mcpTools" class="tools-panel">Initializing…</div>
     <div class="chat-wrap">
@@ -513,14 +513,14 @@
         </div>
       </div>
     </div>
-  </div><!-- /tab-sqlcl-mcp -->
+  </div><!-- /tab-nl2sql-chat -->
 
   <script>
     // Empty string = same origin when UI is served from this server (GET /).
     // file:// or override: set full URL (e.g. your Render Docker service).
     const MCP_URL = (typeof location !== 'undefined' && location.protocol !== 'file:')
       ? ''
-      : 'https://sqlclmcp.onrender.com';
+      : 'https://your-phrasesql.onrender.com';
     const questionEl = document.getElementById('question');
     const modeEl = document.getElementById('mode');
     const btnGenerate = document.getElementById('btnGenerate');
@@ -733,7 +733,7 @@
       return div.innerHTML;
     }
 
-    // Used to keep showing a loader if SQLcl MCP is still initializing/connecting
+    // Keep loader visible while /health is loading
     let mcpLoading = false;
     let mcpLoadingMsg = 'Checking server';
     function renderMcpLoader(msg) {
@@ -768,7 +768,7 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'sqlcl-mcp' && mcpLoading) {
+        if (btn.dataset.tab === 'nl2sql-chat' && mcpLoading) {
           renderMcpLoader(mcpLoadingMsg);
         }
       });
@@ -912,7 +912,7 @@
     function classifyInput(text) {
       const t = text.trim();
       if (/^SELECT\b|^WITH\b/i.test(t)) return 'sql_select';
-      // Allow DDL/DML for SQLcl MCP tab (CREATE/INSERT/UPDATE/DELETE/etc.)
+      // Allow DDL/DML in chat (CREATE/INSERT/UPDATE/DELETE/etc.)
       if (/^(CREATE|ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE|MERGE)\b/i.test(t) || /^BEGIN\b/i.test(t)) return 'sql_exec';
       if (/^DESC(?:RIBE)?\s+\w+/i.test(t)) return 'desc';
       if (/^SHOW\s+TABLES?\s*$/i.test(t)) return 'show_tables';
@@ -999,7 +999,7 @@
           return;
         }
 
-        // Strip accidental trailing '&' (SQLcl DEFINE substitution marker)
+        // Strip accidental trailing '&' (Oracle*Plus-style substitution marker)
         let sqlText = text;
         if (kind === 'sql_select' || kind === 'sql_exec') {
           sqlText = String(sqlText || '').replace(/&\s*$/g, '').trim();
@@ -1089,7 +1089,7 @@
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
           const match = text.match(/^desc(?:ribe)?\s+(\w+)/i);
           const tbl = (match ? match[1] : text).toUpperCase();
-          // Query USER_TAB_COLUMNS via run-sql (real SQLcl MCP only has run-sql, not DESC command)
+          // DESC → USER_TAB_COLUMNS via run-sql
           const sql = "SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, NULLABLE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = '" + tbl + "' ORDER BY COLUMN_ID";
           const d = await mcpInvoke('run-sql', { sql });
           setBotContent(botDiv, d.success
@@ -1144,7 +1144,7 @@
           );
 
         } else {
-          // Natural language → OpenAI generates SQL → SQLcl run-sql executes it
+          // Natural language → LLM generates SQL → run-sql executes it
           const stepLabel = chatConnectedTo ? 'Step 1/2: Generating SQL via OpenAI…' : 'Generating SQL via OpenAI…';
           setBotContent(botDiv, thinkingHtml() + ' <span class="chat-thinking-label">' + stepLabel + '</span>');
           const genR = await fetch(MCP_URL + '/generate-sql', {
