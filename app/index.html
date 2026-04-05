@@ -831,11 +831,15 @@
         mcpStatusEl.className = 'status fail';
         if (isTimeout) setTimeout(loadMcpTools, 15000);
       } finally {
-        // Keep loader visible until we actually have a DB connection
+        // SQLcl process is up long before a DB connection exists. Do not block the tab with
+        // "Waiting for connection" — user must type "list connections" and pick one.
         if (sqlclReady && chatConnectedTo) {
           clearMcpLoader();
+        } else if (sqlclReady) {
+          clearMcpLoader();
+          setExcelPanelVisible(false);
         } else {
-          renderMcpLoader('Waiting for connection');
+          clearMcpLoader();
           setExcelPanelVisible(false);
         }
       }
