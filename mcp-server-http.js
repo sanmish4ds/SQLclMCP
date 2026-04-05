@@ -456,23 +456,29 @@ function parseSqlclOutput(text) {
   return { columns: [], rows: [], rowCount: 0, raw: text };
 }
 
-/** Prefer a real file; ignore broken SQLCL_BIN (e.g. /opt/render/project/... on native Render). */
+/** Prefer a real executable; ignore Render-native paths and missing files. */
 function resolveSqlclBin() {
   const dockerDefault = '/opt/sqlcl-bundle/sqlcl/bin/sql';
+  const isPoisonPath = (p) => typeof p === 'string' && p.includes('/opt/render/');
   const isExecutableFile = (p) => {
+    if (!p || typeof p !== 'string' || isPoisonPath(p)) return false;
     try {
-      return fs.existsSync(p) && fs.statSync(p).isFile();
+      fs.accessSync(p, fs.constants.X_OK);
+      return fs.statSync(p).isFile();
     } catch (_) {
       return false;
     }
   };
   const fromEnv = process.env.SQLCL_BIN;
-  if (fromEnv && isExecutableFile(fromEnv)) return fromEnv;
-  if (fromEnv) {
+  if (fromEnv && isPoisonPath(fromEnv)) {
+    console.warn('[SQLcl-MCP] Ignoring SQLCL_BIN (native Render path):', fromEnv);
+  } else if (fromEnv && isExecutableFile(fromEnv)) {
+    return fromEnv;
+  } else if (fromEnv) {
     console.warn(
-      '[SQLcl-MCP] SQLCL_BIN not found on disk:',
+      '[SQLcl-MCP] SQLCL_BIN not usable:',
       fromEnv,
-      '— using Docker path or sql from PATH',
+      '— trying Docker bundle or PATH',
     );
   }
   if (isExecutableFile(dockerDefault)) return dockerDefault;
@@ -584,6 +590,11 @@ class SqlclMcpBridge {
     const sqlBin = resolveSqlclBin();
     console.log('[SQLcl-MCP] Using SQLcl binary:', sqlBin);
     const env = { ...process.env };
+    env.SQLCL_BIN = sqlBin;
+    if (!env.JAVA_HOME) env.JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64';
+    if (!String(env.PATH || '').includes(`${env.JAVA_HOME}/bin`)) {
+      env.PATH = `${env.JAVA_HOME}/bin:${env.PATH || ''}`;
+    }
     if (config.dbWalletPath) env.TNS_ADMIN = config.dbWalletPath;
 
     // SQLcl MCP mode does NOT establish DB connections from command-line credentials.

@@ -3,7 +3,15 @@
 set -e
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
 export PATH="$JAVA_HOME/bin:$PATH"
-export SQLCL_BIN="${SQLCL_BIN:-/opt/sqlcl-bundle/sqlcl/bin/sql}"
+# Render dashboard often sets SQLCL_BIN=/opt/render/project/... (native build tree).
+# That path does not exist in this image; ${SQLCL_BIN:-default} would keep the bad value.
+SQLCL_DOCKER=/opt/sqlcl-bundle/sqlcl/bin/sql
+if [ -n "$SQLCL_BIN" ]; then
+  case "$SQLCL_BIN" in */opt/render/*) SQLCL_BIN= ;; esac
+fi
+if [ -z "$SQLCL_BIN" ] || [ ! -x "$SQLCL_BIN" ]; then
+  export SQLCL_BIN="$SQLCL_DOCKER"
+fi
 
 # Always use an app-local wallet dir. If TNS_ADMIN is mis-set to /tmp (or /) in the
 # dashboard, `rm -rf "$TNS_ADMIN"` becomes dangerous and fails on Linux (/tmp busy).
