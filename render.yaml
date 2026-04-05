@@ -1,13 +1,18 @@
 # Render Blueprint: MCP server as a Docker web service (see Dockerfile).
-# Docker avoids native build scripts (python-env.sh / render-build-tool) if the dashboard
-# was ever on Python or the Node native builder misbehaves.
-# Python eval deps: experiments/requirements.txt (do not add root requirements.txt).
+#
+# If builds still run python-env.sh on commit 2dfea0e+:
+#   Dashboard → Settings → Build & Deploy → Root Directory MUST be empty (repo root).
+#   If Root Directory is "experiments", Render ignores the root Dockerfile, finds
+#   requirements.txt there, and uses Python — rename avoided (use eval-requirements.txt).
+#
+# Python eval deps: experiments/eval-requirements.txt — never add requirements.txt at repo root.
 
 services:
   - type: web
     name: sqlclmcp-server
     runtime: docker
     plan: free
+    # Paths are relative to Root Directory (repository root when that field is empty).
     dockerfilePath: ./Dockerfile
     dockerContext: .
 

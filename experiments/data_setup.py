@@ -28,7 +28,7 @@ load_dotenv()
 try:
     import oracledb
 except ImportError:
-    sys.exit("oracledb not installed. Run: pip install -r experiments/requirements.txt")
+    sys.exit("oracledb not installed. Run: pip install -r experiments/eval-requirements.txt")
 
 # ── Connection config (from environment) ─────────────────────────────────────-
 #
