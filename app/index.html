@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SQLcl MCP Assistant — Oracle SQL</title>
+  <title>NL2SQL Assistant — Oracle + LLM</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -404,7 +404,7 @@
     .thinking span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
 
-    /* Generic loader used while SQLcl MCP is initializing/connecting */
+    /* Loader while server DB status is loading */
     .loader-wrap {
       display: inline-flex;
       align-items: center;
@@ -425,15 +425,15 @@
   </style>
 </head>
 <body>
-  <h1>SQLcl MCP Assistant</h1>
-  <p class="sub">Oracle SQL. Natural language to SQL. Schema. Live database chat.</p>
+  <h1>NL2SQL Assistant</h1>
+  <p class="sub">Oracle SQL via LLM and Node.js (no SQLcl).</p>
 
   <div class="tabs">
     <button class="tab-btn active nl-custom-tab" data-tab="nl-sql">NL to SQL (Custom)</button>
-    <button class="tab-btn sqlcl-tab active" data-tab="sqlcl-mcp">NL to SQL (SQLcl)</button>
+    <button class="tab-btn sqlcl-tab" data-tab="sqlcl-mcp">NL to SQL (Chat)</button>
   </div>
 
-  <div id="tab-nl-sql" class="tab-panel">
+  <div id="tab-nl-sql" class="tab-panel active">
   <p class="status" id="serverStatus">Checking server…</p>
 
   <div class="schema-section" id="schemaSection">
@@ -462,8 +462,8 @@
   <div id="executeResult"></div>
   </div><!-- /tab-nl-sql -->
 
-  <div id="tab-sqlcl-mcp" class="tab-panel active">
-    <p class="status" id="mcpStatus">Connecting to SQLcl MCP…</p>
+  <div id="tab-sqlcl-mcp" class="tab-panel">
+    <p class="status" id="mcpStatus">Checking database connection…</p>
     <div id="mcpTools" class="tools-panel">Initializing…</div>
     <div class="chat-wrap">
       <div class="chat-history" id="chatHistory">
@@ -735,7 +735,7 @@
 
     // Used to keep showing a loader if SQLcl MCP is still initializing/connecting
     let mcpLoading = false;
-    let mcpLoadingMsg = 'Initializing SQLcl';
+    let mcpLoadingMsg = 'Checking server';
     function renderMcpLoader(msg) {
       mcpLoading = true;
       mcpLoadingMsg = msg || mcpLoadingMsg;
@@ -768,17 +768,16 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        // If SQLcl connection is still in progress, keep showing the loader
         if (btn.dataset.tab === 'sqlcl-mcp' && mcpLoading) {
           renderMcpLoader(mcpLoadingMsg);
         }
       });
     });
 
-    // ── SQLcl MCP Chat ────────────────────────────────────────
+    // ── Chat tab (LLM + POST /mcp/invoke + oracledb) ───────────
     let mcpToolsLoaded = false;
-    let sqlclReady = false;      // real sql mcp process is running
-    let chatConnectedTo = null;  // active named DB connection
+    let dbExecuteReady = false;
+    let chatConnectedTo = null;  // "${user}@${dsn}" from GET /health when execute is on
     const mcpStatusEl = document.getElementById('mcpStatus');
     const chatHistoryEl = document.getElementById('chatHistory');
     const chatInputEl = document.getElementById('chatInput');
@@ -789,41 +788,41 @@
       mcpToolsLoaded = true;
       const toolsEl = document.getElementById('mcpTools');
       try {
-        renderMcpLoader('Initializing SQLcl MCP');
+        renderMcpLoader('Checking server');
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 8000);
-        const r = await fetch(MCP_URL + '/sqlcl-real/status', { signal: ctrl.signal });
+        const r = await fetch(MCP_URL + '/health', { signal: ctrl.signal });
         clearTimeout(timer);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const data = await r.json();
-        sqlclReady = !!data.ready;
-        chatConnectedTo = data.connected_to || null;
-        if (data.success) {
-          setExcelPanelVisible(!!chatConnectedTo);
-          const connBadge = chatConnectedTo
-            ? '<span class="conn-badge on">Connected</span>'
-            : '<span class="conn-badge off">Not connected</span>';
-          const toolTags = (data.tools || []).map(t =>
-            '<span class="tool-tag-static">' + escapeHtml(t.name) + '</span>'
-          ).join('');
+        dbExecuteReady = !!data.execute_sql_available;
+        chatConnectedTo = data.db_connection || null;
+        const toolsR = await fetch(MCP_URL + '/mcp/tools', { signal: ctrl.signal });
+        const toolsJson = toolsR.ok ? await toolsR.json() : { tools: [] };
+        const toolTags = (toolsJson.tools || []).map(t =>
+          '<span class="tool-tag-static">' + escapeHtml(t.name) + '</span>'
+        ).join('');
+        if (dbExecuteReady && chatConnectedTo) {
+          setExcelPanelVisible(true);
           toolsEl.innerHTML =
-            '<strong>SQL tools</strong> ' + connBadge +
-            '<br><span style="color:#6e7681;font-size:0.78rem">Available: </span>' + toolTags;
-          mcpStatusEl.textContent = chatConnectedTo
-            ? 'Connected. Chat ready'
-            : 'SQL tools running. Type list connections to connect';
-          mcpStatusEl.className = 'status ' + (chatConnectedTo ? 'ok' : '');
+            '<strong>Database chat</strong> <span class="conn-badge on">Execute enabled</span>' +
+            '<br><span style="color:#6e7681;font-size:0.78rem">' + escapeHtml(chatConnectedTo) + '</span>' +
+            '<br><span style="color:#6e7681;font-size:0.78rem">Tools: </span>' + toolTags;
+          mcpStatusEl.textContent = 'Connected: ' + chatConnectedTo + ' — chat ready';
+          mcpStatusEl.className = 'status ok';
         } else {
-          sqlclReady = false;
+          setExcelPanelVisible(false);
           toolsEl.innerHTML =
-            '<span style="color:#f85149">SQLcl binary not found</span>' +
-            '<span style="color:#6e7681;font-size:0.78rem"> — ' + escapeHtml(data.error || '') + '</span>' +
-            '<br><span style="color:#8b949e;font-size:0.75rem">Install SQLcl and ensure <code>sql</code> is in PATH, or set <code>SQLCL_BIN</code> env var.</span>';
-          mcpStatusEl.textContent = 'SQL tools not available: ' + (data.hint || data.error || '');
+            '<strong>Database chat</strong> <span class="conn-badge off">Execute off</span>' +
+            '<br><span style="color:#8b949e;font-size:0.75rem">Enable <code>EXECUTE_SQL_ENABLED=true</code> and set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> (and wallet env) on the server to run SQL from this tab.</span>' +
+            (toolTags ? '<br><span style="color:#6e7681;font-size:0.78rem">Tools: </span>' + toolTags : '');
+          mcpStatusEl.textContent = 'Execution disabled — you can still use NL → SQL (no live runs).';
           mcpStatusEl.className = 'status fail';
         }
       } catch (e) {
         const isTimeout = e.name === 'AbortError';
+        dbExecuteReady = false;
+        chatConnectedTo = null;
         setExcelPanelVisible(false);
         document.getElementById('mcpTools').innerHTML =
           '<span style="color:#f85149">' + (isTimeout ? 'Server waking up. Retry in 15s.' : 'Cannot reach server') + '</span>';
@@ -831,21 +830,10 @@
         mcpStatusEl.className = 'status fail';
         if (isTimeout) setTimeout(loadMcpTools, 15000);
       } finally {
-        // SQLcl process is up long before a DB connection exists. Do not block the tab with
-        // "Waiting for connection" — user must type "list connections" and pick one.
-        if (sqlclReady && chatConnectedTo) {
-          clearMcpLoader();
-        } else if (sqlclReady) {
-          clearMcpLoader();
-          setExcelPanelVisible(false);
-        } else {
-          clearMcpLoader();
-          setExcelPanelVisible(false);
-        }
+        clearMcpLoader();
       }
     }
 
-    // Eagerly init Database Chat tab so it's ready when user clicks it
     loadMcpTools();
 
     function removeWelcome() {
@@ -884,24 +872,10 @@
            └─ DSN: DB_DSN (e.g. prishivdb1_high)
     ↓  Rows rendered as table</pre>` +
 
-        '<strong style="color:#58a6ff">&#9314; SQLcl commands (DESC / SHOW TABLES)</strong><br>' +
+        '<strong style="color:#58a6ff">&#9314; Schema shortcuts (DESC / SHOW TABLES)</strong><br>' +
         `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">classifyInput() → kind = “desc” / “show_tables”
     ↓  POST /mcp/invoke  { tool:”run-sqlcl”, params:{command} }
-           └─ DESC  → SELECT from USER_TAB_COLUMNS
-           └─ SHOW TABLES → SELECT from USER_TABLES
-    ↓  Rendered as column structure table</pre>` +
-
-        '<strong style="color:#58a6ff">&#9315; How SQLcl MCP normally works (vs this server)</strong><br>' +
-        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">GitHub Copilot Chat (VS Code)
-    ↓  MCP Protocol  (JSON-RPC over stdio)
-    ↓  SQLcl binary  —  sql mcp
-           └─ Tools: connect, run-sql, run-sqlcl,
-                   schema-information, list-connections
-    ↓  JDBC thin driver (built into SQLcl, no Oracle Client needed)
-    ↓  Oracle Autonomous DB  (TLS 1522, wallet)
-
-This web server reimplements the same 4 tools over HTTP
-so you can use them from any browser, not just VS Code.</pre>` +
+           └─ Implemented with USER_TAB_COLUMNS / USER_TABLES queries via node-oracledb</pre>` +
         '</div>';
       appendBotDiv(html);
     }
@@ -973,11 +947,14 @@ so you can use them from any browser, not just VS Code.</pre>` +
       return (source
         ? '<div class="chat-label">Generated SQL <span class="chat-source">via ' + escapeHtml(source) + '</span></div>'
         : '<div class="chat-label">SQL</div>') +
-        `<pre class="chat-code">' + escapeHtml(sql) + '</pre>` +
+        '<pre class="chat-code">' + escapeHtml(sql) + '</pre>' +
         '<button class="chat-copy-btn" data-sql-idx="' + idx + '" onclick="chatCopyByIdx(this)">Copy SQL</button>';
     }
 
     function resultsHtml(result) {
+      if (result && result.mutating && result.rowsAffected != null) {
+        return '<div class="chat-meta">Statement completed · rows affected: ' + escapeHtml(String(result.rowsAffected)) + '</div>';
+      }
       const cols = result.columns || [];
       const rows = result.rows || [];
       if (cols.length === 0 && rows.length === 0) {
@@ -998,29 +975,26 @@ so you can use them from any browser, not just VS Code.</pre>` +
       appendUserMsg(text);
       const botDiv = appendBotDiv(thinkingHtml());
 
-      // Proxy a real SQLcl MCP tool call
-      async function sqlclInvoke(tool, params) {
-        const r = await fetch(MCP_URL + '/sqlcl-real/invoke', {
+      async function mcpInvoke(tool, params) {
+        const r = await fetch(MCP_URL + '/mcp/invoke', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tool, params: params || {} }),
         });
-        const d = await r.json();
-        if (d.connected_to !== undefined) chatConnectedTo = d.connected_to;
-        return d;
+        return r.json();
       }
 
       function notConnectedHtml() {
-        return '<div class="chat-error">Not connected to any database.</div>' +
-          '<p class="chat-no-db-hint">Type <strong>list connections</strong> to see your saved SQLcl connections, then click one to connect.</p>';
+        return '<div class="chat-error">No database target loaded.</div>' +
+          '<p class="chat-no-db-hint">Reload this tab after enabling execution on the server, or type <strong>list connections</strong> for status.</p>';
       }
 
       try {
         const kind = classifyInput(text);
 
-        if (!sqlclReady) {
+        if (!dbExecuteReady) {
           setBotContent(botDiv,
-            '<div class="chat-error">❌ SQLcl binary not available.</div>' +
-            '<p class="chat-no-db-hint">Install SQLcl, ensure <code>sql</code> is in PATH, or set <code>SQLCL_BIN</code> env var. Then reload this tab.</p>'
+            '<div class="chat-error">❌ Database execution is disabled on this server.</div>' +
+            '<p class="chat-no-db-hint">Set <code>EXECUTE_SQL_ENABLED=true</code> and Oracle env vars (<code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, wallet). Reload after changing config.</p>'
           );
           return;
         }
@@ -1033,9 +1007,9 @@ so you can use them from any browser, not just VS Code.</pre>` +
 
         if (kind === 'sql_select') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: sqlText });
+          const d0 = await mcpInvoke('run-sql', { sql: sqlText });
           if (d0.success) {
-            setBotContent(botDiv, '<div class="chat-label">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d0.result));
+            setBotContent(botDiv, '<div class="chat-label">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d0.result));
           } else {
             const err = String(d0.error || '');
             const shouldAutoCorrect = /ORA-(00903|00904|00933|00942|00905)\b/i.test(err);
@@ -1068,7 +1042,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
               }
 
               const correctedSql = genData.generated_sql;
-              const d1 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: correctedSql });
+              const d1 = await mcpInvoke('run-sql', { sql: correctedSql });
               setBotContent(
                 botDiv,
                 '<div class="chat-meta" style="color:#3fb950">' +
@@ -1078,7 +1052,7 @@ so you can use them from any browser, not just VS Code.</pre>` +
                 '<div class="chat-section-sep"></div>' +
                 (d1.success
                   ? (sqlBlock(correctedSql, genData.source) +
-                      '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via SQLcl run-sql</span></div>' +
+                      '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' +
                       resultsHtml(d1.result))
                   : (sqlBlock(correctedSql, genData.source) +
                       '<div class="chat-error" style="margin-top:0.5rem">❌ ' + escapeHtml(d1.error || 'Error') + '</div>')
@@ -1096,12 +1070,12 @@ so you can use them from any browser, not just VS Code.</pre>` +
             setBotContent(botDiv, '<div class="chat-error">Cancelled</div>');
             return;
           }
-          const d0 = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: sqlText });
+          const d0 = await mcpInvoke('run-sql', { sql: sqlText });
           if (d0.success) {
             setBotContent(
               botDiv,
               '<div class="chat-label">Executed</div>' +
-              '<div class="chat-meta">SQL run-sql</div>' +
+              '<div class="chat-meta">Executed via node-oracledb</div>' +
               (d0.raw ? '<pre class="chat-code">' + escapeHtml(d0.raw) + '</pre>' : '')
             );
           } else {
@@ -1117,51 +1091,51 @@ so you can use them from any browser, not just VS Code.</pre>` +
           const tbl = (match ? match[1] : text).toUpperCase();
           // Query USER_TAB_COLUMNS via run-sql (real SQLcl MCP only has run-sql, not DESC command)
           const sql = "SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, NULLABLE FROM USER_TAB_COLUMNS WHERE TABLE_NAME = '" + tbl + "' ORDER BY COLUMN_ID";
-          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql });
+          const d = await mcpInvoke('run-sql', { sql });
           setBotContent(botDiv, d.success
-            ? '<div class="chat-label">Structure of ' + escapeHtml(tbl) + ' <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
+            ? '<div class="chat-label">Structure of ' + escapeHtml(tbl) + ' <span class="chat-source">via Oracle</span></div>' + resultsHtml(d.result)
             : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
           );
 
         } else if (kind === 'show_tables') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: 'SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME' });
+          const d = await mcpInvoke('run-sql', { sql: 'SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME' });
           setBotContent(botDiv, d.success
-            ? '<div class="chat-label">Tables <span class="chat-source">via SQLcl run-sql → USER_TABLES</span></div>' + resultsHtml(d.result)
+            ? '<div class="chat-label">Tables <span class="chat-source">via USER_TABLES</span></div>' + resultsHtml(d.result)
             : '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'
           );
 
         } else if (kind === 'list_conn') {
-          // Real SQLcl MCP tool: list-connections
-          const d = await sqlclInvoke('list-connections', {});
+          const d = await mcpInvoke('list-connections', {});
           if (!d.success) {
             setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'); return;
           }
-          const names = parseConnectionList(d.raw || (d.result && d.result.text) || '');
-          if (names.length === 0) {
+          const conns = (d.result && d.result.connections) ? d.result.connections : [];
+          if (conns.length === 0) {
             setBotContent(botDiv,
-              '<div class="chat-label">No saved connections found.</div>' +
-              '<p class="chat-no-db-hint">Create a named connection in SQL Developer or with <code>sql /nolog</code> → <code>CONN admin/pw@dsn</code> → <code>SAVE CONNECTION myconn</code>.</p>'
+              '<div class="chat-label">No database configured</div>' +
+              '<p class="chat-no-db-hint">Set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, and <code>EXECUTE_SQL_ENABLED=true</code> on the server.</p>'
             );
           } else {
             const currentBadge = chatConnectedTo ? ' <span class="conn-badge on" style="float:right">' + escapeHtml(chatConnectedTo) + '</span>' : '';
             setBotContent(botDiv,
-              '<div class="chat-label">Saved connections — click to connect' + currentBadge + '</div>' +
+              '<div class="chat-label">Configured connection (click to pin label)' + currentBadge + '</div>' +
               '<div class="chat-table-chips">' +
-              names.map(n =>
-                '<span class="tool-tag" onclick="connectTo(\'' + escapeHtml(n) + '\')" title="Connect to ' + escapeHtml(n) + '">' +
-                escapeHtml(n) + '</span>'
-              ).join('') + '</div>'
+              conns.map(c => {
+                const name = c.name || '';
+                return '<span class="tool-tag" onclick="connectTo(\'' + escapeHtml(name) + '\')" title="Use ' + escapeHtml(name) + '">' +
+                  escapeHtml(name) + '</span>';
+              }).join('') + '</div>'
             );
           }
 
         } else if (kind === 'schema') {
           if (!chatConnectedTo) { setBotContent(botDiv, notConnectedHtml()); return; }
-          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql: 'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME' });
+          const d = await mcpInvoke('run-sql', { sql: 'SELECT TABLE_NAME FROM USER_TABLES ORDER BY TABLE_NAME' });
           if (!d.success) { setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Error') + '</div>'); return; }
           const tables = (d.result.rows || []).map(r => Object.values(r)[0] || '').filter(Boolean);
           setBotContent(botDiv,
-            '<div class="chat-label">Tables in schema <span class="chat-source">via SQLcl run-sql → USER_TABLES — click to describe</span></div>' +
+            '<div class="chat-label">Tables in schema <span class="chat-source">USER_TABLES — click to describe</span></div>' +
             '<div class="chat-table-chips">' +
             tables.map(t =>
               '<span class="tool-tag" onclick="quickDescribe(\'' + escapeHtml(t) + '\')" title="Describe ' + escapeHtml(t) + '">' +
@@ -1192,11 +1166,11 @@ so you can use them from any browser, not just VS Code.</pre>` +
             setBotContent(botDiv, sb + '<p class="chat-no-db-hint">Not connected — type “list connections” to pick a connection, then retry.</p>');
             return;
           }
-          setBotContent(botDiv, sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running via SQLcl MCP (Java JDBC)…</span>');
-          const d = await sqlclInvoke('run-sql', { connection: chatConnectedTo, sql });
+          setBotContent(botDiv, sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running SQL on Oracle…</span>');
+          const d = await mcpInvoke('run-sql', { sql });
           setBotContent(botDiv, d.success
-            ? sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via SQLcl run-sql</span></div>' + resultsHtml(d.result)
-            : sb + '<div class="chat-error" style="margin-top:0.5rem">❌ SQLcl execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
+            ? sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d.result)
+            : sb + '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
           );
         }
       } catch (e) {
@@ -1208,44 +1182,11 @@ so you can use them from any browser, not just VS Code.</pre>` +
     }
 
     async function connectTo(connectionName) {
-      appendUserMsg('Connect to ' + connectionName);
-      const botDiv = appendBotDiv(thinkingHtml() + ' <span class="chat-thinking-label">Connecting via SQLcl MCP…</span>');
-      try {
-        renderMcpLoader('Connecting to ' + connectionName + '…');
-        const r = await fetch(MCP_URL + '/sqlcl-real/invoke', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tool: 'connect', params: { connection_name: connectionName } }),
-        });
-        const d = await r.json();
-        if (d.connected_to !== undefined) chatConnectedTo = d.connected_to;
-        if (d.success) {
-          mcpStatusEl.textContent = 'Connected: ' + connectionName + ' Chat ready';
-          mcpStatusEl.className = 'status ok';
-          setBotContent(botDiv,
-            '<div class="chat-label">Connected</div>' +
-            '<div style="color:#3fb950;font-size:0.88rem">' + escapeHtml(d.raw || 'Connected to ' + connectionName) + '</div>'
-          );
-          await loadMcpTools(); // refresh tools list + connected badge
-        } else {
-          setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(d.error || 'Connection failed') + '</div>');
-          clearMcpLoader();
-        }
-      } catch (e) {
-        setBotContent(botDiv, '<div class="chat-error">❌ ' + escapeHtml(e.message) + '</div>');
-        clearMcpLoader();
-      }
-    }
-
-    function parseConnectionList(text) {
-      if (!text) return [];
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      if (lines.length === 0) return [];
-      // Skip CSV header row if present
-      const first = lines[0].toLowerCase();
-      const start = (first.includes('name') || first.includes('connection') || first.includes('---')) ? 1 : 0;
-      return lines.slice(start)
-        .map(l => l.split(',')[0].replace(/^"|"$/g, '').trim())
-        .filter(Boolean);
+      appendUserMsg('Use connection ' + connectionName);
+      chatConnectedTo = connectionName;
+      mcpStatusEl.textContent = 'Target: ' + connectionName;
+      mcpStatusEl.className = 'status ok';
+      appendBotDiv('<div class="chat-label">Note</div><div class="chat-meta">The server runs SQL using its configured <code>DB_DSN</code>. This label is for your reference only.</div>');
     }
 
     btnChatSend.addEventListener('click', () => sendChat(chatInputEl.value));
@@ -1377,44 +1318,25 @@ so you can use them from any browser, not just VS Code.</pre>` +
         btnExcelRunEl.disabled = true;
         if (excelStatusEl) excelStatusEl.textContent = 'Running…';
 
-        async function runSqlcl(sql) {
-          // One retry on ORA-17008: closed connection
-          const runOnce = async () => {
-            return (await fetch(MCP_URL + '/sqlcl-real/invoke', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tool: 'run-sql', params: { connection: chatConnectedTo, sql } }),
-            })).json();
-          };
-
-          const first = await runOnce();
-          if (first.success) return first;
-
-          const err = String(first.error || '');
-          if (/ORA-17008/i.test(err)) {
-            excelStatusEl.textContent = 'Connection lost. Reconnecting…';
-            // Reconnect once, then retry statement once.
-            await (await fetch(MCP_URL + '/sqlcl-real/invoke', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tool: 'connect', params: { connection_name: chatConnectedTo } }),
-            })).json();
-
-            return await runOnce();
-          }
-
-          return first;
+        async function runExcelSql(sql) {
+          const r = await fetch(MCP_URL + '/mcp/invoke', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tool: 'run-sql', params: { sql } }),
+          });
+          return r.json();
         }
 
         for (const t of excelPlan) {
           excelStatusEl.textContent = 'Running ' + t.tableName;
           if (t.dropSql) {
-            const dDrop = await runSqlcl(t.dropSql);
+            const dDrop = await runExcelSql(t.dropSql);
             if (!dDrop.success) throw new Error(dDrop.error || 'Drop failed');
           }
-          const dCreate = await runSqlcl(t.createSql);
+          const dCreate = await runExcelSql(t.createSql);
           if (!dCreate.success) throw new Error(dCreate.error || 'Create failed');
 
           for (const insertSql of (t.insertSqlChunks || [])) {
-            const dIns = await runSqlcl(insertSql);
+            const dIns = await runExcelSql(insertSql);
             if (!dIns.success) throw new Error(dIns.error || 'Insert failed');
           }
         }

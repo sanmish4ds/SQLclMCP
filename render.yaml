@@ -38,11 +38,6 @@ services:
         value: "true"
       - key: LLM_MODEL
         value: gpt-4o-mini
-      # Only valid inside this Docker image. Do NOT set SQLCL_BIN to /opt/render/... in the dashboard.
-      - key: SQLCL_BIN
-        value: /opt/sqlcl-bundle/sqlcl/bin/sql
-      - key: JAVA_HOME
-        value: /usr/lib/jvm/java-17-openjdk-amd64
       - key: TNS_ADMIN
         value: /app/wallet
       - key: ORACLE_WALLET_PATH

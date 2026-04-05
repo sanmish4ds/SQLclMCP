@@ -1,0 +1,9 @@
+SQLcl Third-Party License Information
+--------------------------------------
+
+This product contains third-party code. Oracle is required to provide the notices for that code.
+The licence manual for this release can be found at
+
+https://docs.oracle.com/en/database/oracle/sql-developer-command-line/26.1/sqcug/third-party-license-information.html
+
+

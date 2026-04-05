@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * SQLcl MCP Server with HTTP Interface
- * Provides Model Context Protocol and HTTP REST API for SQL generation evaluation.
+ * NL2SQL HTTP server (Node.js): lookup / LLM SQL generation + optional Oracle execution via oracledb.
  *
  * SQL generation modes:
  *   lookup  – exact/partial match against in-memory rules loaded from test_questions.json
@@ -24,8 +23,6 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
-
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
@@ -235,7 +232,6 @@ const config = {
   dbPassword: process.env.DB_PASSWORD || null,
   dbDsn: process.env.DB_DSN || null, // e.g. "prishivdb1_high"
   dbWalletPath: walletPath, // directory containing tnsnames.ora + wallet files (auto-set from ORACLE_WALLET_ZIP_B64)
-  sqlclConnectionName: process.env.SQLCL_CONNECTION_NAME || process.env.DB_DSN || null, // saved connection name for SQLcl MCP connect tool
   enableLLMSqlGeneration: process.env.ENABLE_LLM_SQL_GEN === 'true',
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
@@ -417,350 +413,6 @@ async function generateSql(question, mode = 'hybrid') {
 // Load rules on startup
 loadSQLRules();
 
-// ── SQLcl CSV output parser ───────────────────────────────────────────────────
-function parseSqlclOutput(text) {
-  if (!text) return { columns: [], rows: [], rowCount: 0 };
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length < 2) return { columns: [], rows: [], rowCount: 0, raw: text };
-  // SQLcl commonly appends a footer like: "16 rows selected."
-  // Our simple CSV parser should ignore that footer, otherwise it becomes
-  // a bogus row with missing columns (rendered as NULL in the UI).
-  const isSqlclRowsFooter = (line) => /\b\d*\s*rows?\s+selected\b/i.test(line);
-  function parseCsvLine(line) {
-    const out = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') {
-        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (line[i] === ',' && !inQ) { out.push(cur); cur = ''; }
-      else cur += line[i];
-    }
-    out.push(cur);
-    return out.map(v => v.trim());
-  }
-  try {
-    const headers = parseCsvLine(lines[0]);
-    if (headers.length > 0) {
-      const rows = lines.slice(1)
-        .filter(line => !isSqlclRowsFooter(line))
-        .map(line => {
-        const vals = parseCsvLine(line);
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : null; });
-        return obj;
-      });
-      return { columns: headers, rows, rowCount: rows.length };
-    }
-  } catch (_) {}
-  return { columns: [], rows: [], rowCount: 0, raw: text };
-}
-
-/** Prefer a real executable; ignore Render-native paths and missing files. */
-function resolveSqlclBin() {
-  const dockerDefault = '/opt/sqlcl-bundle/sqlcl/bin/sql';
-  const isPoisonPath = (p) => typeof p === 'string' && p.includes('/opt/render/');
-  const isExecutableFile = (p) => {
-    if (!p || typeof p !== 'string' || isPoisonPath(p)) return false;
-    try {
-      fs.accessSync(p, fs.constants.X_OK);
-      return fs.statSync(p).isFile();
-    } catch (_) {
-      return false;
-    }
-  };
-  const fromEnv = process.env.SQLCL_BIN;
-  if (fromEnv && isPoisonPath(fromEnv)) {
-    console.warn('[SQLcl-MCP] Ignoring SQLCL_BIN (native Render path):', fromEnv);
-  } else if (fromEnv && isExecutableFile(fromEnv)) {
-    return fromEnv;
-  } else if (fromEnv) {
-    console.warn(
-      '[SQLcl-MCP] SQLCL_BIN not usable:',
-      fromEnv,
-      '— trying Docker bundle or PATH',
-    );
-  }
-  if (isExecutableFile(dockerDefault)) return dockerDefault;
-
-  const projectBundle = path.join(__dirname, '.sqlcl-bundle', 'sqlcl', 'bin', 'sql');
-  if (isExecutableFile(projectBundle)) return projectBundle;
-
-  const home = os.homedir();
-  const common = [
-    path.join(home, 'sqlcl', 'sqlcl', 'bin', 'sql'),
-    '/opt/homebrew/opt/sqlcl/libexec/bin/sql',
-    '/opt/homebrew/opt/sqlcl/bin/sql',
-    '/usr/local/opt/sqlcl/libexec/bin/sql',
-    '/usr/local/opt/sqlcl/bin/sql',
-  ];
-  for (const p of common) {
-    if (isExecutableFile(p)) return p;
-  }
-  return 'sql';
-}
-
-// ── Real SQLcl MCP Bridge (spawns `sql mcp` as a child process) ───────────────
-class SqlclMcpBridge {
-  constructor() {
-    this.proc = null;
-    this.buf = '';
-    this.pending = new Map();
-    this.nextId = 1;
-    this.ready = false;
-    this.starting = null;
-    this.connectedTo = null;
-    this._restartingPromise = null;
-    this._keepaliveTimer = null;
-  }
-
-  _mcpModel() {
-    return process.env.SQLCL_MCP_MODEL || 'claude-sonnet-4-5';
-  }
-
-  /** JDBC / Net drops idle sessions (NAT, LB, ADB); detect and restart SQLcl once. */
-  _isStaleConnectionMessage(s) {
-    if (!s || typeof s !== 'string') return false;
-    return /ORA-17008|ORA-17902|ORA-03113|ORA-03114|ORA-12537|ORA-12547|ORA-12570|End of TNS data channel|Closed connection|NetException|Broken pipe|Connection reset|No more data to read/i.test(s);
-  }
-
-  _isStaleConnectionError(err) {
-    return this._isStaleConnectionMessage(err && err.message);
-  }
-
-  _toolResultText(result) {
-    if (!result || !Array.isArray(result.content)) return '';
-    return result.content.map(c => c.text || '').join('');
-  }
-
-  _toolResultLooksStale(result) {
-    if (!result) return false;
-    const text = this._toolResultText(result);
-    return result.isError && this._isStaleConnectionMessage(text);
-  }
-
-  _clearKeepalive() {
-    if (this._keepaliveTimer) {
-      clearInterval(this._keepaliveTimer);
-      this._keepaliveTimer = null;
-    }
-  }
-
-  _scheduleKeepalive() {
-    this._clearKeepalive();
-    const keepMs = Number(process.env.SQLCL_KEEPALIVE_MS || 0);
-    if (keepMs <= 0 || !this.connectedTo || !this.proc) return;
-    this._keepaliveTimer = setInterval(() => {
-      if (!this.ready || !this.proc) return;
-      const model = this._mcpModel();
-      this._rpc('tools/call', {
-        name: 'run-sql',
-        arguments: { sql: 'SELECT 1 FROM DUAL', model },
-      }).catch(err => {
-        console.warn('[SQLcl-MCP] keepalive ping failed:', err.message);
-      });
-    }, keepMs);
-    if (typeof this._keepaliveTimer.unref === 'function') this._keepaliveTimer.unref();
-  }
-
-  /** Single-flight restart after the DB session died while the MCP process stayed up. */
-  async _restartAfterStaleConnection() {
-    if (this._restartingPromise) return this._restartingPromise;
-    const run = async () => {
-      try {
-        console.warn('[SQLcl-MCP] Stale Oracle session detected; restarting SQLcl subprocess...');
-        this.ready = false;
-        this.connectedTo = null;
-        this._clearKeepalive();
-        if (this.proc) {
-          try { this.proc.kill('SIGTERM'); } catch (_) {}
-          this.proc = null;
-        }
-        await new Promise(r => setTimeout(r, 400));
-        if (this.starting) await this.starting;
-        this.starting = this._start().finally(() => { this.starting = null; });
-        await this.starting;
-      } finally {
-        this._restartingPromise = null;
-      }
-    };
-    this._restartingPromise = run();
-    return this._restartingPromise;
-  }
-
-  async ensureReady() {
-    if (this._restartingPromise) await this._restartingPromise;
-    if (this.ready && this.proc) return;
-    if (this.starting) return this.starting;
-    this.starting = this._start().finally(() => { this.starting = null; });
-    return this.starting;
-  }
-
-  async _start() {
-    this._clearKeepalive();
-    if (this.proc) { try { this.proc.kill(); } catch (_) {} this.proc = null; }
-    this.buf = '';
-    this.pending.clear();
-    this.ready = false;
-    const sqlBin = resolveSqlclBin();
-    console.log('[SQLcl-MCP] Using SQLcl binary:', sqlBin);
-    const env = { ...process.env };
-    env.SQLCL_BIN = sqlBin;
-    if (!env.JAVA_HOME) env.JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64';
-    if (!String(env.PATH || '').includes(`${env.JAVA_HOME}/bin`)) {
-      env.PATH = `${env.JAVA_HOME}/bin:${env.PATH || ''}`;
-    }
-    if (config.dbWalletPath) env.TNS_ADMIN = config.dbWalletPath;
-
-    // SQLcl MCP mode does NOT establish DB connections from command-line credentials.
-    // Always start with /nolog; the MCP connect tool is called after init.
-    const sqlArgs = ['-mcp', '/nolog'];
-
-    await new Promise((resolve, reject) => {
-      this.proc = spawn(sqlBin, sqlArgs, { stdio: ['pipe', 'pipe', 'pipe'], env });
-      this.proc.stdout.setEncoding('utf8');
-      this.proc.stdout.on('data', d => this._onData(d));
-      this.proc.stderr.setEncoding('utf8');
-      this.proc.stderr.on('data', d => console.warn('[SQLcl-MCP stderr]', d.trimEnd()));
-      this.proc.on('error', err => {
-        this.proc = null;
-        const wrapped = err && err.code === 'ENOENT'
-          ? new Error(
-            `Cannot run SQLcl (${sqlBin}): ${err.message}. Install SQLcl or set SQLCL_BIN.`,
-          )
-          : err;
-        for (const [, p] of this.pending) p.reject(wrapped);
-        this.pending.clear();
-        reject(wrapped);
-      });
-      this.proc.on('exit', code => {
-        console.log('[SQLcl-MCP] Process exited:', code, 'binary:', sqlBin);
-        this.ready = false; this.connectedTo = null; this.proc = null;
-        let msg = 'SQLcl MCP process exited (code ' + code + ')';
-        if (code === 126 || code === 127) {
-          msg += '. Not found or not executable — run `npm run setup-sqlcl` in this repo, put `sql` on PATH, or set SQLCL_BIN to the `sql` launcher path.';
-        }
-        for (const [, p] of this.pending) p.reject(new Error(msg));
-        this.pending.clear();
-      });
-      setTimeout(resolve, 300); // give spawn time to fail
-    });
-
-    if (!this.proc) throw new Error('SQLcl process failed to start');
-    const init = await this._rpc('initialize', {
-      protocolVersion: '2024-11-05',
-      capabilities: {},
-      clientInfo: { name: 'SQLclMCP-WebUI', version: '1.0' },
-    });
-    console.log('[SQLcl-MCP] Initialized, server:', JSON.stringify((init || {}).serverInfo || {}));
-    this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} }) + '\n');
-    this.ready = true;
-
-    // Disable SQLcl DEFINE substitution so trailing '&' in user text doesn't get treated as bind/variables.
-    try {
-      await this._rpc('tools/call', {
-        name: 'run-sqlcl',
-        arguments: { sqlcl: 'SET DEFINE OFF', model: this._mcpModel() },
-      });
-      console.log('[SQLcl-MCP] SET DEFINE OFF applied');
-    } catch (e) {
-      // Non-fatal: proceed even if SQLcl rejects the command for some reason.
-      console.warn('[SQLcl-MCP] Could not apply SET DEFINE OFF:', e.message);
-    }
-
-    // Auto-connect via run-sqlcl CONNECT command (does not require saved connections).
-    if (config.dbUser && config.dbPassword && (config.dbDsn || (config.dbHost && config.dbSid))) {
-      const dsn = config.dbDsn || `${config.dbHost}:${config.dbPort || 1521}/${config.dbSid}`;
-      const connectCmd = `CONNECT ${config.dbUser}/${config.dbPassword}@${dsn}`;
-      console.log('[SQLcl-MCP] Auto-connecting with run-sqlcl CONNECT to:', dsn);
-      try {
-        const connectResult = await this._rpc('tools/call', {
-          name: 'run-sqlcl',
-          arguments: { sqlcl: connectCmd, model: this._mcpModel() },
-        });
-        const isErr = !!(connectResult || {}).isError;
-        const rawText = ((connectResult || {}).content || []).map(c => c.text || '').join('').trim();
-        if (isErr || /error|invalid|denied|failed/i.test(rawText)) {
-          console.warn('[SQLcl-MCP] Auto-connect run-sqlcl error:', rawText);
-        } else {
-          this.connectedTo = dsn;
-          console.log('[SQLcl-MCP] Connected to:', dsn, '|', rawText.slice(0, 80));
-          this._scheduleKeepalive();
-        }
-      } catch (err) {
-        console.warn('[SQLcl-MCP] Auto-connect failed:', err.message);
-      }
-    }
-  }
-
-  _onData(chunk) {
-    this.buf += chunk;
-    let nl;
-    while ((nl = this.buf.indexOf('\n')) !== -1) {
-      const line = this.buf.slice(0, nl).trim();
-      this.buf = this.buf.slice(nl + 1);
-      if (!line) continue;
-      try {
-        const msg = JSON.parse(line);
-        if (msg.id != null && this.pending.has(msg.id)) {
-          const { resolve, reject } = this.pending.get(msg.id);
-          this.pending.delete(msg.id);
-          if (msg.error) reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-          else resolve(msg.result);
-        }
-      } catch (e) { console.warn('[SQLcl-MCP] parse error:', e.message, line.slice(0, 100)); }
-    }
-  }
-
-  _rpc(method, params) {
-    return new Promise((resolve, reject) => {
-      if (!this.proc) { reject(new Error('SQLcl process not running')); return; }
-      const id = this.nextId++;
-      const timer = setTimeout(() => {
-        if (this.pending.has(id)) { this.pending.delete(id); reject(new Error('SQLcl MCP timed out (30s)')); }
-      }, 30000);
-      this.pending.set(id, {
-        resolve: v => { clearTimeout(timer); resolve(v); },
-        reject: e => { clearTimeout(timer); reject(e); },
-      });
-      this.proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
-    });
-  }
-
-  async callTool(name, args) {
-    await this.ensureReady();
-    const argsWithModel = { model: this._mcpModel(), ...args };
-    const payload = { name, arguments: argsWithModel };
-    const invoke = () => this._rpc('tools/call', payload);
-
-    let result;
-    try {
-      result = await invoke();
-    } catch (err) {
-      if (!this._isStaleConnectionError(err)) throw err;
-      await this._restartAfterStaleConnection();
-      return invoke();
-    }
-    if (this._toolResultLooksStale(result)) {
-      await this._restartAfterStaleConnection();
-      return invoke();
-    }
-    return result;
-  }
-
-  async listTools() {
-    await this.ensureReady();
-    return this._rpc('tools/list', {});
-  }
-
-  stop() {
-    this._clearKeepalive();
-    if (this.proc) { try { this.proc.kill(); } catch (_) {} this.proc = null; }
-    this.ready = false; this.connectedTo = null;
-  }
-}
-
-const sqlclBridge = new SqlclMcpBridge();
 
 // ── HTTP Request Handler ──────────────────────────────────────────────────────
 
@@ -799,9 +451,9 @@ const requestHandler = (request, response) => {
   if (pathname === '/api-info' && request.method === 'GET') {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({
-      name: 'SQLclMCP MCP Server',
+      name: 'NL2SQL MCP HTTP Server',
       status: 'running',
-      offer: 'Natural language to Oracle SQL over HTTP. Send a question, get generated SQL.',
+      offer: 'Natural language to Oracle SQL over HTTP (LLM + Node oracledb).',
       endpoints: {
         ui: 'GET / — browser UI',
         api_info: 'GET /api-info — this JSON',
@@ -906,15 +558,19 @@ const requestHandler = (request, response) => {
 
   // GET /health
   if (pathname === '/health' && request.method === 'GET') {
+    const execOk = !!(config.enableExecuteSql && oracledb);
     response.writeHead(200);
     response.end(JSON.stringify({
       status: 'ok',
       server: 'MCP Server',
       database: `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`,
+      db_connection: (execOk && config.dbUser && config.dbDsn)
+        ? `${config.dbUser}@${config.dbDsn}`
+        : null,
       loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
       llm_enabled: config.enableLLMSqlGeneration,
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
-      execute_sql_available: !!(config.enableExecuteSql && oracledb),
+      execute_sql_available: execOk,
       timestamp: new Date().toISOString(),
     }));
     return;
@@ -1256,25 +912,25 @@ const requestHandler = (request, response) => {
     return;
   }
 
-  // GET /mcp/tools — list available SQLcl MCP-style tools
+  // GET /mcp/tools — HTTP helpers (LLM generates SQL; oracledb runs it)
   if (pathname === '/mcp/tools' && request.method === 'GET') {
     const dbReady = !!(config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword);
     response.writeHead(200);
     response.end(JSON.stringify({
-      server: 'SQLcl MCP over HTTP',
+      server: 'NL2SQL over HTTP (Node.js + oracledb)',
       db_ready: dbReady,
       connection: dbReady ? `${config.dbUser}@${config.dbDsn}` : null,
       tools: [
-        { name: 'list-connections', description: 'Show current database connection status' },
+        { name: 'list-connections', description: 'Show configured database connection status' },
         { name: 'schema-information', description: 'List tables and columns. Pass tableName for one table.' },
-        { name: 'run-sql', description: 'Execute a SELECT query against Oracle Database' },
-        { name: 'run-sqlcl', description: 'Run a SQLcl command: DESC <table>, SHOW TABLES' },
+        { name: 'run-sql', description: 'Run Oracle SQL (SELECT / WITH, or DDL/DML when execution is enabled)' },
+        { name: 'run-sqlcl', description: 'Schema shortcuts: DESC <table>, SHOW TABLES' },
       ],
     }));
     return;
   }
 
-  // POST /mcp/invoke — unified SQLcl MCP tool invocation
+  // POST /mcp/invoke — same tools for browser chat (no SQLcl subprocess)
   if (pathname === '/mcp/invoke' && request.method === 'POST') {
     let body = '';
     request.on('data', chunk => { body += chunk.toString(); });
@@ -1384,10 +1040,16 @@ const requestHandler = (request, response) => {
           response.end(JSON.stringify({ success: false, tool, error: 'Missing params.sql' }));
           return;
         }
-        const upper = sql.toUpperCase();
-        if (!upper.startsWith('SELECT') && !upper.startsWith('WITH')) {
+        const upper = sql.toUpperCase().trim();
+        const isSelect = upper.startsWith('SELECT') || upper.startsWith('WITH');
+        const isMutating = /^(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|BEGIN)\b/.test(upper);
+        if (!isSelect && !isMutating) {
           response.writeHead(400);
-          response.end(JSON.stringify({ success: false, tool, error: 'Only SELECT / WITH…SELECT queries are permitted.' }));
+          response.end(JSON.stringify({
+            success: false,
+            tool,
+            error: 'Only SELECT / WITH, or supported DDL/DML statements, are permitted.',
+          }));
           return;
         }
         const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
@@ -1395,11 +1057,31 @@ const requestHandler = (request, response) => {
         let conn;
         try {
           conn = await oracledb.getConnection(connConfig);
-          const r = await conn.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 500 });
-          const rows = r.rows || [];
-          const columns = r.metaData ? r.metaData.map(m => m.name) : [];
-          response.writeHead(200);
-          response.end(JSON.stringify({ success: true, tool, result: { columns, rows, rowCount: rows.length } }));
+          if (isSelect) {
+            const r = await conn.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 500 });
+            const rows = r.rows || [];
+            const columns = r.metaData ? r.metaData.map(m => m.name) : [];
+            response.writeHead(200);
+            response.end(JSON.stringify({ success: true, tool, result: { columns, rows, rowCount: rows.length } }));
+          } else {
+            const r = await conn.execute(sql, [], { autoCommit: true });
+            let n = r.rowsAffected;
+            if (Array.isArray(n)) n = n.reduce((a, b) => a + (Number(b) || 0), 0);
+            else n = Number(n) || 0;
+            response.writeHead(200);
+            response.end(JSON.stringify({
+              success: true,
+              tool,
+              raw: `Rows affected: ${n}`,
+              result: {
+                columns: ['ROWS_AFFECTED'],
+                rows: [{ ROWS_AFFECTED: String(n) }],
+                rowCount: 1,
+                rowsAffected: n,
+                mutating: true,
+              },
+            }));
+          }
         } catch (err) {
           response.writeHead(500);
           response.end(JSON.stringify({ success: false, tool, error: err.message }));
@@ -1497,7 +1179,7 @@ const requestHandler = (request, response) => {
         response.writeHead(422);
         response.end(JSON.stringify({
           success: false, tool,
-          error: `SQLcl command not supported: "${cmd}". Supported: DESC <table>, SHOW TABLES`,
+          error: `Command not supported: "${cmd}". Supported: DESC <table>, SHOW TABLES`,
         }));
         return;
       }
@@ -1507,77 +1189,6 @@ const requestHandler = (request, response) => {
         success: false,
         error: `Unknown tool: "${data.tool}". Available: list-connections, schema-information, run-sql, run-sqlcl`,
       }));
-    });
-    return;
-  }
-
-  // GET /sqlcl-real/status — probe the real SQLcl MCP process
-  if (pathname === '/sqlcl-real/status' && request.method === 'GET') {
-    (async () => {
-      try {
-        await sqlclBridge.ensureReady();
-        const toolsResult = await sqlclBridge.listTools();
-        response.writeHead(200);
-        response.end(JSON.stringify({
-          success: true,
-          ready: sqlclBridge.ready,
-          connected_to: sqlclBridge.connectedTo,
-          tools: (toolsResult.tools || []).map(t => ({ name: t.name, description: t.description })),
-          engine: 'SQLcl (Java JDBC thin driver)',
-        }));
-      } catch (err) {
-        response.writeHead(200);
-        response.end(JSON.stringify({
-          success: false,
-          ready: false,
-          connected_to: null,
-          error: err.message,
-          hint: 'Ensure SQLcl is installed and "sql" is in PATH. Set SQLCL_BIN env var to override.',
-          engine: null,
-        }));
-      }
-    })();
-    return;
-  }
-
-  // POST /sqlcl-real/invoke — proxy a tool call to the real SQLcl MCP process
-  if (pathname === '/sqlcl-real/invoke' && request.method === 'POST') {
-    let body = '';
-    request.on('data', c => { body += c; });
-    request.on('end', async () => {
-      let data;
-      try { data = JSON.parse(body); } catch (_) {
-        response.writeHead(400);
-        response.end(JSON.stringify({ success: false, error: 'Invalid JSON body' }));
-        return;
-      }
-      const toolName = String(data.tool || '').trim();
-      const args = data.params || {};
-      try {
-        const result = await sqlclBridge.callTool(toolName, args);
-        const isError = !!result.isError;
-        const rawText = (result.content || []).map(c => c.text || '').join('\n').trim();
-        if (isError) {
-          response.writeHead(200);
-          response.end(JSON.stringify({ success: false, tool: toolName, error: rawText }));
-          return;
-        }
-        if (toolName === 'connect') sqlclBridge.connectedTo = args.connection_name || null;
-        if (toolName === 'disconnect') sqlclBridge.connectedTo = null;
-        const parsed = (toolName === 'run-sql' || toolName === 'run-sql-async')
-          ? parseSqlclOutput(rawText) : null;
-        response.writeHead(200);
-        response.end(JSON.stringify({
-          success: true,
-          tool: toolName,
-          connected_to: sqlclBridge.connectedTo,
-          raw: rawText,
-          result: parsed || { text: rawText },
-        }));
-      } catch (err) {
-        response.writeHead(200);
-        response.end(JSON.stringify({ success: false, tool: toolName, error: err.message }));
-      }
     });
     return;
   }

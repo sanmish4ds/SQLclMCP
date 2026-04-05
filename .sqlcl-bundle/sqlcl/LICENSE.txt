@@ -1,0 +1,6 @@
+SQLcl License
+--------------
+
+This product is licensed under the Oracle Free Use Terms and Conditions
+The full text of this license is published on https://www.oracle.com/downloads/licenses/oracle-free-license.html
+

@@ -1,11 +1,10 @@
 {
   "name": "sqlclmcp-mcp-server",
   "version": "1.0.0",
-  "description": "MCP HTTP server for SQLclMCP NL2SQL evaluation (health + generate-sql)",
+  "description": "NL2SQL HTTP server: LLM + Node oracledb against Oracle",
   "main": "mcp-server-http.js",
   "scripts": {
-    "start": "node mcp-server-http.js",
-    "setup-sqlcl": "sh scripts/install-sqlcl.sh"
+    "start": "node mcp-server-http.js"
   },
   "engines": {
     "node": ">=18"
