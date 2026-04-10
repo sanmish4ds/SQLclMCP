@@ -411,6 +411,74 @@ async function generateSqlWithLLM(question) {
   }
 }
 
+async function explainSqlWithLLM(sql, contextQuestion = '') {
+  if (!config.enableLLMSqlGeneration) {
+    return { explanation: null, source: 'llm_disabled', error: 'LLM explanations are disabled' };
+  }
+  if (!config.llmApiKey) {
+    return { explanation: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing' };
+  }
+
+  const sqlClean = String(sql || '').trim().replace(/;+\s*$/, '');
+  if (!sqlClean) return { explanation: null, source: 'bad_request', error: 'No SQL provided' };
+
+  const payload = {
+    model: config.llmModel,
+    temperature: 0.2,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a SQL tutor. Explain SQL clearly and concisely for a learner. ' +
+          'Use bullet points. Always cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
+          'Also add 3 short "Try changing" suggestions to help the user learn. ' +
+          'Do NOT execute SQL. Do NOT invent schema. If something is unknown, say so.',
+      },
+      ...(contextQuestion ? [{ role: 'user', content: `Original question/context: ${contextQuestion}` }] : []),
+      { role: 'user', content: `Explain this Oracle SQL:\n\n${sqlClean}` },
+    ],
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.llmTimeoutMs);
+  try {
+    const response = await fetch(config.llmApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.llmApiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text();
+      return {
+        explanation: null,
+        source: 'llm_error',
+        error: `LLM HTTP ${response.status}: ${bodyText.slice(0, 500)}`,
+      };
+    }
+
+    const data = await response.json();
+    const content = String(data?.choices?.[0]?.message?.content || '').trim();
+    if (!content) {
+      return { explanation: null, source: 'llm_error', error: 'LLM returned empty explanation' };
+    }
+    return { explanation: content, source: 'llm' };
+  } catch (error) {
+    const isAbort = error && error.name === 'AbortError';
+    return {
+      explanation: null,
+      source: 'llm_error',
+      error: isAbort ? 'LLM request timed out' : String(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function generateSql(question, mode = 'hybrid') {
   if (mode === 'lookup') {
     const hit = lookupSql(question);
@@ -479,8 +547,9 @@ const requestHandler = (request, response) => {
         api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
         egress_ip: 'GET /egress-ip — this server\'s outbound IP (for Oracle DB allow list)',
-        generate_sql: 'POST /generate-sql — body: { "question": "…" } (optional mode; default SQL_GENERATION_MODE)',
-        generate_batch: 'POST /generate-batch — body: { "questions": ["q1"] } (optional mode; default SQL_GENERATION_MODE)',
+        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" } (mode optional; defaults to SQL_GENERATION_MODE)',
+        generate_batch: 'POST /generate-batch — body: { "questions": ["q1"], "mode": "llm|lookup|hybrid" } (mode optional; defaults to SQL_GENERATION_MODE)',
+        explain_sql: 'POST /explain-sql — body: { "sql": "SELECT ...", "question": "(optional)" }',
         execute_sql: 'POST /execute-sql — body: { "sql": "SELECT ..." } (opt-in, SELECT only)',
         schema: 'GET /schema — tables and columns for the UI',
         reload_rules: 'POST /reload-rules',
@@ -693,6 +762,31 @@ const requestHandler = (request, response) => {
       } catch (error) {
         response.writeHead(400);
         response.end(JSON.stringify({ error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // POST /explain-sql — explain a SQL query for learning
+  if (pathname === '/explain-sql' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('end', async () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        const sql = String(data.sql || '');
+        const question = String(data.question || '');
+        const r = await explainSqlWithLLM(sql, question);
+        if (!r.explanation) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, error: r.error || 'No explanation generated', source: r.source }));
+          return;
+        }
+        response.writeHead(200);
+        response.end(JSON.stringify({ success: true, explanation: r.explanation, source: r.source }));
+      } catch (error) {
+        response.writeHead(400);
+        response.end(JSON.stringify({ success: false, error: error.message }));
       }
     });
     return;
