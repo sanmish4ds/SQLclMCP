@@ -67,6 +67,17 @@
     .result.success { border-color: #238636; }
     .result.error { border-color: #da3633; color: #f85149; }
     .meta { color: #8b949e; font-size: 0.8rem; margin-top: 0.5rem; }
+    .explain-box {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      color: #c9d1d9;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
     .server-url-row { margin-bottom: 1rem; }
     .server-url-inputs { display: flex; gap: 0.5rem; margin-bottom: 0.35rem; }
     .server-url-inputs input {
@@ -471,9 +482,11 @@
 
   <button type="button" id="btnGenerate">Show SQL</button>
   <button type="button" id="btnCopy" class="secondary" disabled>Copy</button>
+  <button type="button" id="btnExplain" class="secondary" disabled>Explain SQL</button>
   <button type="button" id="btnExecute" class="secondary" disabled>Run SQL</button>
 
   <div id="result"></div>
+  <div id="explainResult"></div>
   <div id="executeResult"></div>
   </div><!-- /tab-nl-sql -->
 
@@ -539,8 +552,10 @@
     const questionEl = document.getElementById('question');
     const btnGenerate = document.getElementById('btnGenerate');
     const btnCopy = document.getElementById('btnCopy');
+    const btnExplain = document.getElementById('btnExplain');
     const btnExecute = document.getElementById('btnExecute');
     const resultEl = document.getElementById('result');
+    const explainResultEl = document.getElementById('explainResult');
     const executeResultEl = document.getElementById('executeResult');
     const statusEl = document.getElementById('serverStatus');
 
@@ -665,6 +680,7 @@
       }
       btnGenerate.disabled = true;
       resultEl.innerHTML = '<div class="result">Generating SQL…</div>';
+      if (explainResultEl) explainResultEl.innerHTML = '';
       try {
         const r = await fetch(MCP_URL + '/generate-sql', {
           method: 'POST',
@@ -678,19 +694,43 @@
             '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
             '<p class="meta">Source: ' + (data.source || 'unknown') + '. Mode: ' + (data.mode || 'unknown') + '</p>';
           btnCopy.disabled = false;
+          btnExplain.disabled = false;
           btnExecute.disabled = false;
           executeResultEl.innerHTML = '';
         } else {
           resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No SQL generated') + '</div>';
           btnCopy.disabled = true;
+          btnExplain.disabled = true;
           btnExecute.disabled = true;
         }
       } catch (e) {
         resultEl.innerHTML = '<div class="result error">Request failed: ' + escapeHtml(e.message) + '</div>';
         btnCopy.disabled = true;
+        btnExplain.disabled = true;
         btnExecute.disabled = true;
       }
       btnGenerate.disabled = false;
+    });
+
+    btnExplain.addEventListener('click', async () => {
+      if (!lastSql) return;
+      if (!explainResultEl) return;
+      btnExplain.disabled = true;
+      explainResultEl.innerHTML = '<div class="explain-box">Explaining…</div>';
+      try {
+        const r = await fetch(MCP_URL + '/explain-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql: lastSql, question: questionEl.value || '' }),
+        });
+        const d = await r.json();
+        if (!d.success) throw new Error(d.error || 'Explain failed');
+        explainResultEl.innerHTML = '<div class="explain-box">' + escapeHtml(String(d.explanation || '')) + '</div>';
+      } catch (e) {
+        explainResultEl.innerHTML = '<div class="explain-box" style="border-color:#da3633;color:#f85149">Explain failed: ' + escapeHtml(e.message || String(e)) + '</div>';
+      } finally {
+        btnExplain.disabled = false;
+      }
     });
 
     btnExecute.addEventListener('click', async () => {
