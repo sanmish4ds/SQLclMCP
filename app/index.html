@@ -983,6 +983,45 @@
     .guided-muted { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.65rem; line-height: 1.45; }
     .guided-loader { color: var(--text-dim); font-size: 0.85rem; }
 
+    .guided-analogy {
+      margin: 1rem 0;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--accent);
+      background: var(--accent-muted);
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+    .guided-analogy .guided-analogy-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-hover);
+      margin-bottom: 0.4rem;
+    }
+    .guided-takeaways {
+      margin: 0.85rem 0 0;
+      padding-left: 1.15rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .guided-takeaways li { margin-bottom: 0.35rem; }
+    .guided-level-note {
+      margin-top: 1rem;
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .guided-level-note strong { color: var(--text); }
+
   </style>
 </head>
 <body>
@@ -992,7 +1031,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Start with <strong>Interactive path</strong> for a few quick questions (learning vs interview, your level), then concepts one step at a time with book excerpts and suggested prompts. Or jump to <strong>Guided practice</strong> and ask anything. Verify critical answers; models can be wrong.</p>
+        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> walks the book chapter by chapter with plain-language summaries and analogies; <strong>Interview prep</strong> uses focused topics and drill prompts. Or jump to <strong>Guided practice</strong> and ask anything. Verify critical answers; models can be wrong.</p>
       </div>
     </div>
   </header>
@@ -1207,12 +1246,51 @@
       return 'Advanced';
     }
 
+    function expectedGuidedIds(curriculum, visit, level) {
+      if (!curriculum || !visit || !level) return [];
+      if (visit === 'learning' && curriculum.learningChapterTracks && curriculum.learningChapterTracks[level]) {
+        return curriculum.learningChapterTracks[level].slice();
+      }
+      const t = curriculum.tracks[visit];
+      return t && t[level] ? t[level].slice() : [];
+    }
+
+    async function fillGuidedBookSlot(bookSlot, searchQ, titleFallback) {
+      const q = String(searchQ || titleFallback || '').trim();
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(function () { ctrl.abort(); }, 8000);
+        const br = await fetch(
+          API_BASE_URL + '/book/search?q=' + encodeURIComponent(q) + '&limit=3&diverse=1&brief=1',
+          { signal: ctrl.signal },
+        );
+        clearTimeout(t);
+        const bd = await br.json();
+        if (!br.ok || (bd.error && !bd.results)) {
+          bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">' +
+            escapeHtml(bd.error || 'Book search unavailable. The server may not have an EPUB loaded — you can still use Guided practice and chips above.') + '</p>';
+          return;
+        }
+        const res = bd.results || [];
+        if (!res.length) {
+          bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">No close matches for this topic in the index. Try a practice chip below — the summary above is self-contained.</p>';
+          return;
+        }
+        bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.55rem;font-size:0.78rem">Excerpts are shortened and de-duplicated by similarity.</p>' + res.map(function (hit) {
+          return '<div class="guided-snippet"><div class="snip-sec">' + escapeHtml(hit.section || 'Section') + '</div>' +
+            escapeHtml(hit.excerpt || '') + '</div>';
+        }).join('');
+      } catch (err) {
+        bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">Could not reach the book search API. Check server URL / network.</p>';
+      }
+    }
+
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead">We will tailor concepts and suggested questions. You can change this any time.</p>' +
+        '<p class="guided-lead">SQL learning follows <strong>chapter summaries</strong> (easy language + analogies). Interview prep uses shorter topic cards. You can change this any time.</p>' +
         '<div class="guided-choice-grid">' +
-        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — build skills step by step</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — book-style chapters, plain English</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
         '</div>';
     }
@@ -1221,10 +1299,10 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : 'Pick your comfort level. We will go one concept at a time and pull related excerpts from the course book when it is loaded on the server.';
+        : 'Pick your comfort level. **Beginner** covers the first three chapters; **Intermediate** five; **Advanced** adds a sixth chapter on NULLs, Oracle habits, and performance intuition. Each screen is a friendly summary first; optional book excerpts come below.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
-        '<p class="guided-lead">' + escapeHtml(lead) + '</p>' +
+        '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
         '<div class="guided-choice-grid">' +
         '<button type="button" class="guided-choice" data-guided-level="beginner">Beginner — new to SQL or need foundations</button>' +
         '<button type="button" class="guided-choice" data-guided-level="intermediate">Intermediate — joins, aggregates, subqueries</button>' +
@@ -1275,44 +1353,85 @@
         (nextHints
           ? '<div class="guided-book"><h4>Suggested next steps</h4><ul style="margin:0;padding-left:1.15rem;color:var(--text-muted);font-size:0.9rem;line-height:1.5">' + nextHints + '</ul></div>'
           : '') +
-        '<div class="guided-book" id="guidedBookSlot"><h4>From the course book</h4><p class="guided-loader">Searching the book index…</p></div>' +
+        '<div class="guided-book" id="guidedBookSlot"><h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.5rem;font-size:0.78rem">We skip near-duplicate chunks when many hits share the same introduction.</p><p class="guided-loader">Searching the book index…</p></div>' +
         '<div class="guided-chip-label">' + escapeHtml(primaryLabel) + '</div>' +
         '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsI : chipsP) + '</div>' +
         '<div class="guided-chip-label">' + escapeHtml(secondaryLabel) + '</div>' +
         '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsP : chipsI) + '</div>' +
         '<p class="guided-muted">Tip: a chip copies its text into <strong>Your question</strong> on the Guided practice tab and switches there — press <strong>Get answer</strong> to use the AI (and book context when enabled on the server).</p>' +
         '<div class="guided-nav">' +
-        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous concept</button>' +
+        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous</button>' +
         '<button type="button" class="guided-choice primary" data-guided-next style="min-width:auto;flex:0">' +
-        (step >= ids.length - 1 ? 'Finish path' : 'Next concept →') +
+        (step >= ids.length - 1 ? 'Finish path' : 'Next →') +
         '</button>' +
         '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
         '</div>';
 
       const bookSlot = document.getElementById('guidedBookSlot');
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(function () { ctrl.abort(); }, 8000);
-        const br = await fetch(API_BASE_URL + '/book/search?q=' + encodeURIComponent(concept.bookSearch || concept.title) + '&limit=4', { signal: ctrl.signal });
-        clearTimeout(t);
-        const bd = await br.json();
-        if (!br.ok || (bd.error && !bd.results)) {
-          bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">' +
-            escapeHtml(bd.error || 'Book search unavailable. The server may not have an EPUB loaded — you can still use Guided practice and chips above.') + '</p>';
-          return;
-        }
-        const res = bd.results || [];
-        if (!res.length) {
-          bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">No close matches for this topic in the index. Try a chip question — the model may still answer from general SQL knowledge.</p>';
-          return;
-        }
-        bookSlot.innerHTML = '<h4>From the course book</h4>' + res.map(function (hit) {
-          return '<div class="guided-snippet"><div class="snip-sec">' + escapeHtml(hit.section || 'Section') + '</div>' +
-            escapeHtml(hit.excerpt || '') + '</div>';
-        }).join('');
-      } catch (e) {
-        bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">Could not reach the book search API. Check server URL / network.</p>';
+      await fillGuidedBookSlot(bookSlot, concept.bookSearch, concept.title);
+    }
+
+    async function renderGuidedChapter(root) {
+      const cur = guidedCurriculum;
+      const ids = guidedState.ids;
+      const step = guidedState.step;
+      const id = ids[step];
+      const ch = cur.chapters && cur.chapters[id];
+      if (!ch) {
+        root.innerHTML = '<p class="guided-muted">Missing chapter in curriculum. Reset and try again.</p>';
+        return;
       }
+
+      const prog = document.getElementById('guidedProgress');
+      prog.textContent =
+        visitLabel(guidedState.visit) + ' · ' + levelLabel(guidedState.level) +
+        ' · Chapter ' + (step + 1) + ' of ' + ids.length + ' — ' + ch.title;
+
+      const paras = (ch.summary || []).map(function (p) {
+        return '<p>' + formatGuidedBold(p) + '</p>';
+      }).join('');
+
+      const analogyHtml = ch.analogy
+        ? '<div class="guided-analogy"><span class="guided-analogy-label">Analogy</span>' + formatGuidedBold(ch.analogy) + '</div>'
+        : '';
+
+      const takeList = (ch.takeaways || []).map(function (line) {
+        return '<li>' + formatGuidedBold(line) + '</li>';
+      }).join('');
+
+      const levelNote = ch.levelNotes && ch.levelNotes[guidedState.level]
+        ? '<div class="guided-level-note"><strong>For your level (' + escapeHtml(levelLabel(guidedState.level)) + '):</strong> ' +
+          formatGuidedBold(ch.levelNotes[guidedState.level]) + '</div>'
+        : '';
+
+      const pq = ch.practiceQuestions || [];
+      const chipsP = pq.map(function (q) {
+        return '<button type="button" class="guided-chip" data-guided-prompt="1">' + escapeHtml(q) + '</button>';
+      }).join('');
+
+      root.innerHTML =
+        '<p class="guided-muted" style="margin:0 0 0.5rem;font-size:0.82rem">' + escapeHtml(ch.label || 'Chapter') + '</p>' +
+        '<h2 class="guided-step-title">' + escapeHtml(ch.title) + '</h2>' +
+        '<div class="guided-concept-body">' + paras + '</div>' +
+        analogyHtml +
+        (takeList
+          ? '<h4 class="guided-chip-label" style="margin-top:1rem">Key takeaways</h4><ul class="guided-takeaways">' + takeList + '</ul>'
+          : '') +
+        levelNote +
+        '<div class="guided-book" id="guidedBookSlot"><h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.5rem;font-size:0.78rem">Optional: see how the book phrases this chapter.</p><p class="guided-loader">Searching the book index…</p></div>' +
+        '<div class="guided-chip-label">Try in Guided practice</div>' +
+        '<div class="guided-chip-row">' + chipsP + '</div>' +
+        '<p class="guided-muted">Chips copy into <strong>Your question</strong> on the Guided practice tab — press <strong>Get answer</strong> for AI help with the lab schema.</p>' +
+        '<div class="guided-nav">' +
+        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous chapter</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-next style="min-width:auto;flex:0">' +
+        (step >= ids.length - 1 ? 'Finish path' : 'Next chapter →') +
+        '</button>' +
+        '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
+        '</div>';
+
+      const bookSlot = document.getElementById('guidedBookSlot');
+      await fillGuidedBookSlot(bookSlot, ch.bookSearch, ch.title);
     }
 
     async function renderGuided() {
@@ -1329,14 +1448,13 @@
       }
 
       if (guidedState.visit && guidedState.level) {
-        const exp = guidedCurriculum.tracks[guidedState.visit] &&
-          guidedCurriculum.tracks[guidedState.visit][guidedState.level];
+        const exp = expectedGuidedIds(guidedCurriculum, guidedState.visit, guidedState.level);
         if (!exp || !exp.length) {
           guidedState = { visit: null, level: null, step: 0, ids: [] };
           saveGuidedState();
         } else {
           const same = exp.length === guidedState.ids.length &&
-            exp.every(function (id, i) { return id === guidedState.ids[i]; });
+            exp.every(function (cid, i) { return cid === guidedState.ids[i]; });
           if (!same) guidedState.ids = exp.slice();
           guidedState.step = Math.max(0, Math.min(guidedState.step, guidedState.ids.length - 1));
           saveGuidedState();
@@ -1355,7 +1473,11 @@
       }
 
       prog.textContent = '';
-      await renderGuidedConcept(root);
+      if (guidedState.visit === 'learning') {
+        await renderGuidedChapter(root);
+      } else {
+        await renderGuidedConcept(root);
+      }
     }
 
     function bindGuidedRootClicks(e) {
@@ -1371,8 +1493,7 @@
       const levelBtn = t.closest('[data-guided-level]');
       if (levelBtn && guidedCurriculum) {
         const level = levelBtn.getAttribute('data-guided-level');
-        const track = guidedCurriculum.tracks[guidedState.visit];
-        const ids = track && track[level] ? track[level].slice() : [];
+        const ids = expectedGuidedIds(guidedCurriculum, guidedState.visit, level);
         if (!ids.length) {
           alert('No curriculum for this combination.');
           return;

@@ -273,21 +273,119 @@ function loadBookFromEpub(epubPath) {
   };
 }
 
-function searchChunks(chunks, query, limit = 12) {
+/**
+ * Jaccard similarity on significant tokens from the start of two texts (catches repeated “SQL Universe” intro chunks).
+ */
+function jaccardTokenSimilarity(textA, textB, maxChars = 400) {
+  const sig = (s) => {
+    const t = new Set(tokenizeForSearch(String(s || '').slice(0, maxChars)));
+    for (const w of [...t]) {
+      if (w.length < 3) t.delete(w);
+    }
+    return t;
+  };
+  const a = sig(textA);
+  const b = sig(textB);
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  for (const w of a) if (b.has(w)) inter++;
+  const union = a.size + b.size - inter;
+  return union ? inter / union : 0;
+}
+
+function excerptsTooSimilar(textA, textB, threshold) {
+  return jaccardTokenSimilarity(textA, textB, 450) >= threshold;
+}
+
+/** Trim to maxLen, preferably at a sentence boundary. */
+function makeExcerpt(text, maxLen = 700) {
+  const t = String(text || '').trim();
+  if (!t || t.length <= maxLen) return t;
+  let cut = t.slice(0, maxLen);
+  const dot = cut.lastIndexOf('. ');
+  if (dot > maxLen * 0.5) cut = cut.slice(0, dot + 1);
+  return cut.trim() + '…';
+}
+
+/**
+ * Start excerpt near the first match of a significant query token so UI snippets skip shared chapter headers.
+ */
+function excerptAnchoredOnQuery(fullText, query, excerptMax) {
+  const t = String(fullText || '').trim();
+  if (!t) return '';
+  const tokens = tokenizeForSearch(query).filter((w) => w.length > 3);
+  const lower = t.toLowerCase();
+  let best = -1;
+  for (const tok of tokens) {
+    const i = lower.indexOf(tok);
+    if (i >= 0 && (best < 0 || i < best)) best = i;
+  }
+  let start = 0;
+  if (best > 100) {
+    let s = lower.lastIndexOf('. ', best - 1);
+    if (s < 0) s = lower.lastIndexOf('\n', best - 1);
+    if (s < 0) s = lower.lastIndexOf(' ', best - 1);
+    start = s >= 0 ? Math.min(s + (lower[s] === '.' ? 2 : 1), best) : Math.max(0, best - 60);
+  }
+  return makeExcerpt(t.slice(start), excerptMax);
+}
+
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.diverse] — skip chunks too similar to already-picked ones (better for UI snippets)
+ * @param {number} [options.excerptMax] — max excerpt length (default 700)
+ * @param {number} [options.diversityThreshold] — Jaccard threshold 0–1 (default 0.3)
+ * @param {number} [options.poolCap] — max ranked candidates to scan when diverse (default 120)
+ * @param {boolean} [options.excerptAnchorQuery] — align brief excerpt to first query-token hit in chunk
+ */
+function searchChunks(chunks, query, limit = 12, options = {}) {
   const q = String(query || '').trim();
   if (!q || !chunks || !chunks.length) return [];
   const tokens = tokenizeForSearch(q);
+  const lim = Math.min(Math.max(1, Number(limit) || 12), 50);
+  const excerptMax = Number(options.excerptMax) > 0 ? Number(options.excerptMax) : 700;
+  const diverse = !!options.diverse;
+  const simThreshold =
+    typeof options.diversityThreshold === 'number' ? options.diversityThreshold : 0.3;
+  const poolCap = Math.min(
+    200,
+    Math.max(lim * 20, Number(options.poolCap) || 120),
+  );
+
   const scored = chunks
     .map((c) => ({ c, s: scoreChunk(tokens.length ? tokens : [q.toLowerCase()], c) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s);
-  const n = Math.min(Number(limit) || 12, 50);
-  return scored.slice(0, n).map((x) => ({
+
+  let chosen;
+  if (diverse) {
+    const pool = scored.slice(0, poolCap);
+    chosen = [];
+    for (const x of pool) {
+      if (chosen.length >= lim) break;
+      const txt = x.c.text || '';
+      let skip = false;
+      for (const y of chosen) {
+        if (excerptsTooSimilar(txt, y.c.text || '', simThreshold)) {
+          skip = true;
+          break;
+        }
+      }
+      if (!skip) chosen.push(x);
+    }
+  } else {
+    chosen = scored.slice(0, lim);
+  }
+
+  const anchor = !!options.excerptAnchorQuery && String(query || '').trim().length > 0;
+  return chosen.map((x) => ({
     id: x.c.id,
     section: x.c.section,
     file: x.c.file,
     score: x.s,
-    excerpt: x.c.text.length > 700 ? `${x.c.text.slice(0, 700)}…` : x.c.text,
+    excerpt: anchor
+      ? excerptAnchoredOnQuery(x.c.text, query, excerptMax)
+      : makeExcerpt(x.c.text, excerptMax),
   }));
 }
 
@@ -319,6 +417,9 @@ function formatContextForPrompt(selected) {
 module.exports = {
   loadBookFromEpub,
   searchChunks,
+  jaccardTokenSimilarity,
+  makeExcerpt,
+  excerptAnchoredOnQuery,
   selectChunksForContext,
   formatContextForPrompt,
   tokenizeForSearch,

@@ -657,7 +657,8 @@ const requestHandler = (request, response) => {
         api_invoke: 'POST /api/invoke — body: { "tool": "run-sql|…", "params": {…} }',
         reload_rules: 'POST /reload-rules',
         book_status: 'GET /book/status — EPUB index',
-        book_search: 'GET /book/search?q=…&limit=12',
+        book_search:
+          'GET /book/search?q=…&limit=12 — optional diverse=1 (dissimilar excerpts), brief=1 (shorter excerpts)',
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path concepts (same file ships in app/ for Netlify)',
       },
@@ -845,9 +846,21 @@ const requestHandler = (request, response) => {
     }
     const q = url.searchParams.get('q') || '';
     const limit = Number(url.searchParams.get('limit') || 12);
-    const results = searchChunks(bookIndex.chunks, q, limit);
+    const diverse =
+      url.searchParams.get('diverse') === '1' || url.searchParams.get('diverse') === 'true';
+    const brief = url.searchParams.get('brief') === '1' || url.searchParams.get('brief') === 'true';
+    const thRaw = url.searchParams.get('diversity_threshold');
+    const diversityThreshold = thRaw != null && thRaw !== '' ? Number(thRaw) : undefined;
+    const results = searchChunks(bookIndex.chunks, q, limit, {
+      diverse,
+      excerptMax: brief ? 360 : 700,
+      excerptAnchorQuery: diverse && brief,
+      ...(Number.isFinite(diversityThreshold) && diversityThreshold > 0 && diversityThreshold < 1
+        ? { diversityThreshold }
+        : {}),
+    });
     response.writeHead(200);
-    response.end(JSON.stringify({ query: q, results }));
+    response.end(JSON.stringify({ query: q, results, diverse, brief }));
     return;
   }
 
