@@ -80,9 +80,3 @@
   to = "https://sqlclmcp-1.onrender.com/api/invoke"
   status = 200
   force = true
-
-[[redirects]]
-  from = "/excel-to-sql"
-  to = "https://sqlclmcp-1.onrender.com/excel-to-sql"
-  status = 200
-  force = true
