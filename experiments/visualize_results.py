@@ -56,8 +56,10 @@ DPI                = 140
 
 def latest_json(results_dir: Path) -> Path | None:
     files = sorted(
-        results_dir.glob("mcp_evaluation_*.json"),
-        key=lambda p: p.stat().st_mtime, reverse=True
+        list(results_dir.glob("sql_evaluation_*.json"))
+        + list(results_dir.glob("mcp_evaluation_*.json")),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
     )
     return files[0] if files else None
 
@@ -820,7 +822,7 @@ def _render_table(fig_title, headers, rows, out, footer=""):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Visualize MCP evaluation (13 graphs + 6 tables)")
+    parser = argparse.ArgumentParser(description="Visualize SQL evaluation results (13 graphs + 6 tables)")
     parser.add_argument("--input",       default="",
                         help="Path to evaluation JSON (default: latest in results/)")
     parser.add_argument("--results-dir", default=str(Path(__file__).parent / "results"))
@@ -829,7 +831,7 @@ def main():
     results_dir = Path(args.results_dir)
     input_path  = Path(args.input) if args.input else latest_json(results_dir)
     if not input_path or not input_path.exists():
-        raise SystemExit("No evaluation JSON found. Run mcp_evaluation.py first.")
+        raise SystemExit("No evaluation JSON found. Run experiments/run_sql_evaluation.py first.")
 
     with input_path.open("r", encoding="utf-8") as f:
         data = json.load(f)

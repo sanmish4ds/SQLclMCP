@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Export failure cases: Baseline (local) vs MCP-generated SQL in a readable table.
+"""Export failure cases: baseline (gold) vs generated SQL in a readable table.
 
 Usage:
-  python export_failure_cases.py [--input results/mcp_evaluation_*.json]
+  python export_failure_cases.py [--input results/sql_evaluation_*.json]
 
 Output: failure_cases_<basename>.md in the same directory as the input JSON.
 """
@@ -17,12 +17,12 @@ RESULTS_DIR = SCRIPT_DIR / "results"
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Export failure cases: Baseline vs MCP SQL in a readable table"
+        description="Export failure cases: baseline vs generated SQL in a readable table"
     )
     parser.add_argument(
         "--input", "-i",
         default=None,
-        help="Path to mcp_evaluation_*.json (default: latest in experiments/results)",
+        help="Path to sql_evaluation_*.json (default: latest in experiments/results)",
     )
     args = parser.parse_args()
 
@@ -30,7 +30,8 @@ def main():
         in_path = Path(args.input).resolve()
     else:
         files = sorted(
-            RESULTS_DIR.glob("mcp_evaluation_*.json"),
+            list(RESULTS_DIR.glob("sql_evaluation_*.json"))
+            + list(RESULTS_DIR.glob("mcp_evaluation_*.json")),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
@@ -132,7 +133,12 @@ def main():
             lines.append(f"**MCP error:** {mcp['error']}")
             lines.append("")
 
-    out_path = in_path.parent / f"failure_cases_{in_path.stem.replace('mcp_evaluation_', '')}.md"
+    stem = in_path.stem
+    for prefix in ("sql_evaluation_", "mcp_evaluation_"):
+        if stem.startswith(prefix):
+            stem = stem[len(prefix):]
+            break
+    out_path = in_path.parent / f"failure_cases_{stem}.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 

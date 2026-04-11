@@ -1,15 +1,16 @@
 {
-  "name": "phrasesql",
+  "name": "sql-learn",
   "version": "1.0.0",
-  "description": "PhraseSQL — NL2SQL for Oracle (LLM + Node oracledb)",
-  "main": "mcp-server-http.js",
+  "description": "Interactive Oracle SQL learning — book index, AI explain, NL→SQL, optional Oracle",
+  "main": "sql-learn-server.js",
   "scripts": {
-    "start": "node mcp-server-http.js"
+    "start": "node sql-learn-server.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "oracledb": "^6.0.0",
     "xlsx": "^0.18.5"
   }

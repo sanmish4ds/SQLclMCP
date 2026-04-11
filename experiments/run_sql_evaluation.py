@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""MCP SQL Evaluation Engine.
+"""Oracle NL→SQL evaluation runner (RQ1–RQ4).
 
-Answers four research questions against a 500-question TPC-H Oracle dataset:
+Compares baseline (gold) SQL vs HTTP API–generated SQL on a TPC-H-style Oracle dataset:
 
   RQ1  Semantic Correctness  — Does the generated query return the same results
                                as the human-written baseline?
@@ -31,9 +31,9 @@ import requests
 
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-TEST_QUESTIONS_FILE = SCRIPT_DIR / "test_questions.json"
+TEST_QUESTIONS_FILE = SCRIPT_DIR / "sql-practice-rules.json"
 RESULTS_DIR = SCRIPT_DIR / "results"
-MCP_SERVER_JS = PROJECT_ROOT / "mcp-server-http.js"
+HTTP_SERVER_JS = PROJECT_ROOT / "sql-learn-server.js"
 RESULTS_DIR.mkdir(exist_ok=True)
 
 COMPLEXITY_TIERS = ("simple", "medium", "complex")
@@ -196,11 +196,20 @@ class MCPClient:
 # ── Pre-run: cleanup, restart MCP, check LLM ──────────────────────────────────
 
 def _move_previous_results_to_legacy():
-    """Move previous mcp_evaluation_*.json and mcp_evaluation_*.png to legacy_results/."""
+    """Move previous evaluation JSON/PNGs in results/ to legacy_results/."""
     LEGACY_DIR = RESULTS_DIR / "legacy_results"
     LEGACY_DIR.mkdir(exist_ok=True)
     moved = 0
-    for p in list(RESULTS_DIR.glob("mcp_evaluation_*.json")) + list(RESULTS_DIR.glob("mcp_evaluation_*.png")):
+    patterns = (
+        "sql_evaluation_*.json",
+        "sql_evaluation_*.png",
+        "mcp_evaluation_*.json",
+        "mcp_evaluation_*.png",
+    )
+    paths = []
+    for pat in patterns:
+        paths.extend(RESULTS_DIR.glob(pat))
+    for p in paths:
         dest = LEGACY_DIR / p.name
         # Avoid overwrite: append _N if dest exists
         n = 0
@@ -220,35 +229,35 @@ def _restart_mcp_server(mcp_url: str):
     except (ValueError, IndexError):
         port = 3000
 
-    # Kill existing node process running mcp-server-http
+    # Kill existing node process running sql-learn-server.js
     try:
         if platform.system() == "Windows":
             subprocess.run(
-                ["taskkill", "/F", "/IM", "node.exe", "/FI", "WINDOWTITLE eq *mcp*"],
+                ["taskkill", "/F", "/IM", "node.exe", "/FI", "WINDOWTITLE eq *sql-learn*"],
                 capture_output=True, timeout=5,
             )
         else:
             subprocess.run(
-                ["pkill", "-f", "mcp-server-http.js"],
+                ["pkill", "-f", "sql-learn-server.js"],
                 capture_output=True, timeout=5,
             )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
     time.sleep(2)
 
-    if not MCP_SERVER_JS.exists():
-        return False, f"MCP server script not found: {MCP_SERVER_JS}"
+    if not HTTP_SERVER_JS.exists():
+        return False, f"HTTP server script not found: {HTTP_SERVER_JS}"
 
     try:
         proc = subprocess.Popen(
-            ["node", str(MCP_SERVER_JS)],
+            ["node", str(HTTP_SERVER_JS)],
             cwd=str(PROJECT_ROOT),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             start_new_session=True,
         )
     except Exception as exc:
-        return False, f"Failed to start MCP server: {exc}"
+        return False, f"Failed to start HTTP server: {exc}"
 
     # Wait for server to be reachable
     for _ in range(15):
@@ -259,7 +268,7 @@ def _restart_mcp_server(mcp_url: str):
                 return True, None
         except Exception:
             pass
-    return False, "MCP server did not become healthy within 15 seconds"
+    return False, "HTTP server did not become healthy within 15 seconds"
 
 
 def _check_mcp_and_llm(mcp_url: str, mcp_mode: str) -> str | None:
@@ -312,7 +321,7 @@ def load_tests(question_ids, complexities):
     with open(TEST_QUESTIONS_FILE, "r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    tests = payload.get("test_questions", payload)
+    tests = payload.get("test_questions", payload.get("sql_practice_rules", payload))
     normalized = []
     for idx, test in enumerate(tests, start=1):
         row = dict(test)
@@ -904,7 +913,7 @@ def run(args):
         "mcp_results": mcp_results,
     }
 
-    out = RESULTS_DIR / f"mcp_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    out = RESULTS_DIR / f"sql_evaluation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
 
@@ -928,8 +937,8 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MCP SQL Evaluation — RQ1 Correctness, RQ2 Efficiency, "
-                    "RQ3 Optimization, RQ4 Robustness"
+        description="SQL evaluation — RQ1 correctness, RQ2 efficiency, "
+                    "RQ3 optimization, RQ4 robustness (baseline vs generated SQL)"
     )
     parser.add_argument(
         "--question-ids", default="",

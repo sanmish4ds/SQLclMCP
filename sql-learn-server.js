@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-/** Product id used in API responses and logs (override: APP_DISPLAY_NAME). */
-const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'PhraseSQL';
+/** Product name in API responses and logs (override: APP_DISPLAY_NAME). */
+const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'SQL Learn';
 
 function normalizeSqlGenerationMode(raw) {
   const m = String(raw == null ? 'hybrid' : raw).trim().toLowerCase();
@@ -12,11 +12,12 @@ function normalizeSqlGenerationMode(raw) {
 
 
 /**
- * PhraseSQL — NL2SQL HTTP server (Node.js): lookup / LLM SQL generation + optional Oracle execution via oracledb.
+ * SQL Learn — interactive Oracle SQL learning HTTP server (Node.js).
+ * Book-grounded explain, natural-language → SQL (lookup / LLM / hybrid), optional Oracle execution via oracledb.
  *
- * SQL generation modes (server-side only; set SQL_GENERATION_MODE=lookup|llm|hybrid, default hybrid):
- *   lookup  – exact/partial match against in-memory rules loaded from test_questions.json
- *   llm     – OpenAI-compatible LLM generation
+ * SQL generation modes (SQL_GENERATION_MODE=lookup|llm|hybrid, default hybrid):
+ *   lookup  – rules from experiments/sql-practice-rules.json
+ *   llm     – OpenAI-compatible API
  *   hybrid  – lookup first, LLM fallback
  */
 
@@ -34,6 +35,12 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const {
+  loadBookFromEpub,
+  searchChunks,
+  selectChunksForContext,
+  formatContextForPrompt,
+} = require('./book-index');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
@@ -250,7 +257,36 @@ const config = {
   llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
   llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS || 15000),
   sqlGenerationMode: normalizeSqlGenerationMode(process.env.SQL_GENERATION_MODE),
+  /** When a book EPUB is loaded, pass retrieved excerpts into Explain SQL (disable: BOOK_CONTEXT_IN_EXPLAIN=false). */
+  bookContextInExplain: process.env.BOOK_CONTEXT_IN_EXPLAIN !== 'false',
 };
+
+let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
+
+function resolveBookEpubPath() {
+  const env = (process.env.BOOK_EPUB_PATH || '').trim();
+  if (env) return path.resolve(env);
+  const local = path.join(__dirname, 'data', 'latest_book.epub');
+  if (fs.existsSync(local)) return local;
+  return null;
+}
+
+function loadBookIndex() {
+  const p = resolveBookEpubPath();
+  if (!p) {
+    bookIndex = { loaded: false, chunks: [], meta: null, error: null };
+    console.log(`[${APP_DISPLAY_NAME}] Book EPUB: not configured (BOOK_EPUB_PATH or data/latest_book.epub)`);
+    return;
+  }
+  const r = loadBookFromEpub(p);
+  if (r.ok) {
+    bookIndex = { loaded: true, chunks: r.chunks, meta: r.meta, error: null };
+    console.log(`[${APP_DISPLAY_NAME}] Book: "${r.meta.title}" — ${r.meta.chunkCount} chunks ← ${p}`);
+  } else {
+    bookIndex = { loaded: false, chunks: [], meta: null, error: r.error };
+    console.warn(`[${APP_DISPLAY_NAME}] Book EPUB failed: ${r.error}`);
+  }
+}
 
 /** Server default from SQL_GENERATION_MODE; body may still pass mode for API overrides (e.g. batch eval, SQL fix). */
 function resolveSqlModeFromRequest(bodyMode) {
@@ -262,7 +298,7 @@ function resolveSqlModeFromRequest(bodyMode) {
 // ── SQL Rule Store ────────────────────────────────────────────────────────────
 
 let SQL_GENERATION_RULES = {};
-const testQuestionsPath = path.join(__dirname, 'experiments', 'test_questions.json');
+const testQuestionsPath = path.join(__dirname, 'experiments', 'sql-practice-rules.json');
 let rulesLastMtimeMs = 0;
 
 function loadSQLRules() {
@@ -270,7 +306,7 @@ function loadSQLRules() {
     const stats = fs.statSync(testQuestionsPath);
     const content = fs.readFileSync(testQuestionsPath, 'utf8');
     const data = JSON.parse(content);
-    const tests = data.test_questions || data;
+    const tests = data.test_questions || data.sql_practice_rules || data;
 
     SQL_GENERATION_RULES = {};
     tests.forEach(test => {
@@ -281,7 +317,7 @@ function loadSQLRules() {
     console.log(`[${APP_DISPLAY_NAME}] Loaded ${Object.keys(SQL_GENERATION_RULES).length} SQL generation rules`);
     return true;
   } catch (error) {
-    console.warn(`[${APP_DISPLAY_NAME}] Could not load test_questions.json:`, error.message);
+    console.warn(`[${APP_DISPLAY_NAME}] Could not load sql-practice-rules.json:`, error.message);
     loadBasicRules();
     return false;
   }
@@ -291,7 +327,7 @@ function maybeReloadSQLRules() {
   try {
     const stats = fs.statSync(testQuestionsPath);
     if (stats.mtimeMs > rulesLastMtimeMs) {
-      console.log(`[${APP_DISPLAY_NAME}] Detected test_questions.json update, reloading rules...`);
+      console.log(`[${APP_DISPLAY_NAME}] Detected sql-practice-rules.json update, reloading rules...`);
       loadSQLRules();
     }
   } catch (error) {
@@ -411,16 +447,31 @@ async function generateSqlWithLLM(question) {
   }
 }
 
-async function explainSqlWithLLM(sql, contextQuestion = '') {
+async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
   if (!config.enableLLMSqlGeneration) {
-    return { explanation: null, source: 'llm_disabled', error: 'LLM explanations are disabled' };
+    return { explanation: null, source: 'llm_disabled', error: 'LLM explanations are disabled', book_citations: [] };
   }
   if (!config.llmApiKey) {
-    return { explanation: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing' };
+    return { explanation: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing', book_citations: [] };
   }
 
   const sqlClean = String(sql || '').trim().replace(/;+\s*$/, '');
-  if (!sqlClean) return { explanation: null, source: 'bad_request', error: 'No SQL provided' };
+  if (!sqlClean) return { explanation: null, source: 'bad_request', error: 'No SQL provided', book_citations: [] };
+
+  const wantBook =
+    explainOpts.useBookContext !== false &&
+    config.bookContextInExplain &&
+    bookIndex.loaded &&
+    bookIndex.chunks.length > 0;
+  let bookUserMsg = null;
+  let bookCitations = [];
+  if (wantBook) {
+    const selected = selectChunksForContext(bookIndex.chunks, sqlClean, contextQuestion, 5);
+    if (selected.length) {
+      bookCitations = selected.map((c) => ({ section: c.section, file: c.file }));
+      bookUserMsg = { role: 'user', content: formatContextForPrompt(selected) };
+    }
+  }
 
   const payload = {
     model: config.llmModel,
@@ -432,8 +483,10 @@ async function explainSqlWithLLM(sql, contextQuestion = '') {
           'You are a SQL tutor. Explain SQL clearly and concisely for a learner. ' +
           'Use bullet points. Always cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
           'Also add 3 short "Try changing" suggestions to help the user learn. ' +
-          'Do NOT execute SQL. Do NOT invent schema. If something is unknown, say so.',
+          'Do NOT execute SQL. Do NOT invent schema. If something is unknown, say so. ' +
+          'When book excerpts were provided, you may reference those ideas and optionally mention the section name in passing; do not quote long passages.',
       },
+      ...(bookUserMsg ? [bookUserMsg] : []),
       ...(contextQuestion ? [{ role: 'user', content: `Original question/context: ${contextQuestion}` }] : []),
       { role: 'user', content: `Explain this Oracle SQL:\n\n${sqlClean}` },
     ],
@@ -458,21 +511,23 @@ async function explainSqlWithLLM(sql, contextQuestion = '') {
         explanation: null,
         source: 'llm_error',
         error: `LLM HTTP ${response.status}: ${bodyText.slice(0, 500)}`,
+        book_citations: bookCitations,
       };
     }
 
     const data = await response.json();
     const content = String(data?.choices?.[0]?.message?.content || '').trim();
     if (!content) {
-      return { explanation: null, source: 'llm_error', error: 'LLM returned empty explanation' };
+      return { explanation: null, source: 'llm_error', error: 'LLM returned empty explanation', book_citations: bookCitations };
     }
-    return { explanation: content, source: 'llm' };
+    return { explanation: content, source: 'llm', book_citations: bookCitations };
   } catch (error) {
     const isAbort = error && error.name === 'AbortError';
     return {
       explanation: null,
       source: 'llm_error',
       error: isAbort ? 'LLM request timed out' : String(error),
+      book_citations: bookCitations,
     };
   } finally {
     clearTimeout(timeout);
@@ -499,6 +554,7 @@ async function generateSql(question, mode = 'hybrid') {
 
 // Load rules on startup
 loadSQLRules();
+loadBookIndex();
 
 
 // ── HTTP Request Handler ──────────────────────────────────────────────────────
@@ -522,12 +578,12 @@ const requestHandler = (request, response) => {
   // GET / — chat UI (same origin as API; avoids hardcoding Render URL after service rename)
   if ((pathname === '/' || pathname === '') && request.method === 'GET') {
     try {
-      const html = fs.readFileSync(path.join(__dirname, 'app', 'index.html'), 'utf8');
+      const html = fs.readFileSync(path.join(__dirname, 'app', 'sql-learn-ui.html'), 'utf8');
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       response.end(html);
     } catch (err) {
       response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Missing app/index.html: ' + err.message);
+      response.end('Missing app/sql-learn-ui.html: ' + err.message);
     }
     return;
   }
@@ -539,20 +595,25 @@ const requestHandler = (request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({
       name: APP_DISPLAY_NAME,
-      tagline: 'Natural language → Oracle SQL',
+      tagline: 'Interactive Oracle SQL learning — book, LLM, and live practice',
       status: 'running',
-      offer: 'Turn plain English into Oracle SQL — LLM plus Node.js oracledb.',
+      offer: 'Learn SQL with an indexed course book, AI explanations, NL→SQL, and optional Oracle runs.',
       endpoints: {
         ui: 'GET / — browser UI',
         api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
-        egress_ip: 'GET /egress-ip — this server\'s outbound IP (for Oracle DB allow list)',
-        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" } (mode optional; defaults to SQL_GENERATION_MODE)',
-        generate_batch: 'POST /generate-batch — body: { "questions": ["q1"], "mode": "llm|lookup|hybrid" } (mode optional; defaults to SQL_GENERATION_MODE)',
-        explain_sql: 'POST /explain-sql — body: { "sql": "SELECT ...", "question": "(optional)" }',
-        execute_sql: 'POST /execute-sql — body: { "sql": "SELECT ..." } (opt-in, SELECT only)',
-        schema: 'GET /schema — tables and columns for the UI',
+        egress_ip: 'GET /egress-ip — outbound IP (Oracle ACL allow list)',
+        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" }',
+        generate_batch: 'POST /generate-batch — body: { "questions": ["q1"], "mode": "…" }',
+        explain_sql: 'POST /explain-sql — body: { "sql": "…", "question": "…", "use_book_context": true }',
+        execute_sql: 'POST /execute-sql — body: { "sql": "…" } (opt-in)',
+        schema: 'GET /schema — tables and columns',
+        api_tools: 'GET /api/tools — lab tool list (DB readiness)',
+        api_invoke: 'POST /api/invoke — body: { "tool": "run-sql|…", "params": {…} }',
         reload_rules: 'POST /reload-rules',
+        book_status: 'GET /book/status — EPUB index',
+        book_search: 'GET /book/search?q=…&limit=12',
+        book_reload: 'POST /book/reload',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -634,7 +695,7 @@ const requestHandler = (request, response) => {
               })),
             };
             try {
-              const rawTips = fs.readFileSync(path.join(__dirname, 'schema.json'), 'utf8');
+              const rawTips = fs.readFileSync(path.join(__dirname, 'schema-reference.json'), 'utf8');
               const tipsObj = JSON.parse(rawTips);
               if (Array.isArray(tipsObj.tips) && tipsObj.tips.length) {
                 schema.tips = tipsObj.tips;
@@ -652,7 +713,7 @@ const requestHandler = (request, response) => {
 
       if (!schema) {
         try {
-          const raw = fs.readFileSync(path.join(__dirname, 'schema.json'), 'utf8');
+          const raw = fs.readFileSync(path.join(__dirname, 'schema-reference.json'), 'utf8');
           schema = JSON.parse(raw);
         } catch (_) {
           schema = fallbackSchema;
@@ -681,7 +742,59 @@ const requestHandler = (request, response) => {
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
       sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
+      book: bookIndex.loaded
+        ? {
+            loaded: true,
+            title: bookIndex.meta.title,
+            author: bookIndex.meta.author,
+            chunks: bookIndex.meta.chunkCount,
+          }
+        : { loaded: false, error: bookIndex.error || null },
       timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+
+  // GET /book/status — canonical EPUB index for the learning UI
+  if (pathname === '/book/status' && request.method === 'GET') {
+    response.writeHead(200);
+    response.end(JSON.stringify({
+      loaded: bookIndex.loaded,
+      title: bookIndex.meta?.title || null,
+      author: bookIndex.meta?.author || null,
+      chunk_count: bookIndex.meta?.chunkCount ?? 0,
+      epub_path: bookIndex.meta?.epubPath || null,
+      error: bookIndex.error || null,
+      context_in_explain: config.bookContextInExplain,
+    }));
+    return;
+  }
+
+  // GET /book/search?q=…
+  if (pathname === '/book/search' && request.method === 'GET') {
+    if (!bookIndex.loaded || !bookIndex.chunks.length) {
+      response.writeHead(503);
+      response.end(JSON.stringify({ error: 'Book not loaded', hint: 'Set BOOK_EPUB_PATH or add data/latest_book.epub', results: [] }));
+      return;
+    }
+    const q = url.searchParams.get('q') || '';
+    const limit = Number(url.searchParams.get('limit') || 12);
+    const results = searchChunks(bookIndex.chunks, q, limit);
+    response.writeHead(200);
+    response.end(JSON.stringify({ query: q, results }));
+    return;
+  }
+
+  // POST /book/reload — re-index EPUB after file edits
+  if (pathname === '/book/reload' && request.method === 'POST') {
+    loadBookIndex();
+    response.writeHead(200);
+    response.end(JSON.stringify({
+      success: true,
+      loaded: bookIndex.loaded,
+      chunk_count: bookIndex.meta?.chunkCount ?? 0,
+      title: bookIndex.meta?.title || null,
+      error: bookIndex.error || null,
     }));
     return;
   }
@@ -776,14 +889,25 @@ const requestHandler = (request, response) => {
         const data = JSON.parse(body || '{}');
         const sql = String(data.sql || '');
         const question = String(data.question || '');
-        const r = await explainSqlWithLLM(sql, question);
+        const useBookContext = data.use_book_context !== false;
+        const r = await explainSqlWithLLM(sql, question, { useBookContext });
         if (!r.explanation) {
           response.writeHead(400);
-          response.end(JSON.stringify({ success: false, error: r.error || 'No explanation generated', source: r.source }));
+          response.end(JSON.stringify({
+            success: false,
+            error: r.error || 'No explanation generated',
+            source: r.source,
+            book_citations: r.book_citations || [],
+          }));
           return;
         }
         response.writeHead(200);
-        response.end(JSON.stringify({ success: true, explanation: r.explanation, source: r.source }));
+        response.end(JSON.stringify({
+          success: true,
+          explanation: r.explanation,
+          source: r.source,
+          book_citations: r.book_citations || [],
+        }));
       } catch (error) {
         response.writeHead(400);
         response.end(JSON.stringify({ success: false, error: error.message }));
@@ -1047,8 +1171,8 @@ const requestHandler = (request, response) => {
     return;
   }
 
-  // GET /mcp/tools — HTTP helpers (LLM generates SQL; oracledb runs it)
-  if (pathname === '/mcp/tools' && request.method === 'GET') {
+  // GET /api/tools — lab capabilities (oracledb readiness, tool names)
+  if (pathname === '/api/tools' && request.method === 'GET') {
     const dbReady = !!(config.enableExecuteSql && oracledb && config.dbDsn && config.dbUser && config.dbPassword);
     response.writeHead(200);
     response.end(JSON.stringify({
@@ -1065,8 +1189,8 @@ const requestHandler = (request, response) => {
     return;
   }
 
-  // POST /mcp/invoke — tools for browser chat (oracledb)
-  if (pathname === '/mcp/invoke' && request.method === 'POST') {
+  // POST /api/invoke — browser SQL lab (oracledb)
+  if (pathname === '/api/invoke' && request.method === 'POST') {
     let body = '';
     request.on('data', chunk => { body += chunk.toString(); });
     request.on('end', async () => {
@@ -1137,7 +1261,7 @@ const requestHandler = (request, response) => {
           }
         } else {
           try {
-            const raw = fs.readFileSync(path.join(__dirname, 'schema.json'), 'utf8');
+            const raw = fs.readFileSync(path.join(__dirname, 'schema-reference.json'), 'utf8');
             const schema = JSON.parse(raw);
             const tables = (schema.tables || []).map(t => t.name);
             if (tableName) {
@@ -1156,7 +1280,7 @@ const requestHandler = (request, response) => {
             }
           } catch (_) {
             response.writeHead(503);
-            response.end(JSON.stringify({ success: false, tool, error: 'DB execution not available and schema.json could not be read' }));
+            response.end(JSON.stringify({ success: false, tool, error: 'DB execution not available and schema-reference.json could not be read' }));
           }
         }
         return;
@@ -1353,9 +1477,12 @@ server.listen(config.httpPort, listenHost, () => {
   console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
   console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
   console.log(`  GET  /health          - Server health check`);
-  console.log(`  POST /reload-rules    - Reload SQL rules from test_questions.json`);
+  console.log(`  POST /reload-rules    - Reload SQL rules from experiments/sql-practice-rules.json`);
   console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
   console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
+  if (bookIndex.loaded) {
+    console.log(`  GET  /book/search     - Search "${bookIndex.meta.title}" (${bookIndex.meta.chunkCount} chunks)`);
+  }
 });
 
 server.on('error', (error) => {

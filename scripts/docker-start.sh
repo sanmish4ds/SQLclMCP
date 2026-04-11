@@ -56,4 +56,4 @@ if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
   echo "FATAL: node not found (tried /usr/local/bin/node and PATH)" >&2
   exit 127
 fi
-exec "$NODE_BIN" /app/mcp-server-http.js
+exec "$NODE_BIN" /app/sql-learn-server.js

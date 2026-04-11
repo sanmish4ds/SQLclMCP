@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Leave empty for same-origin API (e.g. Netlify proxies in netlify.toml). For direct cross-origin calls, set your backend origin, e.g. https://example.onrender.com -->
-  <meta name="phrasesql-api" content="">
-  <title>PhraseSQL — Ask in plain language</title>
+  <meta name="sql-learn-api" content="">
+  <title>SQL Learn — Ask in plain language</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -363,7 +363,7 @@
 <body>
   <div class="page">
     <header>
-      <p class="brand">PhraseSQL</p>
+      <p class="brand">SQL Learn</p>
       <h1>Ask in plain language</h1>
       <p class="tagline">Turn everyday questions into database queries. Review the result, then run it when you are ready.</p>
     </header>
@@ -400,17 +400,17 @@
     </div>
 
     <footer>
-      PhraseSQL produces draft queries for review. Always confirm output before use in production.
+      SQL Learn produces draft queries for review. Always confirm output before use in production.
     </footer>
   </div>
 
   <script>
     function getApiBase() {
-      const meta = document.querySelector('meta[name="phrasesql-api"]');
+      const meta = document.querySelector('meta[name="sql-learn-api"]');
       const raw = (meta && meta.getAttribute('content') || '').trim().replace(/\/$/, '');
       const placeholder =
         !raw ||
-        /your-phrasesql|YOUR_RENDER_SERVICE/i.test(raw);
+        /your-sql-learn|YOUR_RENDER_SERVICE/i.test(raw);
       if (typeof location !== 'undefined' && location.protocol === 'file:') {
         return placeholder ? 'https://sqlclmcp-1.onrender.com' : raw;
       }
@@ -418,7 +418,7 @@
       return '';
     }
 
-    const MCP_URL = getApiBase();
+    const API_BASE_URL = getApiBase();
 
     const questionEl = document.getElementById('question');
     const btnGenerate = document.getElementById('btnGenerate');
@@ -469,7 +469,7 @@
     }
 
     async function checkHealth() {
-      const base = MCP_URL;
+      const base = API_BASE_URL;
       try {
         const r = await fetch(base + '/health');
         const data = await r.json();
@@ -522,7 +522,7 @@
         ],
       };
       try {
-        const r = await fetch(MCP_URL + '/schema');
+        const r = await fetch(API_BASE_URL + '/schema');
         schemaData = r.ok ? await r.json() : fallback;
       } catch (_) {
         schemaData = fallback;
@@ -600,7 +600,7 @@
       btnGenerate.disabled = true;
       resultEl.innerHTML = '<div class="result">Generating SQL…</div>';
       try {
-        const r = await fetch(MCP_URL + '/generate-sql', {
+        const r = await fetch(API_BASE_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question }),
@@ -640,7 +640,7 @@
       executeResultEl.innerHTML = '<p class="meta">Running…</p>';
       btnExecute.disabled = true;
       try {
-        const r = await fetch(MCP_URL + '/execute-sql', {
+        const r = await fetch(API_BASE_URL + '/execute-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sql: lastSql }),
