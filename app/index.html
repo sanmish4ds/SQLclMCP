@@ -514,54 +514,6 @@
       border-color: var(--accent);
     }
 
-    .tools-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.9rem 1.1rem;
-      margin-bottom: 0.85rem;
-      font-size: 0.84rem;
-      line-height: 1.5;
-      box-shadow: var(--shadow);
-    }
-
-    .tools-panel strong { color: var(--text); }
-
-    .tool-tag-static {
-      display: inline-block;
-      background: var(--bg-input);
-      color: var(--text-dim);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      padding: 0.2rem 0.45rem;
-      border-radius: 5px;
-      margin: 0.2rem 0.15rem 0 0;
-      border: 1px solid var(--border);
-      cursor: default;
-      user-select: none;
-    }
-
-    .conn-badge {
-      display: inline-block;
-      padding: 0.2rem 0.55rem;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      font-family: var(--mono);
-      font-weight: 600;
-      margin-left: 0.35rem;
-    }
-
-    .conn-badge.on {
-      border: 1px solid rgba(4, 120, 87, 0.35);
-      color: var(--success);
-      background: rgba(4, 120, 87, 0.08);
-    }
-
-    .conn-badge.off {
-      border: 1px solid var(--border-strong);
-      color: var(--text-dim);
-    }
-
     .chat-wrap { display: flex; flex-direction: column; }
 
     .chat-history {
@@ -958,7 +910,6 @@
 
   <div id="tab-lab" class="tab-panel" role="tabpanel">
     <p class="status" id="labStatus">Checking database connection…</p>
-    <div id="labTools" class="tools-panel">Initializing…</div>
     <div class="chat-wrap card" style="padding:0;overflow:hidden;box-shadow:var(--shadow)">
       <div class="chat-history" id="chatHistory" style="padding:0.75rem 1rem 0">
         <div class="chat-welcome">
@@ -1370,15 +1321,11 @@
     function renderLabLoader(msg) {
       labBootLoading = true;
       labBootMsg = msg || labBootMsg;
-      const toolsEl = document.getElementById('labTools');
       const labStatusElLocal = document.getElementById('labStatus');
-      if (toolsEl) {
-        toolsEl.innerHTML =
+      if (labStatusElLocal) {
+        labStatusElLocal.innerHTML =
           '<span class="loader-wrap"><span class="loader"></span>' +
           escapeHtml(labBootMsg) + '</span>';
-      }
-      if (labStatusElLocal) {
-        labStatusElLocal.textContent = labBootMsg;
         labStatusElLocal.className = 'status fail';
       }
     }
@@ -1404,7 +1351,6 @@
     });
 
     // ── SQL lab tab (LLM + POST /api/invoke + oracledb) ────────
-    let labToolsLoaded = false;
     let dbExecuteReady = false;
     let chatConnectedTo = null;  // "${user}@${dsn}" from GET /health when execute is on
     const labStatusEl = document.getElementById('labStatus');
@@ -1414,8 +1360,6 @@
     const sqlStore = [];
 
     async function loadLabTools() {
-      labToolsLoaded = true;
-      const toolsEl = document.getElementById('labTools');
       try {
         renderLabLoader('Checking server');
         const ctrl = new AbortController();
@@ -1426,32 +1370,18 @@
         const data = await r.json();
         dbExecuteReady = !!data.execute_sql_available;
         chatConnectedTo = data.db_connection || null;
-        const toolsR = await fetch(API_BASE_URL + '/api/tools', { signal: ctrl.signal });
-        const toolsJson = toolsR.ok ? await toolsR.json() : { tools: [] };
-        const toolTags = (toolsJson.tools || []).map(t =>
-          '<span class="tool-tag-static">' + escapeHtml(t.name) + '</span>'
-        ).join('');
         if (dbExecuteReady && chatConnectedTo) {
-          toolsEl.innerHTML =
-            '<strong>SQL lab</strong> <span class="conn-badge on">Execute enabled</span>' +
-            '<br><span class="lab-muted">' + escapeHtml(chatConnectedTo) + '</span>' +
-            '<br><span class="lab-muted">Tools: </span>' + toolTags;
-          labStatusEl.textContent = 'Connected: ' + chatConnectedTo + ' — lab ready';
+          labStatusEl.textContent = 'Lab ready — SQL execution enabled.';
           labStatusEl.className = 'status ok';
         } else {
-          toolsEl.innerHTML =
-            '<strong>SQL lab</strong> <span class="conn-badge off">Execute off</span>' +
-            '<br><span class="lab-muted" style="font-size:0.75rem">Enable <code>EXECUTE_SQL_ENABLED=true</code> and set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> (and wallet env) on the server to run SQL from this tab.</span>' +
-            (toolTags ? '<br><span class="lab-muted">Tools: </span>' + toolTags : '');
-          labStatusEl.textContent = 'Execution disabled — you can still generate SQL and read explanations (no live runs).';
+          labStatusEl.textContent =
+            'Execution disabled — set EXECUTE_SQL_ENABLED=true and DB_DSN, DB_USER, DB_PASSWORD (and wallet env) on the server to run SQL. You can still generate SQL and read explanations.';
           labStatusEl.className = 'status fail';
         }
       } catch (e) {
         const isTimeout = e.name === 'AbortError';
         dbExecuteReady = false;
         chatConnectedTo = null;
-        document.getElementById('labTools').innerHTML =
-          '<span class="text-warn">' + (isTimeout ? 'Server waking up. Retry in 15s.' : 'Cannot reach server') + '</span>';
         labStatusEl.textContent = isTimeout ? 'Waking up. Retry in 15s.' : 'Server unreachable';
         labStatusEl.className = 'status fail';
         if (isTimeout) setTimeout(loadLabTools, 15000);
@@ -1770,9 +1700,8 @@
               '<p class="chat-no-db-hint">Set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, and <code>EXECUTE_SQL_ENABLED=true</code> on the server.</p>'
             );
           } else {
-            const currentBadge = chatConnectedTo ? ' <span class="conn-badge on" style="float:right">' + escapeHtml(chatConnectedTo) + '</span>' : '';
             setBotContent(botDiv,
-              '<div class="chat-label">Configured connection (click to pin label)' + currentBadge + '</div>' +
+              '<div class="chat-label">Configured connection (click to pin label)</div>' +
               '<div class="chat-table-chips">' +
               conns.map(c => {
                 const name = c.name || '';
