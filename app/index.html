@@ -939,22 +939,6 @@
       margin: 0 0 0.55rem;
       font-weight: 700;
     }
-    .guided-snippet {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      background: var(--bg-elevated);
-      border-radius: var(--radius-sm);
-      padding: 0.55rem 0.7rem;
-      margin-bottom: 0.5rem;
-      border: 1px solid var(--border);
-      line-height: 1.45;
-    }
-    .guided-snippet .snip-sec {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 0.3rem;
-    }
     .guided-chip-label {
       font-size: 0.68rem;
       font-weight: 700;
@@ -1255,36 +1239,6 @@
       return t && t[level] ? t[level].slice() : [];
     }
 
-    async function fillGuidedBookSlot(bookSlot, searchQ, titleFallback) {
-      const q = String(searchQ || titleFallback || '').trim();
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(function () { ctrl.abort(); }, 8000);
-        const br = await fetch(
-          API_BASE_URL + '/book/search?q=' + encodeURIComponent(q) + '&limit=3&diverse=1&brief=1',
-          { signal: ctrl.signal },
-        );
-        clearTimeout(t);
-        const bd = await br.json();
-        if (!br.ok || (bd.error && !bd.results)) {
-          bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">' +
-            escapeHtml(bd.error || 'Book search unavailable. The server may not have an EPUB loaded — you can still use Guided practice and chips above.') + '</p>';
-          return;
-        }
-        const res = bd.results || [];
-        if (!res.length) {
-          bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">No close matches for this topic in the index. Try a practice chip below — the summary above is self-contained.</p>';
-          return;
-        }
-        bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.55rem;font-size:0.78rem">Excerpts are shortened and de-duplicated by similarity.</p>' + res.map(function (hit) {
-          return '<div class="guided-snippet"><div class="snip-sec">' + escapeHtml(hit.section || 'Section') + '</div>' +
-            escapeHtml(hit.excerpt || '') + '</div>';
-        }).join('');
-      } catch (err) {
-        bookSlot.innerHTML = '<h4>Related book passages</h4><p class="guided-muted">Could not reach the book search API. Check server URL / network.</p>';
-      }
-    }
-
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
@@ -1299,7 +1253,7 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : 'Pick your comfort level. **Beginner** covers the first three chapters; **Intermediate** five; **Advanced** adds a sixth chapter on NULLs, Oracle habits, and performance intuition. Each screen is a friendly summary first; optional book excerpts come below.';
+        : 'Pick your comfort level. **Beginner** covers the first three chapters; **Intermediate** five; **Advanced** adds a sixth chapter on NULLs, Oracle habits, and performance intuition. Each screen is a self-contained summary with analogies and practice chips.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
         '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
@@ -1311,7 +1265,7 @@
         '<div class="guided-nav"><button type="button" class="secondary" data-guided-back="visit">← Change purpose</button></div>';
     }
 
-    async function renderGuidedConcept(root) {
+    function renderGuidedConcept(root) {
       const cur = guidedCurriculum;
       const ids = guidedState.ids;
       const step = guidedState.step;
@@ -1353,7 +1307,6 @@
         (nextHints
           ? '<div class="guided-book"><h4>Suggested next steps</h4><ul style="margin:0;padding-left:1.15rem;color:var(--text-muted);font-size:0.9rem;line-height:1.5">' + nextHints + '</ul></div>'
           : '') +
-        '<div class="guided-book" id="guidedBookSlot"><h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.5rem;font-size:0.78rem">We skip near-duplicate chunks when many hits share the same introduction.</p><p class="guided-loader">Searching the book index…</p></div>' +
         '<div class="guided-chip-label">' + escapeHtml(primaryLabel) + '</div>' +
         '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsI : chipsP) + '</div>' +
         '<div class="guided-chip-label">' + escapeHtml(secondaryLabel) + '</div>' +
@@ -1366,12 +1319,9 @@
         '</button>' +
         '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
         '</div>';
-
-      const bookSlot = document.getElementById('guidedBookSlot');
-      await fillGuidedBookSlot(bookSlot, concept.bookSearch, concept.title);
     }
 
-    async function renderGuidedChapter(root) {
+    function renderGuidedChapter(root) {
       const cur = guidedCurriculum;
       const ids = guidedState.ids;
       const step = guidedState.step;
@@ -1418,7 +1368,6 @@
           ? '<h4 class="guided-chip-label" style="margin-top:1rem">Key takeaways</h4><ul class="guided-takeaways">' + takeList + '</ul>'
           : '') +
         levelNote +
-        '<div class="guided-book" id="guidedBookSlot"><h4>Related book passages</h4><p class="guided-muted" style="margin-top:0;margin-bottom:0.5rem;font-size:0.78rem">Optional: see how the book phrases this chapter.</p><p class="guided-loader">Searching the book index…</p></div>' +
         '<div class="guided-chip-label">Try in Guided practice</div>' +
         '<div class="guided-chip-row">' + chipsP + '</div>' +
         '<p class="guided-muted">Chips copy into <strong>Your question</strong> on the Guided practice tab — press <strong>Get answer</strong> for AI help with the lab schema.</p>' +
@@ -1429,9 +1378,6 @@
         '</button>' +
         '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
         '</div>';
-
-      const bookSlot = document.getElementById('guidedBookSlot');
-      await fillGuidedBookSlot(bookSlot, ch.bookSearch, ch.title);
     }
 
     async function renderGuided() {
@@ -1474,9 +1420,9 @@
 
       prog.textContent = '';
       if (guidedState.visit === 'learning') {
-        await renderGuidedChapter(root);
+        renderGuidedChapter(root);
       } else {
-        await renderGuidedConcept(root);
+        renderGuidedConcept(root);
       }
     }
 
