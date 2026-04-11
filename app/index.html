@@ -1103,6 +1103,11 @@
       font-size: 0.82rem;
       line-height: 1.45;
     }
+    .guided-quickcheck-actions {
+      margin: 0.5rem 0 0.85rem;
+      padding: 0.65rem 0 0;
+      border-top: 1px dashed var(--border-strong);
+    }
     .guided-ai-actions {
       margin-bottom: 0.65rem;
     }
@@ -1987,6 +1992,64 @@
       return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
     }
 
+    /** After lesson HTML is set, add Guided practice chips under ## Quick check. */
+    function enhanceLessonQuickCheck(container) {
+      if (!container) return;
+      var headings = container.querySelectorAll('h2.tutor-h2, h3.tutor-h3, h4.tutor-h4');
+      for (var hi = 0; hi < headings.length; hi++) {
+        var h = headings[hi];
+        var ht = (h.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/\bquick\s*check\b/i.test(ht)) continue;
+        var chips = [];
+        var insertAfter = h;
+        var el = h.nextElementSibling;
+        while (el) {
+          var tag = el.tagName;
+          var cls = el.className || '';
+          if ((tag === 'H2' || tag === 'H3' || tag === 'H4') && /\btutor-h\b/.test(cls)) break;
+          if (tag === 'UL' && /\btutor-ul\b/.test(cls)) {
+            el.querySelectorAll('li').forEach(function (li) {
+              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
+              if (q.length >= 8) chips.push(q);
+            });
+          } else if (tag === 'OL' && /\btutor-ol\b/.test(cls)) {
+            el.querySelectorAll('li').forEach(function (li) {
+              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
+              if (q.length >= 8) chips.push(q);
+            });
+          } else if (tag === 'P' && /\btutor-p\b/.test(cls)) {
+            var pq = (el.textContent || '').replace(/\s+/g, ' ').trim();
+            if (pq.length >= 20) chips.push(pq);
+          }
+          insertAfter = el;
+          el = el.nextElementSibling;
+        }
+        if (!chips.length) continue;
+        var wrap = document.createElement('div');
+        wrap.className = 'guided-quickcheck-actions';
+        var lbl = document.createElement('p');
+        lbl.className = 'guided-chip-label';
+        lbl.style.marginTop = '0';
+        lbl.style.marginBottom = '0.4rem';
+        lbl.textContent = 'Ask in Guided practice';
+        var row = document.createElement('div');
+        row.className = 'guided-chip-row';
+        chips.forEach(function (q) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'guided-chip';
+          b.setAttribute('data-guided-prompt', '1');
+          b.setAttribute('title', 'Open Guided practice with this question');
+          b.textContent = q;
+          row.appendChild(b);
+        });
+        wrap.appendChild(lbl);
+        wrap.appendChild(row);
+        insertAfter.insertAdjacentElement('afterend', wrap);
+        break;
+      }
+    }
+
     async function runGuidedChapterLlmExpand() {
       if (!guidedState.ids.length || guidedState.visit !== 'learning' || !guidedState.level) return;
       var chapterId = guidedState.ids[guidedState.step];
@@ -2017,6 +2080,7 @@
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (data.success && data.markdown) {
           out.innerHTML = tutorMarkdownToLessonHtml(data.markdown);
+          enhanceLessonQuickCheck(out);
         } else {
           var err = data.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +

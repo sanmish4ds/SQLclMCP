@@ -661,7 +661,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     'Use **short** Markdown: ## headings, bullets, **bold** terms. No long essays — every line should earn its place.',
     '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** Teach INSERT/UPDATE/DDL/transaction topics in **prose only**—never put DDL/DML inside ```sql**.',
     'Touch the **depth hints** (if any) but **summarize**; do not lecture on every keyword.',
-    '**2** self-check questions (one line each). **What’s next:** **exactly 2 bullets** (next path part if given + one related skill).',
+    '**2** self-check questions under ## Quick check as a **markdown bullet list** (`-` lines), one full question per line (so the UI can open each in Guided practice). **What’s next:** **exactly 2 bullets** (next path part if given + one related skill).',
     'Use **real** TPC-H identifiers only in SQL—**no** placeholders or pseudo-code. Hard cap: **~220–380 words** plus that single query.',
   ].join(' ');
 
@@ -674,7 +674,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     '## At a glance — 3–5 bullets: outcomes for this part.',
     `## Essentials — one tight section: concepts, Oracle vs standard, 1–2 pitfalls or interview hooks. Tables: ${schemaTables}`,
     '## Lab — **one** ```sql fence only**: a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). Minimal intro line above the fence.',
-    '## Quick check — 2 questions.',
+    '## Quick check — 2 questions, each its own `-` bullet with the full question text.',
     '## What’s next — 2 bullets only.',
     '',
     prevHint || nextHint ? `**Path:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
