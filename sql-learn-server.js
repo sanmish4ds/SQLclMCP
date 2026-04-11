@@ -653,13 +653,14 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
 
   const system = [
     'You are an expert SQL educator. The page has **no static lesson text** — your Markdown response **is** the full chapter.',
-    'Teach **complete, practical SQL** for this topic: ANSI SQL where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dual, dates, etc.).',
+    'Teach **practical SQL** for this topic: ANSI SQL where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dual, dates, etc.).',
     'Do **not** mention any textbook, course book, EPUB, or named publication. Do **not** say content comes from a book. Teach from first principles only.',
-    'Write clear Markdown: ## and ### headings, **bold**, bullet lists, short paragraphs.',
-    'Include **at least one** ```sql fenced block with a **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/transaction chapters, add a second fence with example DDL/DML clearly marked as **sandbox-only** if the learner may not have rights.',
-    'Cover **interview angles** and **production pitfalls** where they matter (NULLs, duplicates, performance intuition).',
-    'Add **4–5 self-check** questions (plain English). End with **What to study next** (bullets): tie to the next path part when provided, plus one related topic.',
-    'Aim for **roughly 1000–1600 words** plus code — thorough and scannable. No “as an AI” disclaimers.',
+    'Do **not** say the lesson is “AI-generated”, “automated”, or similar — write as a normal course chapter.',
+    'Write clear Markdown: ## and ### headings, **bold**, bullet lists, short paragraphs. Be concise.',
+    'Include **one** ```sql fenced block with a **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/transaction chapters only, you may add a **short** second fence (DDL/DML) marked **sandbox-only**.',
+    'Cover **interview angles** briefly where they matter (NULLs, duplicates, performance intuition).',
+    'Add **3 self-check** questions (plain English). End with **What to study next** (2–4 bullets): use the next path part when provided, plus one related topic.',
+    'Target **about 550–900 words** of prose plus code — dense and scannable. No meta-disclaimers about how you were built.',
   ].join(' ');
 
   const user = [
@@ -668,13 +669,12 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     focusLine,
     '',
     '**Use these ## headings:**',
-    '## Overview — what this chapter covers and why it matters.',
-    '## Core concepts — definitions, rules, and mental model.',
-    '## Standard SQL and Oracle — syntax and behavior; call out differences briefly.',
-    '## Patterns and pitfalls — duplicates, NULLs, performance, common interview questions.',
-    '## Analogies — short bullets where they help.',
+    '## Overview — what this chapter covers and why it matters (short).',
+    '## Core concepts — definitions and mental model (compact).',
+    '## SQL in practice — standard vs Oracle, pitfalls, interview hooks (one merged section).',
+    '## Analogies — a few bullets only if they help.',
     `## See it in the lab — ${schemaTables}`,
-    '## Self-check — 4–5 questions.',
+    '## Self-check — 3 questions.',
     '## What to study next — bullets.',
     '',
     prevHint || nextHint ? `**Path context:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
@@ -691,15 +691,21 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
 
   const payload = {
     model: config.llmModel,
-    temperature: 0.4,
+    temperature: 0.35,
     messages,
   };
   if (config.llmApiUrl.includes('openai.com')) {
-    payload.max_tokens = 4096;
+    payload.max_tokens = Math.min(
+      3072,
+      Number(process.env.GUIDED_EXPAND_MAX_TOKENS || 2800) || 2800,
+    );
   }
 
   const controller = new AbortController();
-  const expandTimeoutMs = Math.min(Math.max(config.llmTimeoutMs * 3, 45000), 120000);
+  const expandTimeoutMs = Math.min(
+    Math.max(config.llmTimeoutMs * 3, 45000),
+    Number(process.env.GUIDED_EXPAND_TIMEOUT_MS || 90000) || 90000,
+  );
   const timeout = setTimeout(() => controller.abort(), expandTimeoutMs);
 
   try {
@@ -852,7 +858,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (full AI SQL lesson); book_context_used is always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (concise SQL lesson); optional env: GUIDED_EXPAND_MAX_TOKENS (cap 3072), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));

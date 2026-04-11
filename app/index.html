@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Learn SQL with an AI-generated chapter path (ANSI + Oracle, TPC-H lab), guided practice, SQL lab chat, and interview prep.">
+  <meta name="description" content="Learn SQL with a structured interactive path (ANSI + Oracle, TPC-H lab), guided practice, SQL lab chat, and interview prep.">
   <meta name="theme-color" content="#0d9488">
   <meta name="color-scheme" content="light">
   <!-- Optional direct API base (bypasses Netlify proxies). Leave empty when using easynlsql.netlify.app + netlify.toml proxies. -->
@@ -1035,15 +1035,6 @@
       margin-bottom: 0.65rem;
     }
     .guided-ai-actions .guided-nav { margin-top: 0; }
-    .guided-disclaimer {
-      margin-top: 0.65rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--border);
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      line-height: 1.5;
-    }
-    .guided-disclaimer > p:last-child { margin-bottom: 0; }
     .guided-admin-hint {
       margin-top: 0.5rem;
       font-size: 0.75rem;
@@ -1133,7 +1124,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts from foundations through modeling); each part is an <strong>AI-generated lesson</strong> with lab examples. <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
+        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts from foundations through modeling); each part loads an <strong>on-demand lesson</strong> with lab examples. <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
       </div>
     </div>
   </header>
@@ -1210,7 +1201,7 @@
   </main>
 
   <footer class="app-footer">
-    <p><strong>Educational use.</strong> AI output may be incorrect or incomplete. Do not paste secrets into the chat. This site does not replace official database documentation or your organization’s policies.</p>
+    <p><strong>Educational use.</strong> Tutor and lesson content may be incorrect or incomplete. Do not paste secrets into the chat. This site does not replace official database documentation or your organization’s policies.</p>
   </footer>
 </div><!-- /.app -->
 
@@ -1248,7 +1239,7 @@
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
         statusEl.textContent = (data.status === 'ok' ? 'Connected to the tutor service.' : 'Server status unclear.') +
-          ' AI tutor: ' + (data.llm_enabled ? 'on' : 'off') +
+          ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
           '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.';
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
@@ -1367,9 +1358,9 @@
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead"><strong>SQL learning</strong> is a <strong>14-part syllabus</strong> from relational basics through transactions, performance, and data modeling. Each part is a full <strong>AI-written lesson</strong> (no static textbook on the page). <strong>Interview prep</strong> uses topic cards and chips. Switch paths any time.</p>' +
+        '<p class="guided-lead"><strong>SQL learning</strong> is a <strong>14-part syllabus</strong> from relational basics through transactions, performance, and data modeling. Each part opens with an <strong>on-demand lesson</strong> (nothing to read until it loads). <strong>Interview prep</strong> uses topic cards and chips. Switch paths any time.</p>' +
         '<div class="guided-choice-grid">' +
-        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — full syllabus (AI lessons)</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — full syllabus (14 parts)</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
         '</div>';
     }
@@ -1378,7 +1369,7 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : '**Everyone follows the same 14 parts** in order. Your level shapes **how deep and fast** the AI explains; the topics covered stay the same end-to-end.';
+        : '**Everyone follows the same 14 parts** in order. Your level shapes **how deep and fast** each lesson goes; the topics stay the same end-to-end.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
         '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
@@ -1472,13 +1463,13 @@
         '<div class="guided-chapter-head"><h2 class="guided-step-title" style="margin-bottom:0.35rem">' + escapeHtml(ch.title) + '</h2></div>' +
         '<div class="guided-llm-panel" id="guidedLlmPanel">' +
         '<div class="guided-ai-actions"><div class="guided-nav">' +
-        '<button type="button" class="guided-choice primary" data-guided-llm-expand="1">Generate lesson with AI</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-llm-expand="1">Load lesson</button>' +
         '</div></div>' +
         '<div class="guided-lesson-shell">' +
         '<div id="guidedLlmOut" class="guided-llm-out">' +
         '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
         '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Preparing your lesson…</span></div>' +
+        '<span>Loading lesson…</span></div>' +
         '</div></div></div>' +
         '<div class="guided-nav guided-nav--chapter" style="margin-top:1.25rem">' +
         '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous part</button>' +
@@ -1839,7 +1830,7 @@
       btn.disabled = true;
       out.innerHTML = '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
         '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Generating your lesson… This can take up to a minute.</span></div>';
+        '<span>Loading lesson… Usually 20–60 seconds (longer if the service is busy).</span></div>';
       try {
         var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
           method: 'POST',
@@ -1851,10 +1842,7 @@
         var data = await r.json().catch(function () { return {}; });
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (data.success && data.markdown) {
-          out.innerHTML = tutorMarkdownToHtml(data.markdown) +
-            '<div class="guided-disclaimer" role="note">' +
-            '<p class="guided-muted" style="margin-top:0">This lesson is <strong>AI-generated</strong>. Verify SQL and definitions before you run anything. ' +
-            'Source: ' + escapeHtml(String(data.source || 'llm')) + '.</p></div>';
+          out.innerHTML = tutorMarkdownToHtml(data.markdown);
         } else {
           var err = data.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +
