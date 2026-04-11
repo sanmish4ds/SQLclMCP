@@ -1124,7 +1124,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts from foundations through modeling); each part loads an <strong>on-demand lesson</strong> with lab examples. <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
+        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts); each part loads a <strong>compact on-demand lesson</strong> (same topics, less reading) with a lab SQL example. <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
       </div>
     </div>
   </header>
@@ -1358,7 +1358,7 @@
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead"><strong>SQL learning</strong> is a <strong>14-part syllabus</strong> from relational basics through transactions, performance, and data modeling. Each part opens with an <strong>on-demand lesson</strong> (nothing to read until it loads). <strong>Interview prep</strong> uses topic cards and chips. Switch paths any time.</p>' +
+        '<p class="guided-lead"><strong>SQL learning</strong> is a <strong>14-part syllabus</strong> (full arc, <strong>short lessons</strong> per part). Each part loads when you open it. <strong>Interview prep</strong> uses topic cards and chips. Switch paths any time.</p>' +
         '<div class="guided-choice-grid">' +
         '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — full syllabus (14 parts)</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
@@ -1469,7 +1469,7 @@
         '<div id="guidedLlmOut" class="guided-llm-out">' +
         '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
         '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Loading lesson…</span></div>' +
+        '<span>Loading short lesson…</span></div>' +
         '</div></div></div>' +
         '<div class="guided-nav guided-nav--chapter" style="margin-top:1.25rem">' +
         '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous part</button>' +
@@ -1830,7 +1830,7 @@
       btn.disabled = true;
       out.innerHTML = '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
         '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Loading lesson… Usually 20–60 seconds (longer if the service is busy).</span></div>';
+        '<span>Loading lesson… Often ~10–35s for a short part (busy servers take longer).</span></div>';
       try {
         var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
           method: 'POST',

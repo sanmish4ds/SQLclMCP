@@ -652,15 +652,14 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   const focusLine = focus ? `**Depth hints for this part:** ${focus}` : '';
 
   const system = [
-    'You are an expert SQL educator. The page has **no static lesson text** — your Markdown response **is** the full chapter.',
-    'Teach **practical SQL** for this topic: ANSI SQL where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dual, dates, etc.).',
-    'Do **not** mention any textbook, course book, EPUB, or named publication. Do **not** say content comes from a book. Teach from first principles only.',
-    'Do **not** say the lesson is “AI-generated”, “automated”, or similar — write as a normal course chapter.',
-    'Write clear Markdown: ## and ### headings, **bold**, bullet lists, short paragraphs. Be concise.',
-    'Include **one** ```sql fenced block with a **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/transaction chapters only, you may add a **short** second fence (DDL/DML) marked **sandbox-only**.',
-    'Cover **interview angles** briefly where they matter (NULLs, duplicates, performance intuition).',
-    'Add **3 self-check** questions (plain English). End with **What to study next** (2–4 bullets): use the next path part when provided, plus one related topic.',
-    'Target **about 550–900 words** of prose plus code — dense and scannable. No meta-disclaimers about how you were built.',
+    'You are an expert SQL educator. The page has **no static lesson text** — your Markdown **is** this part’s lesson.',
+    'Teach **practical SQL** for this topic: ANSI where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dates, etc.).',
+    'Do **not** mention textbooks, EPUBs, or that content is automated. Write as a tight course note.',
+    'Use **short** Markdown: ## headings, bullets, **bold** terms. No long essays — every line should earn its place.',
+    '**One** ```sql block: a **short runnable Oracle SELECT** (or WITH … SELECT) on TPC-H tables. DDL/DML parts only: add a **tiny** second fence, comment **sandbox-only**.',
+    'Touch the **depth hints** (if any) but **summarize**; do not lecture on every keyword.',
+    '**2** self-check questions (one line each). **What’s next:** **exactly 2 bullets** (next path part if given + one related skill).',
+    'Hard cap: **~220–380 words** of prose plus the SQL block(s). If you run long, cut examples before cutting structure.',
   ].join(' ');
 
   const user = [
@@ -668,18 +667,14 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     `**Learner level:** ${level} (beginner = more definitions and step-by-step; advanced = edge cases, optimizer and modeling depth).`,
     focusLine,
     '',
-    '**Use these ## headings:**',
-    '## Overview — what this chapter covers and why it matters (short).',
-    '## Core concepts — definitions and mental model (compact).',
-    '## SQL in practice — standard vs Oracle, pitfalls, interview hooks (one merged section).',
-    '## Analogies — a few bullets only if they help.',
-    `## See it in the lab — ${schemaTables}`,
-    '## Self-check — 3 questions.',
-    '## What to study next — bullets.',
+    '**Use exactly these ## headings (keep each section brief):**',
+    '## At a glance — 3–5 bullets: outcomes for this part.',
+    `## Essentials — one tight section: concepts, Oracle vs standard, 1–2 pitfalls or interview hooks. Tables: ${schemaTables}`,
+    '## Lab — the ```sql example only (minimal intro line above the fence).',
+    '## Quick check — 2 questions.',
+    '## What’s next — 2 bullets only.',
     '',
-    prevHint || nextHint ? `**Path context:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
-    '',
-    'Weave in **window functions**, **CTEs**, **transactions**, or **indexes** only when they naturally fit this chapter.',
+    prevHint || nextHint ? `**Path:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
   ]
     .filter((line) => line !== '')
     .join('\n');
@@ -691,20 +686,19 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
 
   const payload = {
     model: config.llmModel,
-    temperature: 0.35,
+    temperature: 0.28,
     messages,
   };
-  if (config.llmApiUrl.includes('openai.com')) {
-    payload.max_tokens = Math.min(
-      3072,
-      Number(process.env.GUIDED_EXPAND_MAX_TOKENS || 2800) || 2800,
-    );
-  }
+  const expandMaxTok = Math.min(
+    2048,
+    Math.max(512, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 1400),
+  );
+  payload.max_tokens = expandMaxTok;
 
   const controller = new AbortController();
   const expandTimeoutMs = Math.min(
-    Math.max(config.llmTimeoutMs * 3, 45000),
-    Number(process.env.GUIDED_EXPAND_TIMEOUT_MS || 90000) || 90000,
+    Math.max(config.llmTimeoutMs * 2, 35000),
+    Number(process.env.GUIDED_EXPAND_TIMEOUT_MS || 55000) || 55000,
   );
   const timeout = setTimeout(() => controller.abort(), expandTimeoutMs);
 
@@ -858,7 +852,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (concise SQL lesson); optional env: GUIDED_EXPAND_MAX_TOKENS (cap 3072), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — short markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 1400, cap 2048), GUIDED_EXPAND_TIMEOUT_MS (default 55000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
