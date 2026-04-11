@@ -1,0 +1,473 @@
+{
+  "version": 1,
+  "tracks": {
+    "learning": {
+      "beginner": [
+        "c_relational_basics",
+        "c_select_from",
+        "c_where_order",
+        "c_joins_intro",
+        "c_group_by_intro"
+      ],
+      "intermediate": [
+        "c_join_types",
+        "c_subqueries",
+        "c_set_operations",
+        "c_cte",
+        "c_window_intro"
+      ],
+      "advanced": [
+        "c_window_deep",
+        "c_analytics_patterns",
+        "c_oracle_dialect",
+        "c_performance",
+        "c_nulls_pitfalls"
+      ]
+    },
+    "interview": {
+      "beginner": [
+        "c_relational_basics",
+        "c_keys_normalization",
+        "c_select_from",
+        "c_joins_intro",
+        "c_indexes_basics"
+      ],
+      "intermediate": [
+        "c_join_types",
+        "c_subqueries",
+        "c_group_by_intro",
+        "c_window_intro",
+        "c_transactions_isolation"
+      ],
+      "advanced": [
+        "c_window_deep",
+        "c_performance",
+        "c_execution_internals",
+        "c_advanced_sql",
+        "c_design_tradeoffs"
+      ]
+    }
+  },
+  "concepts": {
+    "c_relational_basics": {
+      "title": "Relational data and SQL",
+      "summary": [
+        "SQL is the standard language for asking questions of relational databases: tables of rows, linked by keys.",
+        "Your practice schema is TPC-H–style (customers, orders, line items, parts, suppliers, nations, regions). Every example in this app should use those real table names when you run SQL."
+      ],
+      "bookSearch": "relational database SQL tables rows columns introduction",
+      "learningNext": [
+        "Continue to **SELECT and FROM** to write your first queries.",
+        "Open **Guided practice** and ask: *What tables exist in a typical warehouse schema?*"
+      ],
+      "practiceQuestions": [
+        "In plain English, what is the difference between a table and a row?",
+        "What is SQL used for in analytics?"
+      ],
+      "interviewDrills": [
+        "What is a relational database?",
+        "What is a primary key vs a foreign key?"
+      ]
+    },
+    "c_select_from": {
+      "title": "SELECT and FROM",
+      "summary": [
+        "`SELECT` chooses columns (or expressions); `FROM` names the table(s). Listing columns explicitly is clearer and safer than `SELECT *` in production.",
+        "Oracle supports standard ANSI syntax; your lab uses uppercase table names like `REGION`, `CUSTOMER`, `ORDERS`."
+      ],
+      "bookSearch": "SELECT FROM column expression SQL query",
+      "learningNext": [
+        "Next: **WHERE and ORDER BY** — filter and sort results.",
+        "Try in practice: *Show region names from REGION.*"
+      ],
+      "practiceQuestions": [
+        "Write a query that returns only R_NAME and R_REGIONKEY from REGION.",
+        "Why might SELECT * be discouraged in application code?"
+      ],
+      "interviewDrills": [
+        "What does SELECT actually do vs projection in relational algebra?",
+        "When would you use DISTINCT?"
+      ]
+    },
+    "c_where_order": {
+      "title": "WHERE, ORDER BY, and row limits",
+      "summary": [
+        "`WHERE` filters rows before aggregation. Combine predicates with `AND` / `OR`; use parentheses when mixing them.",
+        "`ORDER BY` sorts the result. In Oracle, limit rows with `FETCH FIRST n ROWS ONLY` (not `LIMIT`)."
+      ],
+      "bookSearch": "WHERE ORDER BY filter predicate FETCH FIRST Oracle",
+      "learningNext": [
+        "Next: **Joins** — combine CUSTOMER with ORDERS and beyond.",
+        "Practice: *Top 5 nations by customer count* (hint: NATION + CUSTOMER)."
+      ],
+      "practiceQuestions": [
+        "List customers in one nation where account balance is above a threshold — which columns would you filter on?",
+        "How do you return the 10 largest orders by O_TOTALPRICE?"
+      ],
+      "interviewDrills": [
+        "What is the difference between WHERE and HAVING?",
+        "Does ORDER BY run before or after SELECT in logical query processing?"
+      ]
+    },
+    "c_joins_intro": {
+      "title": "Introduction to JOINs",
+      "summary": [
+        "A **join** links rows from two tables on a key condition — e.g. `ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY`.",
+        "`INNER JOIN` keeps only rows that match on both sides; it is the default join for “show me orders with customer names.”"
+      ],
+      "bookSearch": "JOIN INNER ON foreign key combine tables",
+      "learningNext": [
+        "Next: **GROUP BY and aggregates** — counts and sums per group.",
+        "Practice: *Orders per customer* or *revenue per nation*."
+      ],
+      "practiceQuestions": [
+        "Join ORDERS to CUSTOMER and show order key, customer name, and order total.",
+        "Why is it important to join on keys instead of arbitrary columns?"
+      ],
+      "interviewDrills": [
+        "Explain INNER JOIN vs LEFT JOIN in one minute.",
+        "What happens if you forget the join condition?"
+      ]
+    },
+    "c_group_by_intro": {
+      "title": "GROUP BY and aggregates",
+      "summary": [
+        "Aggregate functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) collapse rows. Every non-aggregated column in `SELECT` must appear in `GROUP BY` (or be functionally dependent — Oracle is strict in standard mode).",
+        "`HAVING` filters **groups** after aggregation (unlike `WHERE`, which filters rows before)."
+      ],
+      "bookSearch": "GROUP BY HAVING COUNT SUM aggregate SQL",
+      "learningNext": [
+        "Intermediate path: **JOIN types** (LEFT / RIGHT / FULL) and **subqueries**.",
+        "Practice: *Average order total per market segment*."
+      ],
+      "practiceQuestions": [
+        "Count orders per order year from O_ORDERDATE.",
+        "Find nations having more than 100 customers."
+      ],
+      "interviewDrills": [
+        "Why can’t you use a column alias from SELECT in WHERE?",
+        "GROUP BY vs DISTINCT — when would you pick each?"
+      ]
+    },
+    "c_join_types": {
+      "title": "LEFT, RIGHT, and FULL joins",
+      "summary": [
+        "`LEFT JOIN` keeps all rows from the left table and matching rows from the right; missing matches become NULL.",
+        "Use LEFT when you must preserve the driving table (e.g. all customers, even those with zero orders). `FULL OUTER JOIN` is rarer but useful for reconciliation."
+      ],
+      "bookSearch": "LEFT JOIN RIGHT OUTER NULL outer join",
+      "learningNext": [
+        "Next: **Subqueries** — IN, EXISTS, correlated patterns.",
+        "Practice: *Customers who never placed an order*."
+      ],
+      "practiceQuestions": [
+        "Which join type lists every PART row even if it never appears in LINEITEM?",
+        "How do NULLs in join keys affect results?"
+      ],
+      "interviewDrills": [
+        "When do you choose LEFT JOIN over INNER JOIN?",
+        "How would you find rows in A not in B?"
+      ]
+    },
+    "c_subqueries": {
+      "title": "Subqueries and EXISTS",
+      "summary": [
+        "A subquery is a query nested inside another. It can return a scalar, a column list, or be used with `EXISTS` for existence checks.",
+        "**Correlated** subqueries reference outer columns; they can be powerful but need care for performance (often rewritten as joins or semi-joins)."
+      ],
+      "bookSearch": "subquery EXISTS IN correlated nested query",
+      "learningNext": [
+        "Next: **UNION / INTERSECT / EXCEPT** (set operations).",
+        "Practice: *Suppliers who supply parts above a certain cost using a subquery*."
+      ],
+      "practiceQuestions": [
+        "Rewrite “customers with at least one order” using EXISTS vs IN.",
+        "What is the difference between a scalar subquery and a table subquery?"
+      ],
+      "interviewDrills": [
+        "Correlated subquery vs JOIN — trade-offs?",
+        "When is EXISTS preferred over IN with NULLs?"
+      ]
+    },
+    "c_set_operations": {
+      "title": "UNION, INTERSECT, EXCEPT",
+      "summary": [
+        "`UNION` combines result sets and removes duplicates; `UNION ALL` keeps duplicates and is usually faster.",
+        "`INTERSECT` / `EXCEPT` (or `MINUS` in Oracle) compare sets — useful for data validation and puzzle-style interview questions."
+      ],
+      "bookSearch": "UNION UNION ALL INTERSECT EXCEPT MINUS",
+      "learningNext": [
+        "Next: **Common Table Expressions (WITH)**.",
+        "Practice: *Parts that appear in LINEITEM but not in a given supplier’s PARTSUPP*."
+      ],
+      "practiceQuestions": [
+        "When would UNION ALL be safer than UNION?",
+        "What must be true about column counts and types in a UNION?"
+      ],
+      "interviewDrills": [
+        "UNION vs UNION ALL — performance and correctness.",
+        "How does MINUS differ from NOT IN?"
+      ]
+    },
+    "c_cte": {
+      "title": "Common Table Expressions (WITH)",
+      "summary": [
+        "`WITH` names a temporary result you can reference in the main query. It improves readability and lets you break complex logic into steps.",
+        "Recursive CTEs (Oracle supports them) can walk hierarchies — advanced but common in senior interviews."
+      ],
+      "bookSearch": "WITH clause common table expression CTE",
+      "learningNext": [
+        "Next: **Window functions** — ranking and running totals.",
+        "Practice: *Rewrite a nested subquery as a readable CTE*."
+      ],
+      "practiceQuestions": [
+        "Use a CTE to compute per-customer revenue then filter customers above the average.",
+        "What is one readability benefit of WITH over nested FROM subqueries?"
+      ],
+      "interviewDrills": [
+        "Are CTEs always materialized?",
+        "Give an example where a recursive CTE applies."
+      ]
+    },
+    "c_window_intro": {
+      "title": "Window functions — basics",
+      "summary": [
+        "Window functions compute over a **partition** of rows without collapsing them like GROUP BY. Examples: `ROW_NUMBER()`, `RANK()`, `SUM(...) OVER (...)`.",
+        "`PARTITION BY` is like GROUP BY for the window; `ORDER BY` inside `OVER` defines row order within the partition."
+      ],
+      "bookSearch": "window function OVER PARTITION BY ROW_NUMBER RANK",
+      "learningNext": [
+        "Advanced: **RANK vs DENSE_RANK**, frames, and interview-style ranking questions.",
+        "Practice: *Rank customers by C_ACCTBAL within each nation*."
+      ],
+      "practiceQuestions": [
+        "Assign row numbers to line items per order (L_ORDERKEY).",
+        "What is the difference between ROW_NUMBER and RANK when there are ties?"
+      ],
+      "interviewDrills": [
+        "Explain PARTITION BY vs GROUP BY.",
+        "When would you use DENSE_RANK instead of RANK?"
+      ]
+    },
+    "c_window_deep": {
+      "title": "Window frames and advanced ranking",
+      "summary": [
+        "`ROWS BETWEEN` / `RANGE BETWEEN` define sliding windows for running totals and moving averages.",
+        "Interview favorite: **RANK** leaves gaps after ties; **DENSE_RANK** does not; **ROW_NUMBER** breaks ties arbitrarily."
+      ],
+      "bookSearch": "RANK DENSE_RANK ROW_NUMBER frame ROWS BETWEEN running total",
+      "learningNext": [
+        "Next: **Analytics patterns** (YoY, cohort-style splits) or **performance** topics.",
+        "Practice: *Top 3 orders per customer using window functions*."
+      ],
+      "practiceQuestions": [
+        "Compute cumulative revenue over ORDERDATE using a window.",
+        "Compare RANK and DENSE_RANK on LINEITEM extended price by order."
+      ],
+      "interviewDrills": [
+        "How do you get top-N per group efficiently in SQL?",
+        "What is a window frame and why does it matter?"
+      ]
+    },
+    "c_analytics_patterns": {
+      "title": "Analytic patterns (totals, shares, time)",
+      "summary": [
+        "Combine windows with aggregates: `SUM(x) OVER ()` for grand total vs `SUM(x) OVER (PARTITION BY g)` for subtotals — useful for **share of total**.",
+        "Time bucketing: `TRUNC(O_ORDERDATE,'YYYY')`, quarters via `TO_CHAR` or month math — know Oracle date quirks for interviews."
+      ],
+      "bookSearch": "analytic aggregate share total PARTITION BY date quarter year",
+      "learningNext": [
+        "Next: **Oracle-specific SQL** (FETCH, hints) or **performance**.",
+        "Practice: *Each nation’s share of global revenue from LINEITEM*."
+      ],
+      "practiceQuestions": [
+        "Month-over-month order count using windows (conceptual — describe the PARTITION/ORDER).",
+        "How would you flag outliers vs partition average?"
+      ],
+      "interviewDrills": [
+        "How do you compute percent of total without a self-join?",
+        "Explain how you’d validate a revenue report in SQL."
+      ]
+    },
+    "c_oracle_dialect": {
+      "title": "Oracle SQL you’ll actually use",
+      "summary": [
+        "Prefer `FETCH FIRST n ROWS ONLY` for limits; use `DATE 'YYYY-MM-DD'` literals for clarity.",
+        "Know `NVL` / `COALESCE`, `LISTAGG`, and that `EXTRACT` has no QUARTER — use `TO_CHAR(d,'Q')` or month math."
+      ],
+      "bookSearch": "Oracle SQL FETCH FIRST DATE literal LISTAGG NVL",
+      "learningNext": [
+        "Next: **Performance** — indexes and plans.",
+        "Practice: *Ask the AI to compare LIMIT-style patterns in Oracle vs PostgreSQL mentally, then run Oracle syntax here*."
+      ],
+      "practiceQuestions": [
+        "Write a query using FETCH FIRST 20 ROWS ONLY on ORDERS ordered by date.",
+        "Why COALESCE is often preferred over NVL?"
+      ],
+      "interviewDrills": [
+        "Oracle vs ANSI SQL — what differences have you hit?",
+        "How does ROWNUM differ from FETCH FIRST?"
+      ]
+    },
+    "c_performance": {
+      "title": "Indexes and execution plans (conceptual)",
+      "summary": [
+        "Indexes speed **lookups** and some joins but add write cost. Clustered vs non-clustered matters more in other engines; in Oracle, know B-tree basics and when full scans win.",
+        "Interview tip: explain **selectivity**, **covering indexes** idea, and that the optimizer chooses plans based on stats."
+      ],
+      "bookSearch": "index B-tree optimizer execution plan statistics",
+      "learningNext": [
+        "Next: **NULL pitfalls** or revisit weak areas via book search.",
+        "Practice: *When would you add an index on O_ORDERDATE?*"
+      ],
+      "practiceQuestions": [
+        "Why might the optimizer choose a full table scan?",
+        "What is selective vs non-selective predicate?"
+      ],
+      "interviewDrills": [
+        "How do indexes affect INSERT throughput?",
+        "What would you look at in an EXPLAIN PLAN?"
+      ]
+    },
+    "c_nulls_pitfalls": {
+      "title": "NULLs and subtle bugs",
+      "summary": [
+        "`NULL` is not equal to anything — `x = NULL` is unknown; use `IS NULL`. `NOT IN` with NULLs in the subquery is a classic foot-gun.",
+        "Use `COALESCE` / `NVL` deliberately; understand three-valued logic in WHERE."
+      ],
+      "bookSearch": "NULL IS NULL NOT IN three-valued logic SQL",
+      "learningNext": [
+        "Loop back to any topic above, or move to **SQL lab** to run queries.",
+        "Practice: *Find a NOT IN bug scenario and fix with NOT EXISTS*."
+      ],
+      "practiceQuestions": [
+        "Why might `WHERE col NOT IN (subquery)` return no rows unexpectedly?",
+        "How does COUNT(*) differ from COUNT(column) with NULLs?"
+      ],
+      "interviewDrills": [
+        "Explain three-valued logic in one sentence.",
+        "How do you safely compare nullable columns?"
+      ]
+    },
+    "c_keys_normalization": {
+      "title": "Keys and normalization",
+      "summary": [
+        "**Primary key** uniquely identifies a row; **foreign key** enforces referential integrity to another table.",
+        "Normalization (1NF–3NF) reduces redundancy; star schemas denormalize for analytics — both appear in interviews."
+      ],
+      "bookSearch": "primary key foreign key normalization 3NF redundancy",
+      "learningNext": [
+        "Next: **SELECT / FROM** then joins on real keys (C_CUSTKEY, O_ORDERKEY, …).",
+        "Practice: *Point to PK/FK relationships in the TPC-H schema explorer*."
+      ],
+      "practiceQuestions": [
+        "Which column links LINEITEM to ORDERS?",
+        "Name a violation of 3NF in a wide denormalized table."
+      ],
+      "interviewDrills": [
+        "Trade-offs of normalization vs read performance.",
+        "What is a surrogate key?"
+      ]
+    },
+    "c_indexes_basics": {
+      "title": "What interviewers mean by “indexes”",
+      "summary": [
+        "An index is a separate structure that maps key values to row locations so the engine can find rows without scanning every block.",
+        "Be ready to discuss **when** indexes help (equality/range on selective columns) and **when** they hurt (low cardinality, heavy writes)."
+      ],
+      "bookSearch": "database index lookup scan selective column",
+      "learningNext": [
+        "Continue the interview track: **JOIN types** and **subqueries** at intermediate level.",
+        "Practice: *Which columns would you index for “orders by date for one customer”?*"
+      ],
+      "practiceQuestions": [
+        "Why index O_CUSTKEY for a customer’s order history?",
+        "What is a covering index (conceptually)?"
+      ],
+      "interviewDrills": [
+        "Difference between clustered and non-clustered (high level).",
+        "How does a composite index column order matter?"
+      ]
+    },
+    "c_transactions_isolation": {
+      "title": "Transactions and isolation",
+      "summary": [
+        "A **transaction** bundles work ACID-style: commit makes it durable; rollback undoes. Isolation levels (read committed, serializable, …) define what concurrent sessions can see.",
+        "Interview classic: dirty read, non-repeatable read, phantom read — know the names even if Oracle’s defaults differ from other databases."
+      ],
+      "bookSearch": "transaction ACID isolation commit rollback concurrent",
+      "learningNext": [
+        "Next: **Window functions** for ranking-style interview questions.",
+        "Practice: *Explain why two COUNT queries in one transaction might differ under certain isolation*."
+      ],
+      "practiceQuestions": [
+        "What does atomicity mean for a bank transfer?",
+        "Why do long transactions hurt concurrency?"
+      ],
+      "interviewDrills": [
+        "Explain read committed vs repeatable read.",
+        "What is a deadlock at a high level?"
+      ]
+    },
+    "c_execution_internals": {
+      "title": "Optimizer and execution (senior interviews)",
+      "summary": [
+        "The **optimizer** picks join order, access paths (index vs full scan), and join algorithms (nested loop, hash, merge).",
+        "Statistics (histograms, cardinality estimates) drive bad plans when they’re stale — interviewers like “how would you debug a slow query?”"
+      ],
+      "bookSearch": "query optimizer cardinality hash join nested loop statistics",
+      "learningNext": [
+        "Next: **Advanced SQL** (MERGE, pivot patterns) or **design tradeoffs**.",
+        "Practice: *Walk through how you’d investigate a sudden slowdown on a filtered ORDERS query*."
+      ],
+      "practiceQuestions": [
+        "When might a hash join beat nested loops?",
+        "What is cardinality estimation?"
+      ],
+      "interviewDrills": [
+        "How would you use EXPLAIN PLAN in a story?",
+        "Star schema vs snowflake — query implications?"
+      ]
+    },
+    "c_advanced_sql": {
+      "title": "MERGE, pivoting, and modeling",
+      "summary": [
+        "`MERGE` upserts in one statement — common in ETL. Pivot / conditional aggregation (`SUM(CASE WHEN…)`) turns rows into columns for reporting.",
+        "Recursive CTEs model org charts and bill-of-materials — signal senior depth."
+      ],
+      "bookSearch": "MERGE upsert pivot CASE aggregate recursive CTE",
+      "learningNext": [
+        "Next: **Design tradeoffs** — the capstone topic.",
+        "Practice: *Describe a reporting query that needs conditional aggregation on LINEITEM*."
+      ],
+      "practiceQuestions": [
+        "When is MERGE preferable to separate INSERT/UPDATE in application code?",
+        "How would you pivot counts by year without a pivot function?"
+      ],
+      "interviewDrills": [
+        "How do you handle slowly changing dimensions (conceptual)?",
+        "Give an example of a query that’s correct but too slow — how to fix?"
+      ]
+    },
+    "c_design_tradeoffs": {
+      "title": "Modeling and tradeoffs",
+      "summary": [
+        "Star schema fact/dimension design vs normalized OLTP — interviews often ask when you’d denormalize.",
+        "Be ready to discuss **data quality**, **idempotency** in loads, and **slowly changing dimensions** at a high level."
+      ],
+      "bookSearch": "star schema fact dimension denormalize data warehouse design",
+      "learningNext": [
+        "You’ve reached the end of this path — revisit weak spots or run queries in **SQL lab**.",
+        "Use **Guided practice** with custom scenario questions."
+      ],
+      "practiceQuestions": [
+        "Why might LINEITEM and ORDERS be separate tables instead of one wide table?",
+        "What is a fact table vs a dimension table?"
+      ],
+      "interviewDrills": [
+        "How do you choose grain for a fact table?",
+        "CAP theorem — does it belong in a SQL interview? (when to mention briefly)"
+      ]
+    }
+  }
+}

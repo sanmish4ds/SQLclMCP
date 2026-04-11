@@ -859,6 +859,130 @@
     .chat-code-muted { color: var(--text-dim); font-size: 0.78rem; }
     .lab-muted { color: var(--text-dim); font-size: 0.78rem; }
 
+    /* Interactive learning path */
+    .guided-wrap { min-height: 12rem; }
+    .guided-step-title {
+      font-size: 1.05rem;
+      font-weight: 650;
+      margin: 0 0 0.6rem;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .guided-lead {
+      margin: 0 0 1rem;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+    .guided-choice-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin: 0.5rem 0 1.1rem;
+    }
+    .guided-choice {
+      flex: 1;
+      min-width: 148px;
+      padding: 0.8rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      font-family: var(--font);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, color 0.15s;
+      text-align: left;
+      line-height: 1.35;
+    }
+    .guided-choice:hover {
+      border-color: var(--accent);
+      background: var(--accent-muted);
+      color: var(--accent-hover);
+    }
+    .guided-choice:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .guided-choice.primary {
+      background: linear-gradient(145deg, #14b8a6, #0d9488);
+      color: #fff;
+      border-color: transparent;
+    }
+    .guided-choice.primary:hover {
+      filter: brightness(1.05);
+      color: #fff;
+    }
+    .guided-progress {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin: 0 0 0.85rem;
+      line-height: 1.45;
+    }
+    .guided-concept-body p {
+      margin: 0 0 0.65rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+    .guided-book {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .guided-book h4 {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin: 0 0 0.55rem;
+      font-weight: 700;
+    }
+    .guided-snippet {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.7rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--border);
+      line-height: 1.45;
+    }
+    .guided-snippet .snip-sec {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.3rem;
+    }
+    .guided-chip-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin: 0.85rem 0 0.4rem;
+    }
+    .guided-chip-row { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .guided-chip {
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      color: var(--text-muted);
+      max-width: 100%;
+      text-align: left;
+      line-height: 1.3;
+    }
+    .guided-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .guided-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; align-items: center; }
+    .guided-muted { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.65rem; line-height: 1.45; }
+    .guided-loader { color: var(--text-dim); font-size: 0.85rem; }
+
   </style>
 </head>
 <body>
@@ -868,17 +992,26 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Ask <strong>any</strong> SQL question — interview prep, concepts, or natural language to Oracle SQL for the practice database. Use Explain to go deeper. Verify critical answers; models can be wrong.</p>
+        <p class="sub">Start with <strong>Interactive path</strong> for a few quick questions (learning vs interview, your level), then concepts one step at a time with book excerpts and suggested prompts. Or jump to <strong>Guided practice</strong> and ask anything. Verify critical answers; models can be wrong.</p>
       </div>
     </div>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Main views">
-    <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="practice">Guided practice · any question</button>
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="path">Interactive path</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="practice">Guided practice · any question</button>
     <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="lab">SQL lab</button>
   </div>
 
-  <div id="tab-practice" class="tab-panel active" role="tabpanel">
+  <div id="tab-path" class="tab-panel active" role="tabpanel">
+    <div class="card guided-wrap">
+      <div class="card-title">Interactive path</div>
+      <p class="guided-progress" id="guidedProgress"></p>
+      <div id="guidedRoot"><p class="guided-loader">Loading your path…</p></div>
+    </div>
+  </div>
+
+  <div id="tab-practice" class="tab-panel" role="tabpanel">
   <p class="status" id="serverStatus">Checking server…</p>
 
   <div class="card schema-section" id="schemaSection">
@@ -987,6 +1120,323 @@
     }
 
     checkHealth();
+
+    // ── Interactive path (curriculum + book search) ───────────
+    const GUIDED_STORAGE_KEY = 'easynl_guided_v1';
+    let guidedCurriculum = null;
+    let guidedState = { visit: null, level: null, step: 0, ids: [] };
+
+    function guidedCurriculumUrl() {
+      if (typeof location !== 'undefined' && location.protocol !== 'file:') {
+        return '/guided-curriculum.json';
+      }
+      return (API_BASE_URL || '').replace(/\/$/, '') + '/guided-curriculum.json';
+    }
+
+    function loadGuidedState() {
+      try {
+        const raw = localStorage.getItem(GUIDED_STORAGE_KEY);
+        if (!raw) return;
+        const o = JSON.parse(raw);
+        if (o && (o.visit === 'learning' || o.visit === 'interview') &&
+            ['beginner', 'intermediate', 'advanced'].indexOf(o.level) >= 0 &&
+            Array.isArray(o.ids) && o.ids.length &&
+            typeof o.step === 'number' && o.step >= 0 && o.step < o.ids.length) {
+          guidedState = { visit: o.visit, level: o.level, step: o.step, ids: o.ids };
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    function saveGuidedState() {
+      try {
+        if (guidedState.visit && guidedState.level && guidedState.ids.length) {
+          localStorage.setItem(GUIDED_STORAGE_KEY, JSON.stringify({
+            visit: guidedState.visit,
+            level: guidedState.level,
+            step: guidedState.step,
+            ids: guidedState.ids,
+          }));
+        } else {
+          localStorage.removeItem(GUIDED_STORAGE_KEY);
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    function formatGuidedBold(s) {
+      const parts = String(s || '').split(/\*\*/);
+      let out = '';
+      for (let i = 0; i < parts.length; i++) {
+        out += (i % 2 === 1) ? '<strong>' + escapeHtml(parts[i]) + '</strong>' : escapeHtml(parts[i]);
+      }
+      return out;
+    }
+
+    async function fetchGuidedCurriculum() {
+      if (guidedCurriculum) return guidedCurriculum;
+      const u = guidedCurriculumUrl();
+      const r = await fetch(u);
+      if (!r.ok) throw new Error('Could not load curriculum (' + r.status + ')');
+      guidedCurriculum = await r.json();
+      return guidedCurriculum;
+    }
+
+    function switchToPracticeTab() {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === 'practice');
+        b.setAttribute('aria-selected', b.dataset.tab === 'practice' ? 'true' : 'false');
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'tab-practice');
+      });
+    }
+
+    function openInPractice(question) {
+      questionEl.value = question;
+      questionEl.focus();
+      switchToPracticeTab();
+      try { questionEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    }
+
+    function visitLabel(v) {
+      return v === 'interview' ? 'Interview prep' : 'SQL learning';
+    }
+
+    function levelLabel(l) {
+      if (l === 'beginner') return 'Beginner';
+      if (l === 'intermediate') return 'Intermediate';
+      return 'Advanced';
+    }
+
+    function renderGuidedPurpose(root) {
+      root.innerHTML =
+        '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
+        '<p class="guided-lead">We will tailor concepts and suggested questions. You can change this any time.</p>' +
+        '<div class="guided-choice-grid">' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — build skills step by step</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
+        '</div>';
+    }
+
+    function renderGuidedLevel(root) {
+      const v = guidedState.visit;
+      const lead = v === 'interview'
+        ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
+        : 'Pick your comfort level. We will go one concept at a time and pull related excerpts from the course book when it is loaded on the server.';
+      root.innerHTML =
+        '<h2 class="guided-step-title">What is your level?</h2>' +
+        '<p class="guided-lead">' + escapeHtml(lead) + '</p>' +
+        '<div class="guided-choice-grid">' +
+        '<button type="button" class="guided-choice" data-guided-level="beginner">Beginner — new to SQL or need foundations</button>' +
+        '<button type="button" class="guided-choice" data-guided-level="intermediate">Intermediate — joins, aggregates, subqueries</button>' +
+        '<button type="button" class="guided-choice" data-guided-level="advanced">Advanced — windows, performance, modeling</button>' +
+        '</div>' +
+        '<div class="guided-nav"><button type="button" class="secondary" data-guided-back="visit">← Change purpose</button></div>';
+    }
+
+    async function renderGuidedConcept(root) {
+      const cur = guidedCurriculum;
+      const ids = guidedState.ids;
+      const step = guidedState.step;
+      const id = ids[step];
+      const concept = cur.concepts[id];
+      if (!concept) {
+        root.innerHTML = '<p class="guided-muted">Missing concept in curriculum. Reset and try again.</p>';
+        return;
+      }
+
+      const prog = document.getElementById('guidedProgress');
+      prog.textContent =
+        visitLabel(guidedState.visit) + ' · ' + levelLabel(guidedState.level) +
+        ' · Concept ' + (step + 1) + ' of ' + ids.length + ' — ' + concept.title;
+
+      const paras = (concept.summary || []).map(function (p) {
+        return '<p>' + formatGuidedBold(p) + '</p>';
+      }).join('');
+
+      const nextHints = (concept.learningNext || []).map(function (line) {
+        return '<li>' + formatGuidedBold(line) + '</li>';
+      }).join('');
+
+      const pq = concept.practiceQuestions || [];
+      const iq = concept.interviewDrills || [];
+      const chipsP = pq.map(function (q) {
+        return '<button type="button" class="guided-chip" data-guided-prompt="1">' + escapeHtml(q) + '</button>';
+      }).join('');
+      const chipsI = iq.map(function (q) {
+        return '<button type="button" class="guided-chip" data-guided-prompt="1">' + escapeHtml(q) + '</button>';
+      }).join('');
+
+      const primaryLabel = guidedState.visit === 'interview' ? 'Interview-style prompts' : 'Practice questions';
+      const secondaryLabel = guidedState.visit === 'interview' ? 'Also try (learning)' : 'Also try (interview-style)';
+
+      root.innerHTML =
+        '<h2 class="guided-step-title">' + escapeHtml(concept.title) + '</h2>' +
+        '<div class="guided-concept-body">' + paras + '</div>' +
+        (nextHints
+          ? '<div class="guided-book"><h4>Suggested next steps</h4><ul style="margin:0;padding-left:1.15rem;color:var(--text-muted);font-size:0.9rem;line-height:1.5">' + nextHints + '</ul></div>'
+          : '') +
+        '<div class="guided-book" id="guidedBookSlot"><h4>From the course book</h4><p class="guided-loader">Searching the book index…</p></div>' +
+        '<div class="guided-chip-label">' + escapeHtml(primaryLabel) + '</div>' +
+        '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsI : chipsP) + '</div>' +
+        '<div class="guided-chip-label">' + escapeHtml(secondaryLabel) + '</div>' +
+        '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsP : chipsI) + '</div>' +
+        '<p class="guided-muted">Tip: a chip copies its text into <strong>Your question</strong> on the Guided practice tab and switches there — press <strong>Get answer</strong> to use the AI (and book context when enabled on the server).</p>' +
+        '<div class="guided-nav">' +
+        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous concept</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-next style="min-width:auto;flex:0">' +
+        (step >= ids.length - 1 ? 'Finish path' : 'Next concept →') +
+        '</button>' +
+        '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
+        '</div>';
+
+      const bookSlot = document.getElementById('guidedBookSlot');
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(function () { ctrl.abort(); }, 8000);
+        const br = await fetch(API_BASE_URL + '/book/search?q=' + encodeURIComponent(concept.bookSearch || concept.title) + '&limit=4', { signal: ctrl.signal });
+        clearTimeout(t);
+        const bd = await br.json();
+        if (!br.ok || (bd.error && !bd.results)) {
+          bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">' +
+            escapeHtml(bd.error || 'Book search unavailable. The server may not have an EPUB loaded — you can still use Guided practice and chips above.') + '</p>';
+          return;
+        }
+        const res = bd.results || [];
+        if (!res.length) {
+          bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">No close matches for this topic in the index. Try a chip question — the model may still answer from general SQL knowledge.</p>';
+          return;
+        }
+        bookSlot.innerHTML = '<h4>From the course book</h4>' + res.map(function (hit) {
+          return '<div class="guided-snippet"><div class="snip-sec">' + escapeHtml(hit.section || 'Section') + '</div>' +
+            escapeHtml(hit.excerpt || '') + '</div>';
+        }).join('');
+      } catch (e) {
+        bookSlot.innerHTML = '<h4>From the course book</h4><p class="guided-muted">Could not reach the book search API. Check server URL / network.</p>';
+      }
+    }
+
+    async function renderGuided() {
+      const root = document.getElementById('guidedRoot');
+      const prog = document.getElementById('guidedProgress');
+      if (!root) return;
+
+      try {
+        await fetchGuidedCurriculum();
+      } catch (e) {
+        root.innerHTML = '<p class="guided-muted">Could not load the learning path file. If you opened this page from disk, set <code>sql-learn-api</code> to your server URL or run the app from the server host.</p>';
+        prog.textContent = '';
+        return;
+      }
+
+      if (guidedState.visit && guidedState.level) {
+        const exp = guidedCurriculum.tracks[guidedState.visit] &&
+          guidedCurriculum.tracks[guidedState.visit][guidedState.level];
+        if (!exp || !exp.length) {
+          guidedState = { visit: null, level: null, step: 0, ids: [] };
+          saveGuidedState();
+        } else {
+          const same = exp.length === guidedState.ids.length &&
+            exp.every(function (id, i) { return id === guidedState.ids[i]; });
+          if (!same) guidedState.ids = exp.slice();
+          guidedState.step = Math.max(0, Math.min(guidedState.step, guidedState.ids.length - 1));
+          saveGuidedState();
+        }
+      }
+
+      if (!guidedState.visit) {
+        prog.textContent = 'Step 1 of 3 — choose your goal';
+        renderGuidedPurpose(root);
+        return;
+      }
+      if (!guidedState.level) {
+        prog.textContent = 'Step 2 of 3 — choose your level (' + visitLabel(guidedState.visit) + ')';
+        renderGuidedLevel(root);
+        return;
+      }
+
+      prog.textContent = '';
+      await renderGuidedConcept(root);
+    }
+
+    function bindGuidedRootClicks(e) {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      const visitBtn = t.closest('[data-guided-visit]');
+      if (visitBtn) {
+        guidedState = { visit: visitBtn.getAttribute('data-guided-visit'), level: null, step: 0, ids: [] };
+        saveGuidedState();
+        renderGuided();
+        return;
+      }
+      const levelBtn = t.closest('[data-guided-level]');
+      if (levelBtn && guidedCurriculum) {
+        const level = levelBtn.getAttribute('data-guided-level');
+        const track = guidedCurriculum.tracks[guidedState.visit];
+        const ids = track && track[level] ? track[level].slice() : [];
+        if (!ids.length) {
+          alert('No curriculum for this combination.');
+          return;
+        }
+        guidedState.level = level;
+        guidedState.step = 0;
+        guidedState.ids = ids;
+        saveGuidedState();
+        renderGuided();
+        return;
+      }
+      const backBtn = t.closest('[data-guided-back]');
+      if (backBtn) {
+        guidedState.level = null;
+        guidedState.step = 0;
+        guidedState.ids = [];
+        saveGuidedState();
+        renderGuided();
+        return;
+      }
+      const promptBtn = t.closest('[data-guided-prompt]');
+      if (promptBtn) {
+        const q = (promptBtn.textContent || '').trim();
+        if (q) openInPractice(q);
+        return;
+      }
+      const prevBtn = t.closest('[data-guided-prev]');
+      if (prevBtn && !prevBtn.disabled && guidedState.step > 0) {
+        guidedState.step--;
+        saveGuidedState();
+        renderGuided();
+        return;
+      }
+      const nextBtn = t.closest('[data-guided-next]');
+      if (nextBtn && guidedState.ids.length) {
+        if (guidedState.step >= guidedState.ids.length - 1) {
+          guidedState = { visit: null, level: null, step: 0, ids: [] };
+          saveGuidedState();
+          renderGuided();
+          return;
+        }
+        guidedState.step++;
+        saveGuidedState();
+        renderGuided();
+        return;
+      }
+      const resetBtn = t.closest('[data-guided-reset]');
+      if (resetBtn) {
+        guidedState = { visit: null, level: null, step: 0, ids: [] };
+        saveGuidedState();
+        renderGuided();
+      }
+    }
+
+    loadGuidedState();
+    const guidedRootEl = document.getElementById('guidedRoot');
+    if (guidedRootEl) {
+      guidedRootEl.addEventListener('click', bindGuidedRootClicks);
+      fetchGuidedCurriculum()
+        .then(function () { return renderGuided(); })
+        .catch(function () {
+          guidedRootEl.innerHTML = '<p class="guided-muted">Could not load curriculum.</p>';
+        });
+    }
 
     let lastSql = '';
     let schemaData = null;

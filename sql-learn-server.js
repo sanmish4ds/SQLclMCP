@@ -659,9 +659,25 @@ const requestHandler = (request, response) => {
         book_status: 'GET /book/status — EPUB index',
         book_search: 'GET /book/search?q=…&limit=12',
         book_reload: 'POST /book/reload',
+        guided_curriculum: 'GET /guided-curriculum.json — interactive path concepts (same file ships in app/ for Netlify)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
+    return;
+  }
+
+  // GET /guided-curriculum.json — learning / interview paths (also static on Netlify publish=app)
+  if (pathname === '/guided-curriculum.json' && request.method === 'GET') {
+    const curriculumPath = path.join(__dirname, 'app', 'guided-curriculum.json');
+    try {
+      const raw = fs.readFileSync(curriculumPath, 'utf8');
+      JSON.parse(raw);
+      response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      response.end(raw);
+    } catch (err) {
+      response.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+      response.end(JSON.stringify({ error: 'guided-curriculum.json not found', detail: err.message }));
+    }
     return;
   }
 
