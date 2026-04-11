@@ -355,9 +355,11 @@ async function generateSqlWithLLM(question) {
     'How to respond:',
     '1) Markdown: ## / ### headings, - bullets, **bold**, `code` for identifiers.',
     '2) Multi-line SQL only inside ```sql fences—never loose SQL after paragraphs.',
-    '3) Exactly ONE primary runnable Oracle SELECT or WITH for the lab goes in the final ```sql block when a query is needed; no prose in that fence.',
-    '4) Conceptual answers still use TPC-H in any ```sql—no generic schemas.',
-    '5) Use only columns from the schema reference; never invent table or column names for examples.',
+    '3) **Runnable-only rule:** Every ```sql fence = **one** complete Oracle **SELECT** or **WITH … SELECT** that runs **as-is** on the lab DB (TPC-H tables only).',
+    '4) No placeholders (no YOUR_TABLE, <id>, …, TODO). No multi-statement batches. **No DDL/DML** (INSERT/UPDATE/DELETE/MERGE/CREATE/…) inside ```sql** — explain those in prose; still give a runnable SELECT that illustrates the idea.',
+    '5) When a query is needed: put **exactly one** primary lab query in the **last** ```sql block; no prose inside that fence.',
+    '6) Conceptual answers: any ```sql must still be runnable TPC-H SELECT/WITH—never generic or fake schemas.',
+    '7) Use only columns from the schema reference; never invent table or column names.',
     '',
     'Schema reference:\n',
     schemaHint,
@@ -366,7 +368,7 @@ async function generateSqlWithLLM(question) {
   const userQ = String(question || '').trim();
   const userWithSchemaReminder =
     userQ +
-    '\n\n[Assistant: All ```sql in your reply must use only TPC-H tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP and their documented columns—never Sales/employees-style placeholders.]';
+    '\n\n[Assistant: Every ```sql block must be one runnable Oracle SELECT or WITH … SELECT on TPC-H only—copy-paste ready, no DDL/DML, no placeholders.]';
 
   const useBook =
     config.bookContextInGenerate &&
@@ -386,7 +388,7 @@ async function generateSqlWithLLM(question) {
       '1) Decide whether these passages **clearly discuss** the user’s question (e.g. UNION vs UNION ALL, joins, windows—whatever they asked).\n' +
       '2) **If yes:** Optionally start with one short line, e.g. **Course book:** … in **«section/chapter name»** (*' +
       bookTitle +
-      '*). Use the **exact section title** from the excerpt headers `[n] Section: …`. Then give the full Markdown answer (and TPC-H ```sql as required).\n' +
+      '*). Use the **exact section title** from the excerpt headers `[n] Section: …`. Then give the full Markdown answer; any ```sql must be **runnable** Oracle SELECT/WITH on TPC-H only.\n' +
       '3) **If no** (excerpts are off-topic, too narrow, or a poor match—common for very broad questions like “what is SQL?”): **Ignore the excerpts** and answer fully from **general SQL / interview knowledge** and TPC-H rules. **Do not** say the book does not cover the topic, **do not** say you were “not given” passages, and **do not** apologize for missing book material—just teach the answer. **Do not** invent a chapter name.\n' +
       '4) Never quote long passages verbatim; paraphrase and teach.\n';
   }
@@ -505,10 +507,11 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
         content:
           'You are a SQL tutor for learners and interview prep. Explain SQL clearly and concisely. ' +
           'Format your answer in Markdown: use ## for sections, - bullet lists, **bold** for emphasis, `code` for identifiers. ' +
-          'Put any sample or corrected SQL in ```sql fenced blocks (not as loose plain text). ' +
+          'Put any sample or alternative SQL in ```sql fenced blocks (not loose plain text). ' +
+          '**Every** ```sql block must be **one** complete, **directly runnable** Oracle **SELECT** or **WITH … SELECT** on the practice schema (no DDL/DML, no placeholders). ' +
           'For queries, cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
           'For conceptual or interview-style questions, define terms, give intuition, and note common pitfalls. ' +
-          'If you suggest alternative or example Oracle SQL, use only the user practice schema: tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP ' +
+          'Example SQL must use only: REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP ' +
           'with TPC-H column prefixes (C_, O_, L_, N_, R_, S_, P_, PS_). Never suggest fake tables like Sales or employees. ' +
           'Add 3 short "Try changing" suggestions when it fits. ' +
           'Do NOT execute SQL. If something is unknown, say so. ' +
@@ -656,10 +659,10 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     'Teach **practical SQL** for this topic: ANSI where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dates, etc.).',
     'Do **not** mention textbooks, EPUBs, or that content is automated. Write as a tight course note.',
     'Use **short** Markdown: ## headings, bullets, **bold** terms. No long essays — every line should earn its place.',
-    '**One** ```sql block: a **short runnable Oracle SELECT** (or WITH … SELECT) on TPC-H tables. DDL/DML parts only: add a **tiny** second fence, comment **sandbox-only**.',
+    '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** Teach INSERT/UPDATE/DDL/transaction topics in **prose only**—never put DDL/DML inside ```sql**.',
     'Touch the **depth hints** (if any) but **summarize**; do not lecture on every keyword.',
     '**2** self-check questions (one line each). **What’s next:** **exactly 2 bullets** (next path part if given + one related skill).',
-    'Hard cap: **~220–380 words** of prose plus the SQL block(s). If you run long, cut examples before cutting structure.',
+    'Use **real** TPC-H identifiers only in SQL—**no** placeholders or pseudo-code. Hard cap: **~220–380 words** plus that single query.',
   ].join(' ');
 
   const user = [
@@ -670,7 +673,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     '**Use exactly these ## headings (keep each section brief):**',
     '## At a glance — 3–5 bullets: outcomes for this part.',
     `## Essentials — one tight section: concepts, Oracle vs standard, 1–2 pitfalls or interview hooks. Tables: ${schemaTables}`,
-    '## Lab — the ```sql example only (minimal intro line above the fence).',
+    '## Lab — **one** ```sql fence only**: a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). Minimal intro line above the fence.',
     '## Quick check — 2 questions.',
     '## What’s next — 2 bullets only.',
     '',
