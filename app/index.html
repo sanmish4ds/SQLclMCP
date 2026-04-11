@@ -11,24 +11,24 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-deep: #070a0f;
-      --bg-surface: #101620;
-      --bg-elevated: #161d2a;
-      --bg-input: #0c1018;
-      --border: rgba(148, 163, 184, 0.1);
-      --border-strong: rgba(148, 163, 184, 0.18);
-      --text: #e8edf4;
-      --text-muted: #94a3b8;
+      --bg-deep: #eef2f7;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f1f5f9;
+      --bg-input: #ffffff;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-strong: rgba(15, 23, 42, 0.14);
+      --text: #0f172a;
+      --text-muted: #475569;
       --text-dim: #64748b;
-      --accent: #2dd4bf;
-      --accent-muted: rgba(45, 212, 191, 0.14);
-      --accent-hover: #5eead4;
-      --sql: #7cb3ff;
-      --success: #34d399;
-      --danger: #f87171;
+      --accent: #0d9488;
+      --accent-muted: rgba(13, 148, 136, 0.14);
+      --accent-hover: #0f766e;
+      --sql: #0369a1;
+      --success: #047857;
+      --danger: #b91c1c;
       --radius: 14px;
       --radius-sm: 10px;
-      --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
       --font: "DM Sans", system-ui, -apple-system, sans-serif;
       --mono: "JetBrains Mono", ui-monospace, monospace;
     }
@@ -46,8 +46,8 @@
       -webkit-font-smoothing: antialiased;
       background: var(--bg-deep);
       background-image:
-        radial-gradient(ellipse 100% 60% at 50% -25%, rgba(45, 212, 191, 0.09), transparent 55%),
-        radial-gradient(ellipse 50% 40% at 100% 10%, rgba(124, 179, 255, 0.06), transparent 50%);
+        radial-gradient(ellipse 100% 60% at 50% -25%, rgba(13, 148, 136, 0.1), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 100% 10%, rgba(3, 105, 161, 0.07), transparent 50%);
     }
 
     .app {
@@ -72,12 +72,13 @@
       width: 44px;
       height: 44px;
       border-radius: 12px;
-      background: linear-gradient(145deg, #2dd4bf, #0d9488);
+      background: linear-gradient(145deg, #14b8a6, #0d9488);
       display: grid;
       place-items: center;
       font-size: 1.2rem;
       flex-shrink: 0;
-      box-shadow: 0 6px 20px rgba(45, 212, 191, 0.22);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(13, 148, 136, 0.28);
     }
 
     .brand-text h1 {
@@ -106,7 +107,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       margin-bottom: 1.35rem;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
     }
 
     .tab-btn {
@@ -126,13 +127,13 @@
 
     .tab-btn:hover {
       color: var(--text);
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(15, 23, 42, 0.04);
     }
 
     .tab-btn.active {
-      background: var(--bg-elevated);
+      background: #ffffff;
       color: var(--accent);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
     }
 
     .tab-panel {
@@ -179,14 +180,14 @@
 
     .status.ok {
       color: var(--success);
-      border-color: rgba(52, 211, 153, 0.28);
-      background: rgba(52, 211, 153, 0.06);
+      border-color: rgba(4, 120, 87, 0.25);
+      background: rgba(4, 120, 87, 0.06);
     }
 
     .status.fail {
       color: var(--danger);
-      border-color: rgba(248, 113, 113, 0.28);
-      background: rgba(248, 113, 113, 0.06);
+      border-color: rgba(185, 28, 28, 0.22);
+      background: rgba(185, 28, 28, 0.05);
     }
 
     label.field-label {
@@ -240,7 +241,7 @@
 
     button {
       background: linear-gradient(180deg, #14b8a6, #0d9488);
-      color: #042f2e;
+      color: #ffffff;
       border: none;
       padding: 0.55rem 1.15rem;
       border-radius: var(--radius-sm);
@@ -294,14 +295,14 @@
     }
 
     .result.success {
-      border-color: rgba(45, 212, 191, 0.35);
-      background: rgba(45, 212, 191, 0.05);
+      border-color: rgba(13, 148, 136, 0.35);
+      background: rgba(13, 148, 136, 0.06);
     }
 
     .result.error {
-      border-color: rgba(248, 113, 113, 0.4);
+      border-color: rgba(185, 28, 28, 0.3);
       color: var(--danger);
-      background: rgba(248, 113, 113, 0.06);
+      background: rgba(185, 28, 28, 0.05);
     }
 
     .meta {
@@ -482,13 +483,13 @@
     }
 
     .schema-card:hover {
-      border-color: rgba(45, 212, 191, 0.35);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+      border-color: rgba(13, 148, 136, 0.35);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
     }
 
     .schema-card.open {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.25);
+      box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
     }
 
     .schema-card-emoji { font-size: 1.35rem; margin-bottom: 0.2rem; line-height: 1; }
@@ -544,8 +545,8 @@
     }
 
     .col-pill.copied {
-      background: rgba(45, 212, 191, 0.2);
-      color: var(--accent);
+      background: rgba(13, 148, 136, 0.15);
+      color: var(--accent-hover);
       border-color: var(--accent);
     }
 
@@ -587,9 +588,9 @@
     }
 
     .conn-badge.on {
-      border: 1px solid rgba(52, 211, 153, 0.45);
+      border: 1px solid rgba(4, 120, 87, 0.35);
       color: var(--success);
-      background: rgba(52, 211, 153, 0.1);
+      background: rgba(4, 120, 87, 0.08);
     }
 
     .conn-badge.off {
@@ -637,9 +638,9 @@
     .msg-user { flex-direction: row-reverse; }
 
     .msg-user .msg-bubble {
-      background: linear-gradient(145deg, #1e3a5f, #1a3050);
-      border: 1px solid rgba(124, 179, 255, 0.25);
-      color: #dbeafe;
+      background: linear-gradient(145deg, #e0f2fe, #dbeafe);
+      border: 1px solid #bae6fd;
+      color: #0c4a6e;
       border-radius: 18px 18px 6px 18px;
       padding: 0.6rem 0.95rem;
       max-width: 82%;
@@ -921,7 +922,39 @@
 
     .text-warn { color: var(--danger); font-weight: 500; }
     .text-dim-hint { color: var(--text-dim); font-weight: 400; }
-    .explain-box.is-error { border-color: rgba(248, 113, 113, 0.45); color: var(--danger); }
+    .explain-box.is-error { border-color: rgba(185, 28, 28, 0.35); color: var(--danger); }
+
+    .tutor-response {
+      margin-top: 0.85rem;
+      padding: 1rem 1.1rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .tutor-response pre {
+      margin: 0.65rem 0;
+      padding: 0.75rem 0.9rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      overflow-x: auto;
+      color: var(--sql);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tutor-prose { margin: 0.35rem 0; }
+    .chat-success-note { color: var(--success); font-size: 0.78rem; font-weight: 600; }
+
+    .how-it-works-body { font-size: 0.83rem; line-height: 1.7; color: var(--text-muted); }
+    .how-it-step { color: var(--sql); }
+    .chat-code-muted { color: var(--text-dim); font-size: 0.78rem; }
     .lab-muted { color: var(--text-dim); font-size: 0.78rem; }
     .book-panel-meta { font-size: 0.88rem; color: var(--text-muted); line-height: 1.55; margin: 0 0 0.75rem; }
     .book-panel-meta strong { color: var(--text); }
@@ -935,13 +968,13 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Ask in plain language, get Oracle SQL — with your course book, AI explanations, and an optional live lab.</p>
+        <p class="sub">Ask <strong>any</strong> SQL question — interview prep, concepts, or natural language to Oracle SQL for the practice database. Course book search and Explain help you go deep. Verify critical answers; models can be wrong.</p>
       </div>
     </div>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Main views">
-    <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="practice">Guided practice</button>
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="practice">Guided practice · any question</button>
     <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="lab">SQL lab</button>
   </div>
 
@@ -969,9 +1002,9 @@
 
   <div class="card">
     <label class="field-label" for="question">Your question</label>
-    <textarea id="question" placeholder="e.g. List top 10 customers by total order value" rows="4"></textarea>
+    <textarea id="question" placeholder="Interview: What is the difference between RANK and DENSE_RANK? · Concept: Explain ACID · Lab: Top 10 customers by order value" rows="4"></textarea>
     <div class="btn-toolbar">
-      <button type="button" id="btnGenerate">Generate SQL</button>
+      <button type="button" id="btnGenerate">Get answer</button>
       <button type="button" id="btnCopy" class="secondary" disabled>Copy</button>
       <button type="button" id="btnExplain" class="secondary" disabled>Explain</button>
       <button type="button" id="btnExecute" class="secondary" disabled>Run on DB</button>
@@ -990,8 +1023,8 @@
       <div class="chat-history" id="chatHistory" style="padding:0.75rem 1rem 0">
         <div class="chat-welcome">
           <div class="chat-welcome-icon" aria-hidden="true">💬</div>
-          <p>Ask in plain English, paste SQL, or use the shortcuts below. Turn on the database in <code>.env</code> to run queries live.</p>
-          <p class="muted">Try: <em>Find top 10 orders</em> · <code>SELECT * FROM REGION</code> · <code>DESC ORDERS</code></p>
+          <p>Ask <strong>any</strong> SQL question (interview prep, concepts, or plain English for the lab DB), paste SQL, or use the shortcuts. Enable the database in <code>.env</code> to run queries live.</p>
+          <p class="muted">Try: <em>What is a correlated subquery?</em> · <em>Find top 10 orders</em> · <code>SELECT * FROM REGION</code></p>
           <p style="margin-top:1rem">
             <button type="button" class="chat-chip" onclick="showHowItWorks()">How the lab works</button>
           </p>
@@ -1247,6 +1280,24 @@
     // Start collapsed — user opens on demand
     document.getElementById('schemaGrid').style.display = 'none';
 
+    function tutorMarkdownToHtml(md) {
+      var s = String(md || '').trim();
+      if (!s) return '';
+      var out = '';
+      var re = /```(?:sql)?\s*([\s\S]*?)```/gi;
+      var last = 0;
+      var m;
+      while ((m = re.exec(s)) !== null) {
+        out += '<div class="tutor-prose">' +
+          escapeHtml(s.slice(last, m.index)).replace(/\n/g, '<br>') + '</div>';
+        out += '<pre>' + escapeHtml(m[1].trim()) + '</pre>';
+        last = re.lastIndex;
+      }
+      out += '<div class="tutor-prose">' +
+        escapeHtml(s.slice(last)).replace(/\n/g, '<br>') + '</div>';
+      return '<div class="tutor-response">' + out + '</div>';
+    }
+
     btnGenerate.addEventListener('click', async () => {
       const question = questionEl.value.trim();
       if (!question) {
@@ -1254,26 +1305,34 @@
         return;
       }
       btnGenerate.disabled = true;
-      resultEl.innerHTML = '<div class="result">Generating SQL…</div>';
+      resultEl.innerHTML = '<div class="result">Thinking…</div>';
       if (explainResultEl) explainResultEl.innerHTML = '';
       try {
         const r = await fetch(API_BASE_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question }),
+          body: JSON.stringify({ question, mode: 'hybrid' }),
         });
         const data = await r.json();
-        lastSql = data.generated_sql || '';
-        if (data.success && data.generated_sql) {
-          resultEl.innerHTML =
-            '<div class="result success">' + escapeHtml(data.generated_sql) + '</div>' +
-            '<p class="meta">Source: ' + (data.source || 'unknown') + '. Mode: ' + (data.mode || 'unknown') + '</p>';
-          btnCopy.disabled = false;
-          btnExplain.disabled = false;
-          btnExecute.disabled = false;
+        lastSql = (data.generated_sql || '').trim();
+        const tutor = (data.tutor_response || '').trim();
+        const ok = data.success && (lastSql || tutor);
+        if (ok) {
+          var parts = '';
+          if (tutor) parts += tutorMarkdownToHtml(tutor);
+          if (lastSql) {
+            parts += '<div class="result success" style="margin-top:0.75rem">' + escapeHtml(lastSql) + '</div>';
+          }
+          parts += '<p class="meta">Source: ' + escapeHtml(String(data.source || 'unknown')) +
+            '. Mode: ' + escapeHtml(String(data.mode || 'hybrid')) +
+            (lastSql ? '' : ' · conceptual answer (no runnable lab SQL)') + '</p>';
+          resultEl.innerHTML = parts;
+          btnCopy.disabled = !lastSql;
+          btnExplain.disabled = !lastSql;
+          btnExecute.disabled = !lastSql;
           executeResultEl.innerHTML = '';
         } else {
-          resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No SQL generated') + '</div>';
+          resultEl.innerHTML = '<div class="result error">' + escapeHtml(data.error || 'No answer returned') + '</div>';
           btnCopy.disabled = true;
           btnExplain.disabled = true;
           btnExecute.disabled = true;
@@ -1450,7 +1509,7 @@
           setExcelPanelVisible(false);
           toolsEl.innerHTML =
             '<strong>SQL lab</strong> <span class="conn-badge off">Execute off</span>' +
-            '<br><span style="color:#8b949e;font-size:0.75rem">Enable <code>EXECUTE_SQL_ENABLED=true</code> and set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> (and wallet env) on the server to run SQL from this tab.</span>' +
+            '<br><span class="lab-muted" style="font-size:0.75rem">Enable <code>EXECUTE_SQL_ENABLED=true</code> and set <code>DB_DSN</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code> (and wallet env) on the server to run SQL from this tab.</span>' +
             (toolTags ? '<br><span class="lab-muted">Tools: </span>' + toolTags : '');
           labStatusEl.textContent = 'Execution disabled — you can still generate SQL and read explanations (no live runs).';
           labStatusEl.className = 'status fail';
@@ -1481,23 +1540,22 @@
       removeWelcome();
       const html =
         '<div class="chat-label">How the SQL lab works &#9432;</div>' +
-        '<div style="font-size:0.83rem;line-height:1.7;color:#c9d1d9">' +
+        '<div class="how-it-works-body">' +
 
-        '<strong style="color:#58a6ff">&#9312; Practice question in English (e.g. “find top 10 orders”)</strong><br>' +
-        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">Browser → POST /generate-sql  { question, mode:”hybrid” }
-           └─ Rules lookup (experiments/sql-practice-rules.json), then LLM if needed
-           └─ Oracle-focused system prompt (schema + FETCH FIRST, etc.)
-    ↓  SQL shown in chat — use <strong>Explain</strong> on the block for /explain-sql (+ book excerpts when indexed)
+        '<strong class="how-it-step">&#9312; Any question in English (interview topics, concepts, or “find top 10 orders”)</strong><br>' +
+        `<pre class="chat-code chat-code-muted">Browser → POST /generate-sql  { question, mode:”hybrid” }
+           └─ Exact rules match (sql-practice-rules.json), else LLM tutor (concepts + Oracle TPC-H SQL when relevant)
+    ↓  Answer and/or SQL in chat — <strong>Explain</strong> uses /explain-sql (+ book when indexed)
     ↓  POST /api/invoke  { tool:”run-sql”, params:{sql} }  (when execute is enabled)
            └─ node-oracledb → your DB
     ↓  Result table in the thread</pre>` +
 
-        '<strong style="color:#58a6ff">&#9313; Paste SQL (e.g. <code>SELECT * FROM ORDERS</code>)</strong><br>' +
-        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">No generation step — POST /api/invoke  { tool:”run-sql”, params:{sql} }
+        '<strong class="how-it-step">&#9313; Paste SQL (e.g. <code>SELECT * FROM ORDERS</code>)</strong><br>' +
+        `<pre class="chat-code chat-code-muted">No generation step — POST /api/invoke  { tool:”run-sql”, params:{sql} }
            └─ Wallet via TNS_ADMIN / ORACLE_WALLET_* ; DSN from DB_DSN</pre>` +
 
-        '<strong style="color:#58a6ff">&#9314; Shortcuts (DESC / SHOW TABLES)</strong><br>' +
-        `<pre class="chat-code" style="font-size:0.78rem;color:#8b949e">POST /api/invoke  { tool:”run-sqlcl”, params:{command} }
+        '<strong class="how-it-step">&#9314; Shortcuts (DESC / SHOW TABLES)</strong><br>' +
+        `<pre class="chat-code chat-code-muted">POST /api/invoke  { tool:”run-sqlcl”, params:{command} }
            └─ Backed by USER_TAB_COLUMNS / USER_TABLES</pre>` +
         '</div>';
       appendBotDiv(html);
@@ -1710,7 +1768,7 @@
               const d1 = await apiInvoke('run-sql', { sql: correctedSql });
               setBotContent(
                 botDiv,
-                '<div class="chat-meta" style="color:#3fb950">' +
+                '<div class="chat-meta chat-success-note">' +
                   'Auto-corrected SQL generated' +
                   (genData.mode ? ' · mode: ' + escapeHtml(genData.mode) : '') +
                 '</div>' +
@@ -1817,25 +1875,32 @@
             body: JSON.stringify({ question: text, mode: 'hybrid' }),
           });
           const genData = await genR.json();
-          if (!genData.success || !genData.generated_sql) {
+          const sql = (genData.generated_sql || '').trim();
+          const tutor = (genData.tutor_response || '').trim();
+          if (!genData.success || (!sql && !tutor)) {
             const genErr = genData.error || 'Unknown error';
             const hint = (genErr.includes('disabled') || genErr.includes('API_KEY'))
               ? '<p class="chat-no-db-hint">Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY=…</code> in .env.</p>' : '';
-            setBotContent(botDiv, '<div class="chat-error">❌ Could not generate SQL: ' + escapeHtml(genErr) + '</div>' + hint);
+            setBotContent(botDiv, '<div class="chat-error">❌ Could not get an answer: ' + escapeHtml(genErr) + '</div>' + hint);
             return;
           }
-          const sql = genData.generated_sql;
-          const sb = sqlBlock(sql, genData.source);
+          const tutorHtml = tutor ? tutorMarkdownToHtml(tutor) : '';
+          const sb = sql ? sqlBlock(sql, genData.source) : '';
+
+          if (!sql) {
+            setBotContent(botDiv, tutorHtml + '<p class="chat-meta">Conceptual answer — no SQL to run on the lab database.</p>');
+            return;
+          }
 
           if (!chatConnectedTo) {
-            setBotContent(botDiv, sb + '<p class="chat-no-db-hint">Not connected — type “list connections” to pick a connection, then retry.</p>');
+            setBotContent(botDiv, tutorHtml + sb + '<p class="chat-no-db-hint">Not connected — type “list connections” to pick a connection, then retry.</p>');
             return;
           }
-          setBotContent(botDiv, sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running SQL on Oracle…</span>');
+          setBotContent(botDiv, tutorHtml + sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running SQL on Oracle…</span>');
           const d = await apiInvoke('run-sql', { sql });
           setBotContent(botDiv, d.success
-            ? sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d.result)
-            : sb + '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
+            ? tutorHtml + sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d.result)
+            : tutorHtml + sb + '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
           );
         }
       } catch (e) {

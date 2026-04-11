@@ -376,19 +376,12 @@ function loadBasicRules() {
 // ── SQL Generation ────────────────────────────────────────────────────────────
 
 function lookupSql(question) {
+  const q = String(question || '').trim().toLowerCase();
   for (const [pattern, sql] of Object.entries(SQL_GENERATION_RULES)) {
-    if (pattern.toLowerCase() === question.toLowerCase()) {
+    if (pattern.toLowerCase() === q) {
       return { sql, source: 'lookup_exact' };
     }
   }
-
-  const lowerQuestion = question.toLowerCase();
-  for (const [pattern, sql] of Object.entries(SQL_GENERATION_RULES)) {
-    if (lowerQuestion.includes(pattern.toLowerCase()) || pattern.toLowerCase().includes(lowerQuestion)) {
-      return { sql, source: 'lookup_partial' };
-    }
-  }
-
   return { sql: null, source: 'lookup_none' };
 }
 
@@ -406,17 +399,30 @@ function extractSqlFromResponse(content) {
   return null;
 }
 
+/** Pull runnable TPC-H SQL (if any) and remaining prose for interview / teaching answers. */
+function splitSqlAndTutorFromLlmContent(content) {
+  const raw = String(content || '').trim();
+  if (!raw) return { sql: null, tutor_response: null };
+  const sql = extractSqlFromResponse(raw);
+  if (!sql) {
+    return { sql: null, tutor_response: raw };
+  }
+  let tutor = raw.replace(/```(?:sql)?\s*[\s\S]*?```/i, '').trim();
+  tutor = tutor.replace(/```\s*[\s\S]*?```/, '').trim();
+  return { sql, tutor_response: tutor.length > 0 ? tutor : null };
+}
+
 async function generateSqlWithLLM(question) {
   if (!config.enableLLMSqlGeneration) {
-    return { sql: null, source: 'llm_disabled', error: 'LLM SQL generation is disabled' };
+    return { sql: null, tutor_response: null, source: 'llm_disabled', error: 'LLM SQL generation is disabled' };
   }
   if (!config.llmApiKey) {
-    return { sql: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing' };
+    return { sql: null, tutor_response: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing' };
   }
 
   const schemaHint = [
-    'TPC-H schema (use exact column names per table; Oracle rejects invalid identifiers):',
-    'LINEITEM has L_PARTKEY (use L.L_PARTKEY, never L.P_PARTKEY). PART has P_PARTKEY. Use each table\'s own columns.',
+    'TPC-H practice schema (exact column names; Oracle rejects invalid identifiers):',
+    'LINEITEM has L_PARTKEY (use L.L_PARTKEY, never L.P_PARTKEY). PART has P_PARTKEY.',
     'REGION: R_REGIONKEY, R_NAME, R_COMMENT',
     'NATION: N_NATIONKEY, N_NAME, N_REGIONKEY, N_COMMENT',
     'CUSTOMER: C_CUSTKEY, C_NAME, C_ADDRESS, C_NATIONKEY, C_PHONE, C_ACCTBAL, C_MKTSEGMENT, C_COMMENT',
@@ -425,20 +431,34 @@ async function generateSqlWithLLM(question) {
     'SUPPLIER: S_SUPPKEY, S_NAME, S_ADDRESS, S_NATIONKEY, S_PHONE, S_ACCTBAL, S_COMMENT',
     'PART: P_PARTKEY, P_NAME, P_MFGR, P_BRAND, P_TYPE, P_SIZE, P_CONTAINER, P_RETAILPRICE, P_COMMENT',
     'PARTSUPP: PS_PARTKEY, PS_SUPPKEY, PS_AVAILQTY, PS_SUPPLYCOST, PS_COMMENT',
-    'Oracle rules: Use FETCH FIRST N ROWS ONLY for top-N (not LIMIT).',
-    'Oracle EXTRACT does NOT support QUARTER. For quarter use CEIL(EXTRACT(MONTH FROM col)/3) or TO_CHAR(col,\'Q\').',
-    'For year filtering prefer date ranges: col >= DATE \'YYYY-01-01\' AND col < DATE \'YYYY+1-01-01\'.',
-    'For "Revenue and order profile" queries: output C_NATIONKEY, order_count, net_revenue; use date range in WHERE, not EXTRACT(YEAR).',
-    'For "Part demand and supplier diversity": use L.L_PARTKEY from LINEITEM (not L.P_PARTKEY; LINEITEM has L_PARTKEY). Use part_activity from LINEITEM l, supplier_diversity from PARTSUPP ps. Output P_PARTKEY, P_SIZE, line_count, total_qty, supplier_count, FETCH FIRST 50 ROWS ONLY. Match baseline: part_activity selects l.L_PARTKEY AS partkey; supplier_diversity selects ps.PS_PARTKEY AS partkey; join both to PART p.',
-    'Return exactly one SQL statement with no explanation.',
+    'Oracle: FETCH FIRST n ROWS ONLY (not LIMIT). EXTRACT has no QUARTER — use CEIL(EXTRACT(MONTH FROM d)/3) or TO_CHAR(d,\'Q\').',
+    'Prefer year filters as date ranges: d >= DATE \'YYYY-01-01\' AND d < ADD_MONTHS(DATE \'YYYY-01-01\',12).',
+  ].join(' ');
+
+  const tutorSystem = [
+    'You are an expert SQL tutor for technical interviews and Oracle SQL. The user may ask ANYTHING about SQL:',
+    'concepts (joins, keys, indexes, transactions, isolation levels, window functions, CTEs, pivots, plans),',
+    'interview comparisons (WHERE vs HAVING, UNION vs UNION ALL, DELETE vs TRUNCATE, EXISTS vs IN),',
+    'how to read or write a query, debugging, best practices, or questions about the TPC-H practice database.',
+    '',
+    'How to respond:',
+    '1) Always answer helpfully and accurately. Use Markdown: short ## headings, bullet lists, and fenced ```sql for examples.',
+    '2) If the user needs a runnable query against the TPC-H practice schema (customers, orders, lineitem, nation, region, etc.),',
+    '   put exactly ONE Oracle SELECT or WITH in a single ```sql block. Do not put prose inside that fence.',
+    '3) For conceptual or interview-only questions, explain fully. Use generic table names in examples unless TPC-H is clearly intended.',
+    '4) If both teaching and a TPC-H lab query apply: write the explanation first, then one final ```sql block with only the Oracle statement.',
+    '5) For TPC-H queries, use only tables/columns from the schema reference; never invent identifiers for the lab database.',
+    '',
+    'Schema reference:\n',
+    schemaHint,
   ].join(' ');
 
   const payload = {
     model: config.llmModel,
-    temperature: 0,
+    temperature: 0.15,
     messages: [
-      { role: 'system', content: `You are a SQL generation assistant. ${schemaHint}` },
-      { role: 'user',   content: `Generate Oracle SQL for: ${question}` },
+      { role: 'system', content: tutorSystem },
+      { role: 'user', content: String(question || '').trim() },
     ],
   };
 
@@ -458,20 +478,34 @@ async function generateSqlWithLLM(question) {
 
     if (!response.ok) {
       const bodyText = await response.text();
-      return { sql: null, source: 'llm_error', error: `LLM HTTP ${response.status}: ${bodyText.slice(0, 500)}` };
+      return {
+        sql: null,
+        tutor_response: null,
+        source: 'llm_error',
+        error: `LLM HTTP ${response.status}: ${bodyText.slice(0, 500)}`,
+      };
     }
 
     const data = await response.json();
     const content = data?.choices?.[0]?.message?.content || '';
-    const sql = extractSqlFromResponse(content);
-    if (!sql) {
-      return { sql: null, source: 'llm_error', error: 'LLM response did not contain a valid SELECT/WITH statement' };
+    const { sql, tutor_response } = splitSqlAndTutorFromLlmContent(content);
+    if (!sql && !tutor_response) {
+      return {
+        sql: null,
+        tutor_response: null,
+        source: 'llm_error',
+        error: 'LLM returned an empty response',
+      };
     }
-
-    return { sql, source: 'llm' };
+    return { sql, tutor_response, source: 'llm' };
   } catch (error) {
     const isAbort = error && error.name === 'AbortError';
-    return { sql: null, source: 'llm_error', error: isAbort ? 'LLM request timed out' : String(error) };
+    return {
+      sql: null,
+      tutor_response: null,
+      source: 'llm_error',
+      error: isAbort ? 'LLM request timed out' : String(error),
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -510,9 +544,10 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
       {
         role: 'system',
         content:
-          'You are a SQL tutor. Explain SQL clearly and concisely for a learner. ' +
-          'Use bullet points. Always cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
-          'Also add 3 short "Try changing" suggestions to help the user learn. ' +
+          'You are a SQL tutor for learners and interview prep. Explain SQL clearly and concisely. ' +
+          'Use bullet points. For queries, cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
+          'For conceptual or interview-style questions, define terms, give intuition, and note common pitfalls. ' +
+          'Add 3 short "Try changing" suggestions when it fits. ' +
           'Do NOT execute SQL. Do NOT invent schema. If something is unknown, say so. ' +
           'When book excerpts were provided, you may reference those ideas and optionally mention the section name in passing; do not quote long passages.',
       },
@@ -567,17 +602,22 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
 async function generateSql(question, mode = 'hybrid') {
   if (mode === 'lookup') {
     const hit = lookupSql(question);
-    return { sql: hit.sql, source: hit.source, error: hit.sql ? null : 'No SQL rule found for question' };
+    return {
+      sql: hit.sql,
+      tutor_response: null,
+      source: hit.source,
+      error: hit.sql ? null : 'No SQL rule found for question',
+    };
   }
 
   if (mode === 'llm') {
     return generateSqlWithLLM(question);
   }
 
-  // hybrid: lookup first, then LLM fallback
+  // hybrid: exact rule match only, then LLM (handles interview + open-ended questions)
   const hit = lookupSql(question);
   if (hit.sql) {
-    return { sql: hit.sql, source: hit.source, error: null };
+    return { sql: hit.sql, tutor_response: null, source: hit.source, error: null };
   }
   return generateSqlWithLLM(question);
 }
@@ -641,7 +681,7 @@ const requestHandler = (request, response) => {
         api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
         egress_ip: 'GET /egress-ip — outbound IP (Oracle ACL allow list)',
-        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" }',
+        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" } — returns generated_sql and/or tutor_response (interview/concept answers)',
         generate_batch: 'POST /generate-batch — body: { "questions": ["q1"], "mode": "…" }',
         explain_sql: 'POST /explain-sql — body: { "sql": "…", "question": "…", "use_book_context": true }',
         execute_sql: 'POST /execute-sql — body: { "sql": "…" } (opt-in)',
@@ -895,10 +935,10 @@ const requestHandler = (request, response) => {
 
         const result = await generateSql(question, mode);
 
-        if (!result.sql) {
+        if (!result.sql && !result.tutor_response) {
           response.writeHead(404);
           response.end(JSON.stringify({
-            error: result.error || 'No SQL generated',
+            error: result.error || 'No answer generated',
             question,
             source: result.source,
             mode,
@@ -909,7 +949,8 @@ const requestHandler = (request, response) => {
         response.writeHead(200);
         response.end(JSON.stringify({
           question,
-          generated_sql: result.sql,
+          generated_sql: result.sql || null,
+          tutor_response: result.tutor_response || null,
           source: result.source,
           mode,
           success: true,
@@ -1044,9 +1085,10 @@ const requestHandler = (request, response) => {
             return {
               question: q,
               generated_sql: generated.sql,
+              tutor_response: generated.tutor_response || null,
               source: generated.source,
-              success: generated.sql !== null,
-              error: generated.sql ? null : generated.error,
+              success: generated.sql !== null || !!generated.tutor_response,
+              error: generated.sql || generated.tutor_response ? null : generated.error,
             };
           })
         );
