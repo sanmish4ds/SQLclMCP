@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /** Product name in API responses and logs (override: APP_DISPLAY_NAME). */
-const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'SQL Learn';
+const APP_DISPLAY_NAME = process.env.APP_DISPLAY_NAME || 'Easy NL2SQL';
 
 function normalizeSqlGenerationMode(raw) {
   const m = String(raw == null ? 'hybrid' : raw).trim().toLowerCase();
@@ -12,7 +12,7 @@ function normalizeSqlGenerationMode(raw) {
 
 
 /**
- * SQL Learn — interactive Oracle SQL learning HTTP server (Node.js).
+ * Easy NL2SQL — interactive Oracle SQL learning HTTP server (Node.js).
  * Book-grounded explain, natural-language → SQL (lookup / LLM / hybrid), optional Oracle execution via oracledb.
  *
  * SQL generation modes (SQL_GENERATION_MODE=lookup|llm|hybrid, default hybrid):
@@ -633,9 +633,9 @@ const requestHandler = (request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({
       name: APP_DISPLAY_NAME,
-      tagline: 'Interactive Oracle SQL learning — book, LLM, and live practice',
+      tagline: 'Natural language to Oracle SQL — course book, AI explain, optional live runs',
       status: 'running',
-      offer: 'Learn SQL with an indexed course book, AI explanations, NL→SQL, and optional Oracle runs.',
+      offer: 'Easy NL2SQL turns questions into SQL with an indexed course book, AI explanations, and optional Oracle execution.',
       endpoints: {
         ui: 'GET / — browser UI',
         api_info: 'GET /api-info — this JSON',

@@ -96,7 +96,7 @@ sql-learn/  (repo root)
 ├── docker-compose.yml          # Oracle 26ai Free (optional)
 │
 ├── app/
-│   └── sql-learn-ui.html       # Main browser UI (served at GET /)
+│   └── index.html              # Main browser UI (GET /); also hosted on Netlify (easynlsql.netlify.app)
 │
 ├── experiments/
 │   ├── run_sql_evaluation.py   # Evaluation engine (RQ1–RQ4)

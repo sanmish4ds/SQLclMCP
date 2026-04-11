@@ -38,7 +38,7 @@ Do this (order matters):
    then delete the OLD Python service.
 
 4) Open the service URL in a browser (GET / serves the UI). API calls use same origin
-   (API_BASE_URL is empty) — no edit to app/sql-learn-ui.html when the UI is loaded from your server.
+   (API_BASE_URL is empty) — same-origin when UI and API share one host. Netlify UI uses netlify.toml proxies to your API.
 
 5) Programmatic clients: machine-readable root is GET /api-info (not GET /).
 

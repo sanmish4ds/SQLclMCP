@@ -1,7 +1,7 @@
 {
-  "name": "sql-learn",
+  "name": "easy-nl2sql",
   "version": "1.0.0",
-  "description": "Interactive Oracle SQL learning — book index, AI explain, NL→SQL, optional Oracle",
+  "description": "Easy NL2SQL — natural language to Oracle SQL; book index, AI explain, NL→SQL, optional Oracle",
   "main": "sql-learn-server.js",
   "scripts": {
     "start": "node sql-learn-server.js"
