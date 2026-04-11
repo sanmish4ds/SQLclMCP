@@ -1045,6 +1045,64 @@
     .guided-lesson-shell .guided-llm-out .tutor-response {
       margin-top: 0;
     }
+    .guided-sql-block {
+      margin: 0.85rem 0;
+    }
+    .guided-sql-block .guided-sql-pre {
+      margin: 0;
+    }
+    .guided-sql-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .guided-sql-actions button.secondary {
+      margin: 0;
+      font-size: 0.82rem;
+      padding: 0.45rem 0.95rem;
+    }
+    .guided-sql-result {
+      margin-top: 0.65rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      font-size: 0.8rem;
+    }
+    .guided-sql-result[hidden] {
+      display: none !important;
+    }
+    .guided-sql-result .meta {
+      margin: 0 0 0.45rem;
+    }
+    .guided-sql-table-wrap {
+      overflow-x: auto;
+      margin-top: 0.35rem;
+      border-radius: var(--radius-sm);
+    }
+    .guided-sql-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+    }
+    .guided-sql-table th,
+    .guided-sql-table td {
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.5rem;
+      text-align: left;
+    }
+    .guided-sql-table th {
+      background: var(--bg-elevated);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .guided-sql-result-error {
+      color: var(--danger);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
     .guided-ai-actions {
       margin-bottom: 0.65rem;
     }
@@ -1545,9 +1603,73 @@
       }
     }
 
+    async function runGuidedLessonSql(btn) {
+      const block = btn.closest('.guided-sql-block');
+      if (!block) return;
+      const pre = block.querySelector('pre.guided-sql-pre');
+      const out = block.querySelector('.guided-sql-result');
+      if (!pre || !out) return;
+      var sql = String(pre.textContent || '').trim().replace(/;+\s*$/, '');
+      var u = sql.toUpperCase();
+      if (!sql) {
+        out.hidden = false;
+        out.innerHTML = '<div class="guided-sql-result-error">No SQL in this block.</div>';
+        return;
+      }
+      if (!u.startsWith('SELECT') && !u.startsWith('WITH')) {
+        out.hidden = false;
+        out.innerHTML = '<div class="guided-sql-result-error">Only SELECT or WITH … SELECT can run on the lab database.</div>';
+        return;
+      }
+      if (!executeAvailable) {
+        out.hidden = false;
+        out.innerHTML = '<div class="guided-sql-result-error">Run on DB is not available. Check server status on the Guided practice tab, or copy the SQL into SQL Developer.</div>';
+        return;
+      }
+      btn.disabled = true;
+      out.hidden = false;
+      out.innerHTML = '<p class="meta" style="margin:0">Running…</p>';
+      try {
+        var r = await fetch(API_BASE_URL + '/execute-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql: sql }),
+        });
+        var data = await r.json().catch(function () { return {}; });
+        if (data.success && data.rows) {
+          var cols = data.columns || [];
+          var table = '<p class="meta">' + (data.rowCount != null ? data.rowCount : data.rows.length) + ' row(s)</p>' +
+            '<div class="guided-sql-table-wrap"><table class="guided-sql-table"><thead><tr>' +
+            cols.map(function (c) { return '<th>' + escapeHtml(String(c)) + '</th>'; }).join('') +
+            '</tr></thead><tbody>';
+          data.rows.forEach(function (row) {
+            table += '<tr>' + cols.map(function (col) {
+              var v = row[col];
+              return '<td>' + escapeHtml(v === null || v === undefined ? 'NULL' : String(v)) + '</td>';
+            }).join('') + '</tr>';
+          });
+          table += '</tbody></table></div>';
+          out.innerHTML = table;
+        } else {
+          out.innerHTML = '<div class="result error" style="margin:0;font-size:0.82rem">' +
+            escapeHtml(data.error || 'Execution failed') + '</div>';
+        }
+      } catch (err) {
+        out.innerHTML = '<div class="result error" style="margin:0;font-size:0.82rem">' +
+          escapeHtml(err.message || String(err)) + '</div>';
+      }
+      btn.disabled = false;
+    }
+
     function bindGuidedRootClicks(e) {
       const t = e.target;
       if (!t || !t.closest) return;
+      const lessonSqlBtn = t.closest('[data-lesson-run-sql]');
+      if (lessonSqlBtn) {
+        e.preventDefault();
+        void runGuidedLessonSql(lessonSqlBtn);
+        return;
+      }
       const visitBtn = t.closest('[data-guided-visit]');
       if (visitBtn) {
         guidedState = { visit: visitBtn.getAttribute('data-guided-visit'), level: null, step: 0, ids: [] };
@@ -1824,6 +1946,42 @@
       return '<div class="tutor-response">' + inner + '</div>';
     }
 
+    /** Like tutorMarkdownToInnerHtml but wraps ```sql fences with Run on DB (interactive path lessons only). */
+    function tutorMarkdownToLessonInnerHtml(md) {
+      var s = String(md || '').trim();
+      if (!s) return '';
+      var out = '';
+      var re = /```(?:(sql)\s*)?([\s\S]*?)```/gi;
+      var last = 0;
+      var m;
+      while ((m = re.exec(s)) !== null) {
+        if (m.index > last) {
+          out += '<div class="tutor-prose">' + tutorFormatProse(s.slice(last, m.index)) + '</div>';
+        }
+        var body = m[2].trim();
+        if (m[1]) {
+          out += '<div class="guided-sql-block">' +
+            '<pre class="guided-sql-pre">' + escapeHtml(body) + '</pre>' +
+            '<div class="guided-sql-actions">' +
+            '<button type="button" class="secondary" data-lesson-run-sql="1" aria-label="Run this SQL on the database">Run on DB</button>' +
+            '</div>' +
+            '<div class="guided-sql-result" hidden></div>' +
+            '</div>';
+        } else {
+          out += '<pre>' + escapeHtml(body) + '</pre>';
+        }
+        last = re.lastIndex;
+      }
+      out += '<div class="tutor-prose">' + tutorFormatProse(s.slice(last)) + '</div>';
+      return out;
+    }
+
+    function tutorMarkdownToLessonHtml(md) {
+      var inner = tutorMarkdownToLessonInnerHtml(md);
+      if (!inner) return '';
+      return '<div class="tutor-response">' + inner + '</div>';
+    }
+
     function explainMarkdownToBox(md) {
       var inner = tutorMarkdownToInnerHtml(md);
       return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
@@ -1858,7 +2016,7 @@
         var data = await r.json().catch(function () { return {}; });
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (data.success && data.markdown) {
-          out.innerHTML = tutorMarkdownToHtml(data.markdown);
+          out.innerHTML = tutorMarkdownToLessonHtml(data.markdown);
         } else {
           var err = data.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +
