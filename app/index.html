@@ -856,8 +856,6 @@
     }
     .chat-success-note { color: var(--success); font-size: 0.78rem; font-weight: 600; }
 
-    .how-it-works-body { font-size: 0.83rem; line-height: 1.7; color: var(--text-muted); }
-    .how-it-step { color: var(--sql); }
     .chat-code-muted { color: var(--text-dim); font-size: 0.78rem; }
     .lab-muted { color: var(--text-dim); font-size: 0.78rem; }
 
@@ -916,9 +914,6 @@
           <div class="chat-welcome-icon" aria-hidden="true">💬</div>
           <p>Ask <strong>any</strong> SQL question (interview prep, concepts, or plain English for the lab DB), paste SQL, or use the shortcuts. Enable the database in <code>.env</code> to run queries live.</p>
           <p class="muted">Try: <em>What is a correlated subquery?</em> · <em>Find top 10 orders</em> · <code>SELECT * FROM REGION</code></p>
-          <p style="margin-top:1rem">
-            <button type="button" class="chat-chip" onclick="showHowItWorks()">How the lab works</button>
-          </p>
         </div>
       </div>
       <div class="chat-input-area" style="padding:0 1rem 1rem">
@@ -927,7 +922,6 @@
           <button type="button" class="chat-chip" id="chipSchema">Schema</button>
           <button type="button" class="chat-chip" id="chipListConn">Connections</button>
           <button type="button" class="chat-chip" id="chipExplainLastSql">Explain last SQL</button>
-          <button type="button" class="chat-chip" onclick="showHowItWorks()">How it works</button>
         </div>
 
         <div class="chat-input-row">
@@ -1395,31 +1389,6 @@
     function removeWelcome() {
       const w = chatHistoryEl.querySelector('.chat-welcome');
       if (w) w.remove();
-    }
-
-    function showHowItWorks() {
-      removeWelcome();
-      const html =
-        '<div class="chat-label">How the SQL lab works &#9432;</div>' +
-        '<div class="how-it-works-body">' +
-
-        '<strong class="how-it-step">&#9312; Any question in English (interview topics, concepts, or “find top 10 orders”)</strong><br>' +
-        `<pre class="chat-code chat-code-muted">Browser → POST /generate-sql  { question, mode:”hybrid” }
-           └─ Exact rules match (sql-practice-rules.json), else LLM tutor (concepts + Oracle TPC-H SQL when relevant)
-    ↓  Answer and/or SQL in chat — <strong>Explain</strong> uses /explain-sql
-    ↓  POST /api/invoke  { tool:”run-sql”, params:{sql} }  (when execute is enabled)
-           └─ node-oracledb → your DB
-    ↓  Result table in the thread</pre>` +
-
-        '<strong class="how-it-step">&#9313; Paste SQL (e.g. <code>SELECT * FROM ORDERS</code>)</strong><br>' +
-        `<pre class="chat-code chat-code-muted">No generation step — POST /api/invoke  { tool:”run-sql”, params:{sql} }
-           └─ Wallet via TNS_ADMIN / ORACLE_WALLET_* ; DSN from DB_DSN</pre>` +
-
-        '<strong class="how-it-step">&#9314; Shortcuts (DESC / SHOW TABLES)</strong><br>' +
-        `<pre class="chat-code chat-code-muted">POST /api/invoke  { tool:”run-sqlcl”, params:{command} }
-           └─ Backed by USER_TAB_COLUMNS / USER_TABLES</pre>` +
-        '</div>';
-      appendBotDiv(html);
     }
 
     function scrollChat() { chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight; }
