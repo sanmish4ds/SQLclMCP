@@ -1006,6 +1006,28 @@
     }
     .guided-level-note strong { color: var(--text); }
 
+    .guided-llm-panel {
+      margin-top: 1.15rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border-strong);
+    }
+    .guided-llm-out {
+      margin-top: 0.75rem;
+    }
+    .guided-llm-out .tutor-response {
+      text-align: left;
+    }
+    .guided-llm-out pre {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      margin: 0.5rem 0;
+    }
+
   </style>
 </head>
 <body>
@@ -1015,7 +1037,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> walks the book chapter by chapter with plain-language summaries and analogies; <strong>Interview prep</strong> uses focused topics and drill prompts. Or jump to <strong>Guided practice</strong> and ask anything. Verify critical answers; models can be wrong.</p>
+        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> is a <strong>full 15-chapter</strong> path (beginner → advanced) with summaries, analogies, optional <strong>AI boost</strong> per chapter, and practice chips. <strong>Interview prep</strong> uses topic cards. Or use <strong>Guided practice</strong> for any question. Verify critical answers; models can be wrong.</p>
       </div>
     </div>
   </header>
@@ -1242,9 +1264,9 @@
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead">SQL learning follows <strong>chapter summaries</strong> (easy language + analogies). Interview prep uses shorter topic cards. You can change this any time.</p>' +
+        '<p class="guided-lead">SQL learning is a <strong>full 15-chapter</strong> journey (core SQL through windows and modeling), with optional <strong>AI boost</strong> on each chapter. Interview prep uses topic cards. You can change this any time.</p>' +
         '<div class="guided-choice-grid">' +
-        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — book-style chapters, plain English</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — chapters + optional AI boost</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
         '</div>';
     }
@@ -1253,7 +1275,7 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : 'Pick your comfort level. **Beginner** covers the first three chapters; **Intermediate** five; **Advanced** adds a sixth chapter on NULLs, Oracle habits, and performance intuition. Each screen is a self-contained summary with analogies and practice chips.';
+        : '**Everyone follows the same 15 chapters** from basics to advanced (SELECT → joins → aggregates → subqueries → sets → CTEs → windows → Oracle → performance → modeling). Your level only changes the **tips** on each screen: beginner pacing, intermediate shortcuts, advanced interview depth — not how many chapters you get.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
         '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
@@ -1368,6 +1390,14 @@
           ? '<h4 class="guided-chip-label" style="margin-top:1rem">Key takeaways</h4><ul class="guided-takeaways">' + takeList + '</ul>'
           : '') +
         levelNote +
+        '<div class="guided-llm-panel" id="guidedLlmPanel">' +
+        '<h4 class="guided-chip-label" style="margin-top:0">AI learning boost</h4>' +
+        '<p class="guided-muted" style="margin:0 0 0.55rem">Uses the same LLM as Guided practice: a <strong>new analogy</strong>, a short <strong>See it in the lab</strong> Oracle example on TPC-H tables, and <strong>self-check</strong> questions — on top of the chapter above.</p>' +
+        '<div class="guided-nav" style="margin-top:0.35rem">' +
+        '<button type="button" class="guided-choice primary" data-guided-llm-expand="1" style="flex:1;min-width:200px">Build on this chapter with AI</button>' +
+        '</div>' +
+        '<div id="guidedLlmOut" class="guided-llm-out" hidden></div>' +
+        '</div>' +
         '<div class="guided-chip-label">Try in Guided practice</div>' +
         '<div class="guided-chip-row">' + chipsP + '</div>' +
         '<p class="guided-muted">Chips copy into <strong>Your question</strong> on the Guided practice tab — press <strong>Get answer</strong> for AI help with the lab schema.</p>' +
@@ -1458,6 +1488,11 @@
         guidedState.ids = [];
         saveGuidedState();
         renderGuided();
+        return;
+      }
+      const llmExpandBtn = t.closest('[data-guided-llm-expand]');
+      if (llmExpandBtn) {
+        runGuidedChapterLlmExpand();
         return;
       }
       const promptBtn = t.closest('[data-guided-prompt]');
@@ -1703,6 +1738,40 @@
     function explainMarkdownToBox(md) {
       var inner = tutorMarkdownToInnerHtml(md);
       return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
+    }
+
+    async function runGuidedChapterLlmExpand() {
+      if (!guidedState.ids.length || guidedState.visit !== 'learning' || !guidedState.level) return;
+      var chapterId = guidedState.ids[guidedState.step];
+      var level = guidedState.level;
+      var panel = document.getElementById('guidedLlmPanel');
+      var out = document.getElementById('guidedLlmOut');
+      var btn = panel && panel.querySelector('[data-guided-llm-expand]');
+      if (!out || !btn) return;
+      btn.disabled = true;
+      out.hidden = false;
+      out.innerHTML = '<p class="guided-loader">Asking the AI to build on this chapter…</p>';
+      try {
+        var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chapter_id: chapterId, level: level }),
+        });
+        var data = await r.json().catch(function () { return {}; });
+        if (data.success && data.markdown) {
+          btn.textContent = 'Regenerate AI boost';
+          out.innerHTML = tutorMarkdownToHtml(data.markdown) +
+            '<p class="guided-muted" style="margin-top:0.75rem;font-size:0.8rem">AI-generated — verify SQL on your database. Source: ' +
+            escapeHtml(String(data.source || 'llm')) + '</p>';
+        } else {
+          var err = data.error || ('HTTP ' + r.status);
+          out.innerHTML = '<p class="guided-muted">' + escapeHtml(err) + '</p>' +
+            '<p class="guided-muted" style="font-size:0.78rem;margin-top:0.45rem">Enable <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code> on the API server, or check the network / API URL.</p>';
+        }
+      } catch (e) {
+        out.innerHTML = '<p class="guided-muted">Request failed: ' + escapeHtml(e.message) + '</p>';
+      }
+      btn.disabled = false;
     }
 
     btnGenerate.addEventListener('click', async () => {

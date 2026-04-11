@@ -34,6 +34,12 @@
   force = true
 
 [[redirects]]
+  from = "/guided-expand-chapter"
+  to = "https://sqlclmcp-1.onrender.com/guided-expand-chapter"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/explain-sql"
   to = "https://sqlclmcp-1.onrender.com/explain-sql"
   status = 200

@@ -562,6 +562,145 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
   }
 }
 
+// ── Guided chapter LLM expansion (interactive SQL learning) ───────────────────
+
+let guidedCurriculumCache = { mtimeMs: -1, data: null };
+
+function getGuidedCurriculum() {
+  const curriculumPath = path.join(__dirname, 'app', 'guided-curriculum.json');
+  let st;
+  try {
+    st = fs.statSync(curriculumPath);
+  } catch (_) {
+    return null;
+  }
+  if (!guidedCurriculumCache.data || st.mtimeMs !== guidedCurriculumCache.mtimeMs) {
+    guidedCurriculumCache.data = JSON.parse(fs.readFileSync(curriculumPath, 'utf8'));
+    guidedCurriculumCache.mtimeMs = st.mtimeMs;
+  }
+  return guidedCurriculumCache.data;
+}
+
+/**
+ * LLM builds on a fixed chapter: deeper intuition, new analogy, one TPC-H SQL example, self-check.
+ */
+async function expandGuidedChapterWithLLM(chapterId, level) {
+  if (!config.enableLLMSqlGeneration) {
+    return { markdown: null, source: 'llm_disabled', error: 'LLM is disabled (set ENABLE_LLM_SQL_GEN=true)' };
+  }
+  if (!config.llmApiKey) {
+    return { markdown: null, source: 'llm_disabled', error: 'LLM_API_KEY is not set' };
+  }
+
+  const curriculum = getGuidedCurriculum();
+  if (!curriculum || !curriculum.chapters) {
+    return { markdown: null, source: 'error', error: 'guided-curriculum.json not available' };
+  }
+
+  const ch = curriculum.chapters[chapterId];
+  if (!ch) {
+    return { markdown: null, source: 'error', error: `Unknown chapter: ${chapterId}` };
+  }
+
+  let nextHint = '';
+  const track = curriculum.learningChapterTracks && curriculum.learningChapterTracks[level];
+  if (track && Array.isArray(track)) {
+    const idx = track.indexOf(chapterId);
+    if (idx >= 0 && idx < track.length - 1) {
+      const nextCh = curriculum.chapters[track[idx + 1]];
+      if (nextCh) nextHint = `Next chapter in this learning path: "${nextCh.title}".`;
+    }
+  }
+
+  const schemaTables =
+    'Only tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP with real TPC-H columns (C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
+
+  const system = [
+    'You are a warm, expert SQL tutor for interactive web learning.',
+    'The learner already read a short chapter summary. You must BUILD ON it — extend and deepen; do not repeat the same analogy or paraphrase the whole summary.',
+    'Output Markdown: ## and ### headings, **bold**, bullets where useful.',
+    'Include exactly one ```sql fenced block in ## See it in the lab — Oracle, runnable on that schema, FETCH FIRST for row limits.',
+    'Keep prose tight and friendly; avoid filler and apologies.',
+  ].join(' ');
+
+  const summaryLines = (ch.summary || []).map((s) => `- ${s}`).join('\n');
+  const user = [
+    `Learner level: **${level}** (beginner = slower, more hand-holding; advanced = crisper, slightly deeper).`,
+    '',
+    `## Chapter: ${ch.label || 'Chapter'} — ${ch.title}`,
+    '',
+    '**Summary (ground truth — do not contradict):**',
+    summaryLines,
+    '',
+    ch.analogy ? `**Existing analogy (do not reuse this metaphor — invent a different one):** ${ch.analogy}` : '',
+    '',
+    '**Takeaways:** ' + (ch.takeaways || []).join(' · '),
+    '',
+    nextHint || '**Path:** learner is mid-path; mention what skill typically comes next in SQL.',
+    '',
+    '## Your task',
+    '1. ## Going deeper — 2–4 short paragraphs that connect ideas simply.',
+    '2. ## A new analogy — one memorable analogy from a **different** life domain than any above.',
+    '3. ## See it in the lab — one minimal example using ' + schemaTables,
+    '4. ## Self-check — exactly 2 plain-English questions (no multiple choice required).',
+    '5. End with a **What is next** one-line bridge to the next SQL idea.',
+    '',
+    'Cap prose around 400 words plus one SQL block.',
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+
+  const payload = {
+    model: config.llmModel,
+    temperature: 0.35,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+  };
+
+  const controller = new AbortController();
+  const expandTimeoutMs = Math.min(Math.max(config.llmTimeoutMs * 2, 20000), 45000);
+  const timeout = setTimeout(() => controller.abort(), expandTimeoutMs);
+
+  try {
+    const res = await fetch(config.llmApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.llmApiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const bodyText = await res.text();
+      return {
+        markdown: null,
+        source: 'llm_error',
+        error: `LLM HTTP ${res.status}: ${bodyText.slice(0, 400)}`,
+      };
+    }
+
+    const data = await res.json();
+    const content = String(data?.choices?.[0]?.message?.content || '').trim();
+    if (!content) {
+      return { markdown: null, source: 'llm_error', error: 'LLM returned empty content' };
+    }
+    return { markdown: content, source: 'llm', error: null };
+  } catch (error) {
+    const isAbort = error && error.name === 'AbortError';
+    return {
+      markdown: null,
+      source: 'llm_error',
+      error: isAbort ? 'LLM request timed out' : String(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function generateSql(question, mode = 'hybrid') {
   const noBook = { book_citations: [], book_context_used: false };
 
@@ -660,7 +799,9 @@ const requestHandler = (request, response) => {
         book_search:
           'GET /book/search?q=…&limit=12 — optional diverse=1 (dissimilar excerpts), brief=1 (shorter excerpts)',
         book_reload: 'POST /book/reload',
-        guided_curriculum: 'GET /guided-curriculum.json — interactive path concepts (same file ships in app/ for Netlify)',
+        guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
+        guided_expand_chapter:
+          'POST /guided-expand-chapter — body: { "chapter_id": "ch1", "level": "beginner|intermediate|advanced" } — LLM expands chapter (analogy + lab SQL + self-check); requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -679,6 +820,50 @@ const requestHandler = (request, response) => {
       response.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
       response.end(JSON.stringify({ error: 'guided-curriculum.json not found', detail: err.message }));
     }
+    return;
+  }
+
+  // POST /guided-expand-chapter — LLM builds on a learning chapter
+  if (pathname === '/guided-expand-chapter' && request.method === 'POST') {
+    let body = '';
+    request.on('data', (chunk) => { body += chunk.toString(); });
+    request.on('end', async () => {
+      try {
+        const data = JSON.parse(body || '{}');
+        const chapterId = String(data.chapter_id || data.chapterId || '').trim();
+        let level = String(data.level || 'beginner').trim().toLowerCase();
+        if (!chapterId) {
+          response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ success: false, error: 'chapter_id is required' }));
+          return;
+        }
+        if (!['beginner', 'intermediate', 'advanced'].includes(level)) {
+          level = 'beginner';
+        }
+        const r = await expandGuidedChapterWithLLM(chapterId, level);
+        if (r.markdown) {
+          response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({
+            success: true,
+            markdown: r.markdown,
+            source: r.source,
+            chapter_id: chapterId,
+            level,
+          }));
+          return;
+        }
+        const code = r.source === 'llm_disabled' ? 503 : 502;
+        response.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({
+          success: false,
+          error: r.error || 'Chapter expansion failed',
+          source: r.source,
+        }));
+      } catch (err) {
+        response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ success: false, error: err.message || String(err) }));
+      }
+    });
     return;
   }
 
@@ -801,6 +986,7 @@ const requestHandler = (request, response) => {
         : null,
       loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
       llm_enabled: config.enableLLMSqlGeneration,
+      guided_chapter_llm_ready: !!(config.enableLLMSqlGeneration && config.llmApiKey),
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
       sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
