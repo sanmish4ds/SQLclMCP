@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "tracks": {
     "interview": {
       "beginner": [
@@ -32,7 +32,6 @@
         "SQL is the standard language for asking questions of relational databases: tables of rows, linked by keys.",
         "Your practice schema is TPC-H–style (customers, orders, line items, parts, suppliers, nations, regions). Every example in this app should use those real table names when you run SQL."
       ],
-      "bookSearch": "RDBMS notebook tab grid column row Customers Orders DQL SELECT retrieval",
       "learningNext": [
         "Continue to **SELECT and FROM** to write your first queries.",
         "Open **Guided practice** and ask: *What tables exist in a typical warehouse schema?*"
@@ -52,7 +51,6 @@
         "`SELECT` chooses columns (or expressions); `FROM` names the table(s). Listing columns explicitly is clearer and safer than `SELECT *` in production.",
         "Oracle supports standard ANSI syntax; your lab uses uppercase table names like `REGION`, `CUSTOMER`, `ORDERS`."
       ],
-      "bookSearch": "SELECT FROM clause column list alias literal DISTINCT essentials",
       "learningNext": [
         "Next: **WHERE and ORDER BY** — filter and sort results.",
         "Try in practice: *Show region names from REGION.*"
@@ -72,7 +70,6 @@
         "`WHERE` filters rows before aggregation. Combine predicates with `AND` / `OR`; use parentheses when mixing them.",
         "`ORDER BY` sorts the result. In Oracle, limit rows with `FETCH FIRST n ROWS ONLY` (not `LIMIT`)."
       ],
-      "bookSearch": "WHERE predicate AND OR NOT ORDER BY sorting FETCH FIRST ROWS ONLY limit",
       "learningNext": [
         "Next: **Joins** — combine CUSTOMER with ORDERS and beyond.",
         "Practice: *Top 5 nations by customer count* (hint: NATION + CUSTOMER)."
@@ -92,7 +89,6 @@
         "A **join** links rows from two tables on a key condition — e.g. `ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY`.",
         "`INNER JOIN` keeps only rows that match on both sides; it is the default join for “show me orders with customer names.”"
       ],
-      "bookSearch": "INNER JOIN ON linking key matching combine two tables relationship",
       "learningNext": [
         "Next: **GROUP BY and aggregates** — counts and sums per group.",
         "Practice: *Orders per customer* or *revenue per nation*."
@@ -112,7 +108,6 @@
         "Aggregate functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) collapse rows. Every non-aggregated column in `SELECT` must appear in `GROUP BY` (or be functionally dependent — Oracle is strict in standard mode).",
         "`HAVING` filters **groups** after aggregation (unlike `WHERE`, which filters rows before)."
       ],
-      "bookSearch": "GROUP BY aggregate COUNT SUM AVG HAVING filter groups",
       "learningNext": [
         "Intermediate path: **JOIN types** (LEFT / RIGHT / FULL) and **subqueries**.",
         "Practice: *Average order total per market segment*."
@@ -132,7 +127,6 @@
         "`LEFT JOIN` keeps all rows from the left table and matching rows from the right; missing matches become NULL.",
         "Use LEFT when you must preserve the driving table (e.g. all customers, even those with zero orders). `FULL OUTER JOIN` is rarer but useful for reconciliation."
       ],
-      "bookSearch": "LEFT OUTER JOIN preserve unmatched NULL right full anti semi",
       "learningNext": [
         "Next: **Subqueries** — IN, EXISTS, correlated patterns.",
         "Practice: *Customers who never placed an order*."
@@ -152,7 +146,6 @@
         "A subquery is a query nested inside another. It can return a scalar, a column list, or be used with `EXISTS` for existence checks.",
         "**Correlated** subqueries reference outer columns; they can be powerful but need care for performance (often rewritten as joins or semi-joins)."
       ],
-      "bookSearch": "subquery nested EXISTS IN correlated scalar derived table",
       "learningNext": [
         "Next: **UNION / INTERSECT / EXCEPT** (set operations).",
         "Practice: *Suppliers who supply parts above a certain cost using a subquery*."
@@ -172,7 +165,6 @@
         "`UNION` combines result sets and removes duplicates; `UNION ALL` keeps duplicates and is usually faster.",
         "`INTERSECT` / `EXCEPT` (or `MINUS` in Oracle) compare sets — useful for data validation and puzzle-style interview questions."
       ],
-      "bookSearch": "UNION ALL duplicates INTERSECT EXCEPT MINUS combine result sets",
       "learningNext": [
         "Next: **Common Table Expressions (WITH)**.",
         "Practice: *Parts that appear in LINEITEM but not in a given supplier’s PARTSUPP*."
@@ -192,7 +184,6 @@
         "`WITH` names a temporary result you can reference in the main query. It improves readability and lets you break complex logic into steps.",
         "Recursive CTEs (Oracle supports them) can walk hierarchies — advanced but common in senior interviews."
       ],
-      "bookSearch": "WITH clause CTE named subquery readability multiple steps",
       "learningNext": [
         "Next: **Window functions** — ranking and running totals.",
         "Practice: *Rewrite a nested subquery as a readable CTE*."
@@ -212,7 +203,6 @@
         "Window functions compute over a **partition** of rows without collapsing them like GROUP BY. Examples: `ROW_NUMBER()`, `RANK()`, `SUM(...) OVER (...)`.",
         "`PARTITION BY` is like GROUP BY for the window; `ORDER BY` inside `OVER` defines row order within the partition."
       ],
-      "bookSearch": "OVER PARTITION BY window analytic ROW_NUMBER ranking without collapsing",
       "learningNext": [
         "Advanced: **RANK vs DENSE_RANK**, frames, and interview-style ranking questions.",
         "Practice: *Rank customers by C_ACCTBAL within each nation*."
@@ -232,7 +222,6 @@
         "`ROWS BETWEEN` / `RANGE BETWEEN` define sliding windows for running totals and moving averages.",
         "Interview favorite: **RANK** leaves gaps after ties; **DENSE_RANK** does not; **ROW_NUMBER** breaks ties arbitrarily."
       ],
-      "bookSearch": "RANK DENSE_RANK ties gaps ROWS BETWEEN RANGE frame sliding cumulative",
       "learningNext": [
         "Next: **Analytics patterns** (YoY, cohort-style splits) or **performance** topics.",
         "Practice: *Top 3 orders per customer using window functions*."
@@ -252,7 +241,6 @@
         "Combine windows with aggregates: `SUM(x) OVER ()` for grand total vs `SUM(x) OVER (PARTITION BY g)` for subtotals — useful for **share of total**.",
         "Time bucketing: `TRUNC(O_ORDERDATE,'YYYY')`, quarters via `TO_CHAR` or month math — know Oracle date quirks for interviews."
       ],
-      "bookSearch": "ratio percent of total share revenue time series bucketing month year quarter",
       "learningNext": [
         "Next: **Oracle-specific SQL** (FETCH, hints) or **performance**.",
         "Practice: *Each nation’s share of global revenue from LINEITEM*."
@@ -272,7 +260,6 @@
         "Prefer `FETCH FIRST n ROWS ONLY` for limits; use `DATE 'YYYY-MM-DD'` literals for clarity.",
         "Know `NVL` / `COALESCE`, `LISTAGG`, and that `EXTRACT` has no QUARTER — use `TO_CHAR(d,'Q')` or month math."
       ],
-      "bookSearch": "Oracle FETCH FIRST ROWNUM DATE literal TO_CHAR LISTAGG NVL COALESCE",
       "learningNext": [
         "Next: **Performance** — indexes and plans.",
         "Practice: *Ask the AI to compare LIMIT-style patterns in Oracle vs PostgreSQL mentally, then run Oracle syntax here*."
@@ -292,9 +279,8 @@
         "Indexes speed **lookups** and some joins but add write cost. Clustered vs non-clustered matters more in other engines; in Oracle, know B-tree basics and when full scans win.",
         "Interview tip: explain **selectivity**, **covering indexes** idea, and that the optimizer chooses plans based on stats."
       ],
-      "bookSearch": "index seek scan selective cardinality optimizer plan cost histogram",
       "learningNext": [
-        "Next: **NULL pitfalls** or revisit weak areas via book search.",
+        "Next: **NULL pitfalls** or revisit weak areas with **Guided practice**.",
         "Practice: *When would you add an index on O_ORDERDATE?*"
       ],
       "practiceQuestions": [
@@ -312,7 +298,6 @@
         "`NULL` is not equal to anything — `x = NULL` is unknown; use `IS NULL`. `NOT IN` with NULLs in the subquery is a classic foot-gun.",
         "Use `COALESCE` / `NVL` deliberately; understand three-valued logic in WHERE."
       ],
-      "bookSearch": "NULL unknown IS NULL NOT IN EXISTS three-valued logic COALESCE",
       "learningNext": [
         "Loop back to any topic above, or move to **SQL lab** to run queries.",
         "Practice: *Find a NOT IN bug scenario and fix with NOT EXISTS*."
@@ -332,7 +317,6 @@
         "**Primary key** uniquely identifies a row; **foreign key** enforces referential integrity to another table.",
         "Normalization (1NF–3NF) reduces redundancy; star schemas denormalize for analytics — both appear in interviews."
       ],
-      "bookSearch": "primary key foreign key referential integrity normalization redundancy 1NF 3NF",
       "learningNext": [
         "Next: **SELECT / FROM** then joins on real keys (C_CUSTKEY, O_ORDERKEY, …).",
         "Practice: *Point to PK/FK relationships in the TPC-H schema explorer*."
@@ -352,7 +336,6 @@
         "An index is a separate structure that maps key values to row locations so the engine can find rows without scanning every block.",
         "Be ready to discuss **when** indexes help (equality/range on selective columns) and **when** they hurt (low cardinality, heavy writes)."
       ],
-      "bookSearch": "B-tree index composite covering write amplification selective predicate",
       "learningNext": [
         "Continue the interview track: **JOIN types** and **subqueries** at intermediate level.",
         "Practice: *Which columns would you index for “orders by date for one customer”?*"
@@ -372,7 +355,6 @@
         "A **transaction** bundles work ACID-style: commit makes it durable; rollback undoes. Isolation levels (read committed, serializable, …) define what concurrent sessions can see.",
         "Interview classic: dirty read, non-repeatable read, phantom read — know the names even if Oracle’s defaults differ from other databases."
       ],
-      "bookSearch": "ACID transaction isolation read committed repeatable serializable locking deadlock",
       "learningNext": [
         "Next: **Window functions** for ranking-style interview questions.",
         "Practice: *Explain why two COUNT queries in one transaction might differ under certain isolation*."
@@ -392,7 +374,6 @@
         "The **optimizer** picks join order, access paths (index vs full scan), and join algorithms (nested loop, hash, merge).",
         "Statistics (histograms, cardinality estimates) drive bad plans when they’re stale — interviewers like “how would you debug a slow query?”"
       ],
-      "bookSearch": "hash join nested loops merge join cardinality estimate statistics histogram stale",
       "learningNext": [
         "Next: **Advanced SQL** (MERGE, pivot patterns) or **design tradeoffs**.",
         "Practice: *Walk through how you’d investigate a sudden slowdown on a filtered ORDERS query*."
@@ -412,7 +393,6 @@
         "`MERGE` upserts in one statement — common in ETL. Pivot / conditional aggregation (`SUM(CASE WHEN…)`) turns rows into columns for reporting.",
         "Recursive CTEs model org charts and bill-of-materials — signal senior depth."
       ],
-      "bookSearch": "MERGE WHEN MATCHED upsert pivot CASE conditional aggregate hierarchy recursive",
       "learningNext": [
         "Next: **Design tradeoffs** — the capstone topic.",
         "Practice: *Describe a reporting query that needs conditional aggregation on LINEITEM*."
@@ -432,7 +412,6 @@
         "Star schema fact/dimension design vs normalized OLTP — interviews often ask when you’d denormalize.",
         "Be ready to discuss **data quality**, **idempotency** in loads, and **slowly changing dimensions** at a high level."
       ],
-      "bookSearch": "star schema snowflake fact table dimension grain denormalize slowly changing",
       "learningNext": [
         "You’ve reached the end of this path — revisit weak spots or run queries in **SQL lab**.",
         "Use **Guided practice** with custom scenario questions."
@@ -449,212 +428,124 @@
   },
   "learningChapterTracks": {
     "beginner": [
-      "bu_preface",
-      "bu_intro",
-      "bu_ch1",
-      "bu_ch2",
-      "bu_ch3",
-      "bu_ch4",
-      "bu_ch5"
+      "sql_01",
+      "sql_02",
+      "sql_03",
+      "sql_04",
+      "sql_05",
+      "sql_06",
+      "sql_07",
+      "sql_08",
+      "sql_09",
+      "sql_10",
+      "sql_11",
+      "sql_12",
+      "sql_13",
+      "sql_14"
     ],
     "intermediate": [
-      "bu_preface",
-      "bu_intro",
-      "bu_ch1",
-      "bu_ch2",
-      "bu_ch3",
-      "bu_ch4",
-      "bu_ch5"
+      "sql_01",
+      "sql_02",
+      "sql_03",
+      "sql_04",
+      "sql_05",
+      "sql_06",
+      "sql_07",
+      "sql_08",
+      "sql_09",
+      "sql_10",
+      "sql_11",
+      "sql_12",
+      "sql_13",
+      "sql_14"
     ],
     "advanced": [
-      "bu_preface",
-      "bu_intro",
-      "bu_ch1",
-      "bu_ch2",
-      "bu_ch3",
-      "bu_ch4",
-      "bu_ch5"
+      "sql_01",
+      "sql_02",
+      "sql_03",
+      "sql_04",
+      "sql_05",
+      "sql_06",
+      "sql_07",
+      "sql_08",
+      "sql_09",
+      "sql_10",
+      "sql_11",
+      "sql_12",
+      "sql_13",
+      "sql_14"
     ]
   },
   "chapters": {
-    "bu_preface": {
-      "label": "Preface",
-      "title": "Why fundamentals beat buzzwords",
-      "summary": [
-        "The book opens by arguing that **SQL is more than syntax** — it is the durable language of data underneath shifting tools and trends.",
-        "Interviewers often probe **fundamentals**; candidates with flashy resumes can still stumble on core SQL. This path mirrors the book so you build lasting skill, not just keywords.",
-        "You will use the same **TPC-H–style lab** (REGION, NATION, CUSTOMER, ORDERS, LINEITEM, PART, SUPPLIER, PARTSUPP) to practice ideas the book discusses in a concrete Oracle setting."
-      ],
-      "analogy": "Think of SQL as **learning to read music**. Gadgets change like instruments; reading music (core SQL) keeps working everywhere.",
-      "takeaways": [
-        "Fundamentals compound — skipping them shows up under interview pressure.",
-        "The book is structured for interview-style thinking; we follow that spine.",
-        "Your lab gives you somewhere to run real SELECTs while you read."
-      ],
-      "bookSearch": "Preface SQL fundamentals interview enduring principles The SQL Universe",
-      "levelNotes": {
-        "beginner": "Read slowly; the Preface sets expectations for the whole book.",
-        "intermediate": "Use this as a reset — align your practice with fundamentals, not tool-chasing.",
-        "advanced": "Note how you would explain “why SQL still matters” to a junior — interview meta-skill."
-      },
-      "practiceQuestions": [
-        "In one paragraph, why does the book say SQL is “more than syntax”?",
-        "Name one risk of focusing only on trendy tools instead of SQL fundamentals."
-      ]
+    "sql_01": {
+      "label": "Part 1",
+      "title": "SQL and the relational model",
+      "llmFocus": "tables rows columns keys PK FK relational algebra vs SQL ANSI dialects why SQL matters TPC-H REGION NATION CUSTOMER ORDERS LINEITEM PART SUPPLIER PARTSUPP"
     },
-    "bu_intro": {
-      "label": "INTRODUCTION",
-      "title": "SQL, interviews, and how this book is organized",
-      "summary": [
-        "The **Introduction** explains the book’s origin: interview prep for data engineering, moving from scattered notes to one structured path.",
-        "You will see how SQL questions show up in real interviews — not just definitions, but **thinking under time pressure**.",
-        "The book’s layout (Essentials → Basic to Advanced → DDL/DML/TCL → Advanced data management → Final frontier) is the same journey you will click through here, step by step."
-      ],
-      "analogy": "The book is a **single map** instead of fifty browser tabs — each chapter is the next leg of the same trail.",
-      "takeaways": [
-        "Interview SQL rewards clarity and structure, not panic Googling.",
-        "Later chapters deliberately raise difficulty; that matches the book.",
-        "Use practice chips to connect prose to your Oracle lab."
-      ],
-      "bookSearch": "INTRODUCTION SQL Universe interview preparation Data Engineering organization chapters",
-      "levelNotes": {
-        "beginner": "Don’t skip — it frames how Chapters 1–5 fit together.",
-        "intermediate": "Compare the book’s roadmap to gaps in your own knowledge.",
-        "advanced": "Use the intro to coach others: how would you summarize the book’s arc?"
-      },
-      "practiceQuestions": [
-        "What problem was the author solving when they structured this book?",
-        "List the five numbered chapters of The SQL Universe in order."
-      ]
+    "sql_02": {
+      "label": "Part 2",
+      "title": "Retrieving data — SELECT, FROM, WHERE, ORDER BY",
+      "llmFocus": "projection selection filters AND OR NOT LIKE BETWEEN IN DISTINCT ORDER BY NULLs in sort FETCH FIRST ROWNUM Oracle column aliases expressions"
     },
-    "bu_ch1": {
-      "label": "CHAPTER 1: ESSENTIALS",
-      "title": "Foundation — 30 questions that build execution muscle",
-      "summary": [
-        "**Chapter 1** moves from concepts to **practice**: how interview questions are phrased, how to think through them, and how to answer with both technique and communication.",
-        "Expect **core retrieval patterns**: SELECT / FROM / WHERE, sorting, DISTINCT, basic filters — the “30 questions” style foundation the book advertises.",
-        "The goal is **execution under stress** — the ability to apply what you know when the clock is ticking."
-      ],
-      "analogy": "Chapter 1 is **scales and arpeggios** for SQL — not glamorous, but what you reach for automatically in an audition.",
-      "takeaways": [
-        "Read questions carefully; interviewers reward structured thinking.",
-        "Master basics on REGION, NATION, ORDERS before fancy joins.",
-        "Practice explaining your logic out loud while you type."
-      ],
-      "bookSearch": "CHAPTER 1 ESSENTIALS 30 Questions foundation interview execution SELECT WHERE ORDER BY",
-      "levelNotes": {
-        "beginner": "Spend the most time here — everything later assumes this is solid.",
-        "intermediate": "Drill for speed and clean column lists, not just correctness.",
-        "advanced": "Coach someone else through one “Essentials”-style question from the book’s spirit."
-      },
-      "practiceQuestions": [
-        "List region names from REGION sorted alphabetically.",
-        "Fetch the 10 largest orders by O_TOTALPRICE using FETCH FIRST."
-      ]
+    "sql_03": {
+      "label": "Part 3",
+      "title": "Joining tables — INNER, OUTER, CROSS, self-join",
+      "llmFocus": "INNER LEFT RIGHT FULL CROSS self-join join conditions equi-join NULL behavior semi-join anti-join interview patterns"
     },
-    "bu_ch2": {
-      "label": "CHAPTER 2 : BASIC TO ADVANCE",
-      "title": "Joins, subqueries, CTEs — the junior-to-mid bridge",
-      "summary": [
-        "After foundations, the book pushes into patterns that show up in **most junior interviews**: **joins** across tables, **subqueries**, and **CTEs** for readable, maintainable SQL.",
-        "The text notes these ~30 query patterns cover a **large share** of early-career interviews; depth here separates hesitant from confident candidates.",
-        "You still stay in the **read/query** world; schema changes and transactions come in Chapter 3."
-      ],
-      "analogy": "If Chapter 1 is solo melody, Chapter 2 is **playing with the band** — multiple tables must stay in time (keys) or the music turns to noise.",
-      "takeaways": [
-        "INNER vs LEFT joins answer different business questions.",
-        "Subqueries vs joins — often interchangeable; choose clarity.",
-        "WITH (CTE) breaks complex questions into interview-friendly steps."
-      ],
-      "bookSearch": "CHAPTER 2 BASIC TO ADVANCE joins subqueries CTEs junior interview 30 queries",
-      "levelNotes": {
-        "beginner": "Learn one join pattern at a time; draw keys on paper.",
-        "intermediate": "Time yourself on a 3-table question with a CTE.",
-        "advanced": "Be ready to discuss when the optimizer rewrites subqueries to joins."
-      },
-      "practiceQuestions": [
-        "Join ORDERS to CUSTOMER and show order key, customer name, and total price.",
-        "Describe in words how a CTE could split “compute revenue per customer” from “filter top customers.”"
-      ]
+    "sql_04": {
+      "label": "Part 4",
+      "title": "Aggregates, GROUP BY, and HAVING",
+      "llmFocus": "COUNT SUM AVG MIN MAX GROUP BY HAVING WHERE vs HAVING FILTER ROLLUP CUBE grouping sets overview"
     },
-    "bu_ch3": {
-      "label": "CHAPTER 3 : DDL, DML,TCL",
-      "title": "Defining, changing, and controlling data — beyond SELECT",
-      "summary": [
-        "**Chapter 3** shifts from querying to **managing** the database: **DDL** (schema), **DML** (insert/update/delete), and **TCL** (transactions — commit, rollback, savepoints).",
-        "Interviews here test whether you understand **integrity**, **concurrency**, and **safety** — not only reporting.",
-        "Your hosted lab may only allow SELECT; still learn the concepts so you can discuss them and run DDL/DML in a sandbox when you have rights."
-      ],
-      "analogy": "If SELECT is **reading a recipe**, DDL/DML/TCL is **stocking the pantry, cooking, and deciding whether to serve or scrap the dish** (commit/rollback).",
-      "takeaways": [
-        "DDL changes structure; DML changes rows; TCL wraps units of work.",
-        "Transactions protect consistency when sessions overlap.",
-        "Know what you *would* run even if the practice UI is read-only."
-      ],
-      "bookSearch": "CHAPTER 3 DDL DML TCL schema transaction commit rollback INSERT UPDATE DELETE",
-      "levelNotes": {
-        "beginner": "Memorize the three acronyms and one example statement each.",
-        "intermediate": "Trace a small money-transfer story with COMMIT vs ROLLBACK.",
-        "advanced": "Prepare examples of isolation problems (dirty read, etc.) at a conceptual level."
-      },
-      "practiceQuestions": [
-        "What is the difference between DDL and DML in one sentence?",
-        "Why might you ROLLBACK instead of COMMIT after a batch job fails halfway?"
-      ]
+    "sql_05": {
+      "label": "Part 5",
+      "title": "Subqueries, EXISTS, and derived tables",
+      "llmFocus": "scalar subqueries IN EXISTS correlated uncorrelated derived tables inline views rewrite to join performance intuition"
     },
-    "bu_ch4": {
-      "label": "CHAPTER 4 : ADVANCE DATA MANAGEMENT",
-      "title": "Partitioning, VLDBs, and architecture-level thinking",
-      "summary": [
-        "**Chapter 4** focuses on **table partitioning** and **very large databases (VLDBs)** — how to design for scale, maintenance, and performance at the **architecture** layer.",
-        "Interview questions here target senior DBA / data-engineering depth: not just “write a query,” but **why** data is laid out the way it is.",
-        "Connect the ideas to **fact tables** and time/range pruning even when your lab is small — the mental model transfers."
-      ],
-      "analogy": "Partitioning is **sorting a warehouse into aisles** so you only open the aisle that holds today’s shipments instead of searching the whole building.",
-      "takeaways": [
-        "Partitions reduce scanned data for time- or key-range queries.",
-        "VLDB concerns: load, maintenance windows, statistics, archiving.",
-        "Be ready to discuss trade-offs (more files/metadata vs faster pruning)."
-      ],
-      "bookSearch": "CHAPTER 4 ADVANCE DATA MANAGEMENT partitioning VLDB performance maintenance",
-      "levelNotes": {
-        "beginner": "Learn definitions and a simple range-partition story first.",
-        "intermediate": "Relate partitioning to how you might filter ORDERS by year in a huge table.",
-        "advanced": "Prepare a spoken design: partition by month vs hash — when each?"
-      },
-      "practiceQuestions": [
-        "In plain English, what problem does table partitioning try to solve?",
-        "How might partitioning help a query that always filters on O_ORDERDATE by month?"
-      ]
+    "sql_06": {
+      "label": "Part 6",
+      "title": "UNION, INTERSECT, EXCEPT, and CTEs",
+      "llmFocus": "UNION ALL vs UNION INTERSECT EXCEPT MINUS WITH multiple CTEs readability recursive CTE basics"
     },
-    "bu_ch5": {
-      "label": "CHAPTER 5 : FINAL FRONTEIR",
-      "title": "Security (DCL), objects, materialized views, JSON — the capstone",
-      "summary": [
-        "The book’s final chapter (spelled **FRONTEIR** in the TOC) covers **DCL** (security / grants), **database objects** such as views and synonyms, **global temporary tables**, **materialized views** for analytics, and **modern types like JSON**.",
-        "This is **comprehensive interview territory**: objects, refresh strategies, who can see what, and semi-structured data.",
-        "You tie together the whole arc from **Essentials** through **enterprise-scale** concerns."
-      ],
-      "analogy": "Chapter 5 is the **locks, signage, and display cases** in a museum — who can enter, what labels (views) visitors see, and how featured exhibits (materialized summaries) stay fresh.",
-      "takeaways": [
-        "DCL = who may run which commands on which objects.",
-        "Views simplify access; materialized views trade storage for read speed.",
-        "JSON in SQL bridges relational cores to modern APIs and logs."
-      ],
-      "bookSearch": "CHAPTER 5 FINAL FRONTEIR DCL views materialized JSON synonyms security",
-      "levelNotes": {
-        "beginner": "Get vocabulary straight (view vs materialized view vs synonym).",
-        "intermediate": "Explain one use case for a materialized view in reporting.",
-        "advanced": "Be ready for refresh strategies (ON DEMAND vs ON COMMIT) at a high level."
-      },
-      "practiceQuestions": [
-        "What is one difference between a view and a materialized view?",
-        "Why might JSON support matter in a SQL interview in 2026?"
-      ]
+    "sql_07": {
+      "label": "Part 7",
+      "title": "Window functions — analytics without collapsing rows",
+      "llmFocus": "OVER PARTITION BY ORDER BY ROW_NUMBER RANK DENSE_RANK LAG LEAD frames ROWS RANGE running totals share of total"
+    },
+    "sql_08": {
+      "label": "Part 8",
+      "title": "NULLs, data types, and built-in functions",
+      "llmFocus": "three-valued logic IS NULL NOT IN pitfalls COALESCE NVL CAST dates timestamps strings Oracle TO_CHAR LISTAGG REGEXP"
+    },
+    "sql_09": {
+      "label": "Part 9",
+      "title": "DML — INSERT, UPDATE, DELETE, MERGE",
+      "llmFocus": "single multi-row insert upsert patterns DELETE UPDATE MERGE WHEN MATCHED safety idempotency lab as read-only note"
+    },
+    "sql_10": {
+      "label": "Part 10",
+      "title": "DDL — tables, constraints, views, indexes",
+      "llmFocus": "CREATE ALTER DROP TABLE constraints PK FK CHECK DEFAULT views synonyms sequences index types concept-only if no DDL rights"
+    },
+    "sql_11": {
+      "label": "Part 11",
+      "title": "Transactions, isolation, and concurrency",
+      "llmFocus": "ACID COMMIT ROLLBACK SAVEPOINT isolation levels dirty read phantom read locking deadlocks optimistic vs pessimistic"
+    },
+    "sql_12": {
+      "label": "Part 12",
+      "title": "Indexes, statistics, and execution plans",
+      "llmFocus": "B-tree selective predicates cardinality optimizer nested loops hash merge join statistics histograms EXPLAIN PLAN intuition"
+    },
+    "sql_13": {
+      "label": "Part 13",
+      "title": "Advanced patterns — pivot, hierarchies, JSON, analytics",
+      "llmFocus": "conditional aggregation pivot unpivot hierarchical queries JSON in SQL PIVOT LISTAGG pattern matching analytics"
+    },
+    "sql_14": {
+      "label": "Part 14",
+      "title": "Data modeling, warehousing, and interview tradeoffs",
+      "llmFocus": "normalization 1NF 3NF denormalization star snowflake fact dimension SCD data quality capstone scenarios"
     }
-  },
-  "bookAlignment": {
-    "title": "The SQL Universe",
-    "note": "Interactive path follows the EPUB table of contents: Preface → Introduction → Chapters 1–5."
   }
 }

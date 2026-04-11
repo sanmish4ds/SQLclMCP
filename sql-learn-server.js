@@ -582,17 +582,17 @@ function getGuidedCurriculum() {
 }
 
 /**
- * LLM teaches a book section: EPUB-grounded when indexed, plus broader SQL coverage. No static UI summary — this is the lesson.
+ * LLM-generated SQL lesson for one curriculum chapter (no book / EPUB context).
  */
 async function expandGuidedChapterWithLLM(chapterId, level) {
-  const emptyBook = { book_citations: [], book_context_used: false };
+  const noRefs = { book_citations: [], book_context_used: false };
 
   if (!config.enableLLMSqlGeneration) {
     return {
       markdown: null,
       source: 'llm_disabled',
       error: 'LLM is disabled (set ENABLE_LLM_SQL_GEN=true)',
-      ...emptyBook,
+      ...noRefs,
     };
   }
   if (!config.llmApiKey) {
@@ -600,7 +600,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
       markdown: null,
       source: 'llm_disabled',
       error: 'LLM_API_KEY is not set',
-      ...emptyBook,
+      ...noRefs,
     };
   }
 
@@ -610,7 +610,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
       markdown: null,
       source: 'error',
       error: 'guided-curriculum.json not available',
-      ...emptyBook,
+      ...noRefs,
     };
   }
 
@@ -620,94 +620,74 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
       markdown: null,
       source: 'error',
       error: `Unknown chapter: ${chapterId}`,
-      ...emptyBook,
+      ...noRefs,
     };
   }
 
   let nextHint = '';
+  let prevHint = '';
   const track = curriculum.learningChapterTracks && curriculum.learningChapterTracks[level];
   if (track && Array.isArray(track)) {
     const idx = track.indexOf(chapterId);
-    if (idx >= 0 && idx < track.length - 1) {
-      const nextCh = curriculum.chapters[track[idx + 1]];
-      if (nextCh) nextHint = `Next section on the learning path: **${nextCh.label || 'Chapter'}** — ${nextCh.title}.`;
+    if (idx >= 0) {
+      if (idx < track.length - 1) {
+        const nextCh = curriculum.chapters[track[idx + 1]];
+        if (nextCh) {
+          nextHint = `Next on the path: **${nextCh.label || 'Part'}** — ${nextCh.title}.`;
+        }
+      }
+      if (idx > 0) {
+        const prevCh = curriculum.chapters[track[idx - 1]];
+        if (prevCh) {
+          prevHint = `Previous: **${prevCh.label || 'Part'}** — ${prevCh.title}.`;
+        }
+      }
     }
   }
 
   const schemaTables =
-    'Oracle: only tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP with real TPC-H columns (C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
+    'Oracle lab tables: REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP (TPC-H-style columns: C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
 
-  const bookTitle =
-    (curriculum.bookAlignment && String(curriculum.bookAlignment.title || '').trim()) ||
-    'the indexed course book';
-
-  const bookQuery = [
-    ch.label,
-    ch.title,
-    ch.bookSearch || '',
-    bookTitle,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  let bookChunks = [];
-  let book_citations = [];
-  let book_context_used = false;
-  if (config.bookContextInGenerate !== false) {
-    const picked = pickBookContextForQuestion(bookQuery, { maxChunks: 8, searchLimit: 28 });
-    bookChunks = picked.chunks;
-    book_citations = picked.book_citations;
-    book_context_used = picked.book_context_used;
-  }
-
-  let bookUserMessage = null;
-  if (book_context_used && bookChunks.length) {
-    bookUserMessage = {
-      role: 'user',
-      content:
-        formatContextForPrompt(bookChunks) +
-        '\n\n---\n\n' +
-        `**Using the excerpts above (from *${bookTitle}*):** Teach the section **"${ch.label || ''}: ${ch.title}"**. ` +
-        'When excerpts clearly match this section, align your teaching with those ideas (paraphrase; do not paste long quotes). ' +
-        'If excerpts are thin or off-topic, still teach the section fully from expert SQL knowledge and say so briefly. ' +
-        'Always complete the full outline in the next message.',
-    };
-  }
+  const focus = String(ch.llmFocus || '').trim();
+  const focusLine = focus ? `**Depth hints for this part:** ${focus}` : '';
 
   const system = [
-    'You are an expert SQL educator for an interactive web course.',
-    `The learner is studying **${bookTitle}** one section at a time. There is **no pre-shown summary** on the page — your Markdown **is** the lesson.`,
+    'You are an expert SQL educator. The page has **no static lesson text** — your Markdown response **is** the full chapter.',
+    'Teach **complete, practical SQL** for this topic: ANSI SQL where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dual, dates, etc.).',
+    'Do **not** mention any textbook, course book, EPUB, or named publication. Do **not** say content comes from a book. Teach from first principles only.',
     'Write clear Markdown: ## and ### headings, **bold**, bullet lists, short paragraphs.',
-    'Cover **both**: (1) concepts this book section would plausibly contain, and (2) **related SQL topics** common in interviews and production (ANSI + Oracle), even if the book does not spell them all out — mark extra breadth with a short phrase like “Beyond the book:” when helpful.',
-    'Use **analogies** wherever they clarify (not only one).',
-    'Include **at least one** ```sql fenced block with **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/TCL-focused sections, still include that SELECT, and **also** explain DDL/DML/TCL in prose; you may add a second fence with DDL/DML examples clearly commented as sandbox-only.',
-    'Add **3–4 self-check** questions (plain English). End with **What to study next** (bullets): next path section + one adjacent SQL topic.',
-    'Aim for **roughly 900–1400 words** of prose plus code — thorough but scannable. No apologies or “as an AI”.',
+    'Include **at least one** ```sql fenced block with a **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/transaction chapters, add a second fence with example DDL/DML clearly marked as **sandbox-only** if the learner may not have rights.',
+    'Cover **interview angles** and **production pitfalls** where they matter (NULLs, duplicates, performance intuition).',
+    'Add **4–5 self-check** questions (plain English). End with **What to study next** (bullets): tie to the next path part when provided, plus one related topic.',
+    'Aim for **roughly 1000–1600 words** plus code — thorough and scannable. No “as an AI” disclaimers.',
   ].join(' ');
 
   const user = [
-    `**Section:** ${ch.label || 'Chapter'} — ${ch.title}`,
-    `**Learner level:** ${level} (beginner = slower, more definitions; advanced = denser, more edge cases and interview angles).`,
+    `**Chapter:** ${ch.label || 'Part'} — ${ch.title}`,
+    `**Learner level:** ${level} (beginner = more definitions and step-by-step; advanced = edge cases, optimizer and modeling depth).`,
+    focusLine,
     '',
-    '**Teach this section with the following structure (use these ## headings):**',
-    '## What this section covers — overview in your own words.',
-    '## Core concepts (from the book’s angle) — all major ideas a reader would expect here.',
-    '## Broader SQL you should know here — standard SQL + Oracle; interview and real-world hooks; include “beyond the book” where you extend.',
-    '## Analogies and mental models — short subsections or bullets.',
+    '**Use these ## headings:**',
+    '## Overview — what this chapter covers and why it matters.',
+    '## Core concepts — definitions, rules, and mental model.',
+    '## Standard SQL and Oracle — syntax and behavior; call out differences briefly.',
+    '## Patterns and pitfalls — duplicates, NULLs, performance, common interview questions.',
+    '## Analogies — short bullets where they help.',
     `## See it in the lab — ${schemaTables}`,
-    '## Self-check — 3–4 questions.',
+    '## Self-check — 4–5 questions.',
     '## What to study next — bullets.',
     '',
-    nextHint ? `**Path context:** ${nextHint}` : '',
+    prevHint || nextHint ? `**Path context:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
     '',
-    'Also mention **window functions**, **CTEs**, **NULL handling**, **transactions/isolation**, and **index/plan intuition** somewhere in the lesson **when** they naturally relate to this section (do not force unrelated digressions).',
+    'Weave in **window functions**, **CTEs**, **transactions**, or **indexes** only when they naturally fit this chapter.',
   ]
     .filter((line) => line !== '')
     .join('\n');
 
-  const messages = [{ role: 'system', content: system }];
-  if (bookUserMessage) messages.push(bookUserMessage);
-  messages.push({ role: 'user', content: user });
+  const messages = [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
 
   const payload = {
     model: config.llmModel,
@@ -739,8 +719,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
         markdown: null,
         source: 'llm_error',
         error: `LLM HTTP ${res.status}: ${bodyText.slice(0, 400)}`,
-        book_citations,
-        book_context_used,
+        ...noRefs,
       };
     }
 
@@ -751,16 +730,14 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
         markdown: null,
         source: 'llm_error',
         error: 'LLM returned empty content',
-        book_citations,
-        book_context_used,
+        ...noRefs,
       };
     }
     return {
       markdown: content,
       source: 'llm',
       error: null,
-      book_citations,
-      book_context_used,
+      ...noRefs,
     };
   } catch (error) {
     const isAbort = error && error.name === 'AbortError';
@@ -768,8 +745,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
       markdown: null,
       source: 'llm_error',
       error: isAbort ? 'LLM request timed out' : String(error),
-      book_citations,
-      book_context_used,
+      ...noRefs,
     };
   } finally {
     clearTimeout(timeout);
@@ -876,7 +852,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (full AI lesson), book_context_used, book_citations; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (full AI SQL lesson); book_context_used is always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
