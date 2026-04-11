@@ -323,6 +323,26 @@
       white-space: pre-wrap;
     }
 
+    /* Structured Markdown from /explain-sql (headings, lists, fenced code) */
+    .explain-box--md {
+      white-space: normal;
+      color: var(--text);
+    }
+    .explain-box--md .tutor-p,
+    .explain-box--md .tutor-ul li,
+    .explain-box--md .tutor-ol li {
+      color: var(--text-muted);
+    }
+    .chat-explain--md {
+      white-space: normal;
+      color: var(--text);
+    }
+    .chat-explain--md .tutor-p,
+    .chat-explain--md .tutor-ul li,
+    .chat-explain--md .tutor-ol li {
+      color: var(--text-muted);
+    }
+
     .sub code,
     .chat-welcome code {
       font-family: var(--mono);
@@ -839,7 +859,9 @@
       line-height: 1.65;
     }
 
-    .tutor-response pre {
+    .tutor-response pre,
+    .explain-box--md pre,
+    .chat-explain--md pre {
       margin: 0.65rem 0;
       padding: 0.75rem 0.9rem;
       background: var(--bg-input);
@@ -864,6 +886,7 @@
     .tutor-prose .tutor-h1 { font-size: 1.28rem; margin-top: 0; }
     .tutor-prose .tutor-h2 { font-size: 1.1rem; }
     .tutor-prose .tutor-h3 { font-size: 0.98rem; color: var(--text-muted); }
+    .tutor-prose .tutor-h4 { font-size: 0.9rem; color: var(--text-dim); font-weight: 600; margin-top: 0.75rem; }
     .tutor-ul, .tutor-ol {
       margin: 0.35rem 0 0.65rem 1.2rem;
       padding: 0;
@@ -1106,6 +1129,18 @@
     // Start collapsed — user opens on demand
     document.getElementById('schemaGrid').style.display = 'none';
 
+    /** Server searched EPUB and sent top-matching sections to the LLM (see BOOK_CONTEXT_IN_GENERATE). */
+    function bookConsultSuffix(data, inline) {
+      if (!data || !data.book_context_used || !(data.book_citations && data.book_citations.length)) return '';
+      var sections = [];
+      data.book_citations.forEach(function (c) {
+        if (c && c.section && sections.indexOf(c.section) === -1) sections.push(c.section);
+      });
+      if (!sections.length) return '';
+      var inner = sections.map(function (s) { return escapeHtml(s); }).join('; ');
+      return inline ? ' · Book passages: ' + inner : '<p class="chat-meta">Book passages supplied to the model: ' + inner + '</p>';
+    }
+
     function tutorFormatInline(raw) {
       var out = '';
       var re = /`([^`]+)`|\*\*([^*]+)\*\*/g;
@@ -1137,6 +1172,11 @@
         var t = lines[i].trim();
         if (!t) {
           closeLists();
+          continue;
+        }
+        if (/^####\s/.test(t)) {
+          closeLists();
+          html += '<h4 class="tutor-h tutor-h4">' + tutorFormatInline(t.replace(/^####\s+/, '')) + '</h4>';
           continue;
         }
         if (/^###\s/.test(t)) {
@@ -1173,7 +1213,8 @@
       return html;
     }
 
-    function tutorMarkdownToHtml(md) {
+    /** Fenced ```sql + Markdown prose; no outer wrapper (shared by Get answer + Explain). */
+    function tutorMarkdownToInnerHtml(md) {
       var s = String(md || '').trim();
       if (!s) return '';
       var out = '';
@@ -1188,7 +1229,18 @@
         last = re.lastIndex;
       }
       out += '<div class="tutor-prose">' + tutorFormatProse(s.slice(last)) + '</div>';
-      return '<div class="tutor-response">' + out + '</div>';
+      return out;
+    }
+
+    function tutorMarkdownToHtml(md) {
+      var inner = tutorMarkdownToInnerHtml(md);
+      if (!inner) return '';
+      return '<div class="tutor-response">' + inner + '</div>';
+    }
+
+    function explainMarkdownToBox(md) {
+      var inner = tutorMarkdownToInnerHtml(md);
+      return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
     }
 
     btnGenerate.addEventListener('click', async () => {
@@ -1218,7 +1270,8 @@
           }
           parts += '<p class="meta">Source: ' + escapeHtml(String(data.source || 'unknown')) +
             '. Mode: ' + escapeHtml(String(data.mode || 'hybrid')) +
-            (lastSql ? '' : ' · conceptual answer (no runnable lab SQL)') + '</p>';
+            (lastSql ? '' : ' · conceptual answer (no runnable lab SQL)') +
+            bookConsultSuffix(data, true) + '</p>';
           resultEl.innerHTML = parts;
           btnCopy.disabled = !lastSql;
           btnExplain.disabled = !lastSql;
@@ -1252,7 +1305,7 @@
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Explain failed');
-        explainResultEl.innerHTML = '<div class="explain-box">' + escapeHtml(String(d.explanation || '')) + '</div>';
+        explainResultEl.innerHTML = explainMarkdownToBox(String(d.explanation || ''));
       } catch (e) {
         explainResultEl.innerHTML = '<div class="explain-box is-error">Explain failed: ' + escapeHtml(e.message || String(e)) + '</div>';
       } finally {
@@ -1524,8 +1577,10 @@
         if (!d.success) throw new Error(d.error || 'Explain failed');
         const text = String(d.explanation || '').trim();
         sqlExplainCache.set(idx, text);
-        out.textContent = text;
+        out.className = 'chat-explain chat-explain--md';
+        out.innerHTML = tutorMarkdownToInnerHtml(text) || '<p class="tutor-p">(No explanation.)</p>';
       } catch (e) {
+        out.className = 'chat-explain';
         out.innerHTML = '<div class="chat-error">❌ ' + escapeHtml(e.message || String(e)) + '</div>';
       } finally {
         btn.disabled = false;
@@ -1759,7 +1814,8 @@
             setBotContent(botDiv, '<div class="chat-error">❌ Could not get an answer: ' + escapeHtml(genErr) + '</div>' + hint);
             return;
           }
-          const tutorHtml = tutor ? tutorMarkdownToHtml(tutor) : '';
+          const bookNote = bookConsultSuffix(genData, false);
+          const tutorHtml = (tutor ? tutorMarkdownToHtml(tutor) : '') + bookNote;
           const sb = sql ? sqlBlock(sql, genData.source) : '';
 
           if (!sql) {
@@ -1828,7 +1884,8 @@
         const text = String(d.explanation || '').trim();
         setBotContent(botDiv,
           '<div class="chat-label">Explain SQL</div>' +
-          '<div class="explain-box" style="margin-top:0.5rem">' + escapeHtml(text) + '</div>');
+          '<div class="explain-box explain-box--md" style="margin-top:0.5rem">' +
+          (tutorMarkdownToInnerHtml(text) || '<p class="tutor-p">(No explanation.)</p>') + '</div>');
       } catch (e) {
         setBotContent(botDiv, '<div class="chat-error">' + escapeHtml(e.message || String(e)) + '</div>');
       }

@@ -118,6 +118,8 @@ const config = {
   sqlGenerationMode: normalizeSqlGenerationMode(process.env.SQL_GENERATION_MODE),
   /** When a book EPUB is loaded, pass retrieved excerpts into Explain SQL (disable: BOOK_CONTEXT_IN_EXPLAIN=false). */
   bookContextInExplain: process.env.BOOK_CONTEXT_IN_EXPLAIN !== 'false',
+  /** When book is loaded, search it before /generate-sql LLM; cite chapter when on-topic (disable: BOOK_CONTEXT_IN_GENERATE=false). */
+  bookContextInGenerate: process.env.BOOK_CONTEXT_IN_GENERATE !== 'false',
 };
 
 let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
@@ -271,12 +273,51 @@ function splitSqlAndTutorFromLlmContent(content) {
   return { sql, tutor_response: tutor.length > 0 ? tutor : null };
 }
 
+/** Search indexed EPUB for question; return full chunks for LLM context (same scoring as /book/search). */
+function pickBookContextForQuestion(question, { maxChunks = 4, searchLimit = 18 } = {}) {
+  const q = String(question || '').trim();
+  if (!bookIndex.loaded || !bookIndex.chunks.length || !q) {
+    return { chunks: [], book_citations: [], book_context_used: false };
+  }
+  const hits = searchChunks(bookIndex.chunks, q, searchLimit);
+  if (!hits.length) {
+    return { chunks: [], book_citations: [], book_context_used: false };
+  }
+  const byId = new Map(bookIndex.chunks.map((c) => [c.id, c]));
+  const chunks = [];
+  const seen = new Set();
+  for (const h of hits) {
+    const c = byId.get(h.id);
+    if (!c || seen.has(c.id)) continue;
+    seen.add(c.id);
+    chunks.push(c);
+    if (chunks.length >= maxChunks) break;
+  }
+  const sections = [...new Set(chunks.map((c) => c.section).filter(Boolean))];
+  const book_citations = sections.map((section) => ({ section }));
+  return { chunks, book_citations, book_context_used: chunks.length > 0 };
+}
+
 async function generateSqlWithLLM(question) {
+  const emptyBookMeta = { book_citations: [], book_context_used: false };
+
   if (!config.enableLLMSqlGeneration) {
-    return { sql: null, tutor_response: null, source: 'llm_disabled', error: 'LLM SQL generation is disabled' };
+    return {
+      sql: null,
+      tutor_response: null,
+      source: 'llm_disabled',
+      error: 'LLM SQL generation is disabled',
+      ...emptyBookMeta,
+    };
   }
   if (!config.llmApiKey) {
-    return { sql: null, tutor_response: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing' };
+    return {
+      sql: null,
+      tutor_response: null,
+      source: 'llm_disabled',
+      error: 'LLM_API_KEY is missing',
+      ...emptyBookMeta,
+    };
   }
 
   const schemaHint = [
@@ -327,13 +368,39 @@ async function generateSqlWithLLM(question) {
     userQ +
     '\n\n[Assistant: All ```sql in your reply must use only TPC-H tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP and their documented columns—never Sales/employees-style placeholders.]';
 
+  const useBook =
+    config.bookContextInGenerate &&
+    bookIndex.loaded &&
+    bookIndex.chunks.length > 0;
+  const { chunks: bookChunks, book_citations, book_context_used } = useBook
+    ? pickBookContextForQuestion(userQ)
+    : { chunks: [], book_citations: [], book_context_used: false };
+
+  const bookTitle = bookIndex.meta?.title || 'the course book';
+  let bookUserMessage = null;
+  if (book_context_used && bookChunks.length) {
+    bookUserMessage =
+      formatContextForPrompt(bookChunks) +
+      '\n\n---\n\n' +
+      `**How to use the book excerpts above (title: "${bookTitle}"):**\n` +
+      '1) Decide whether these passages **clearly discuss** the user’s question (e.g. UNION vs UNION ALL, joins, windows—whatever they asked).\n' +
+      '2) **If yes:** Start your answer with one short line, e.g. **Course book:** This topic is covered in **«section/chapter name»** (*' +
+      bookTitle +
+      '*). Use the **exact section title** from the excerpt headers `[n] Section: …`. Then give the full Markdown answer (and TPC-H ```sql as required).\n' +
+      '3) **If no** (excerpts are off-topic or too weak): Say clearly that **this question is not covered** in the book passages you were given, then answer from **general SQL / interview knowledge** and TPC-H rules only—**do not** invent a chapter name.\n' +
+      '4) Never quote long passages verbatim; paraphrase and teach.\n';
+  }
+
+  const messages = [{ role: 'system', content: tutorSystem }];
+  if (bookUserMessage) {
+    messages.push({ role: 'user', content: bookUserMessage });
+  }
+  messages.push({ role: 'user', content: userWithSchemaReminder });
+
   const payload = {
     model: config.llmModel,
     temperature: 0.15,
-    messages: [
-      { role: 'system', content: tutorSystem },
-      { role: 'user', content: userWithSchemaReminder },
-    ],
+    messages,
   };
 
   const controller = new AbortController();
@@ -357,6 +424,8 @@ async function generateSqlWithLLM(question) {
         tutor_response: null,
         source: 'llm_error',
         error: `LLM HTTP ${response.status}: ${bodyText.slice(0, 500)}`,
+        book_citations,
+        book_context_used,
       };
     }
 
@@ -369,9 +438,17 @@ async function generateSqlWithLLM(question) {
         tutor_response: null,
         source: 'llm_error',
         error: 'LLM returned an empty response',
+        book_citations,
+        book_context_used,
       };
     }
-    return { sql, tutor_response, source: 'llm' };
+    return {
+      sql,
+      tutor_response,
+      source: 'llm',
+      book_citations,
+      book_context_used,
+    };
   } catch (error) {
     const isAbort = error && error.name === 'AbortError';
     return {
@@ -379,6 +456,8 @@ async function generateSqlWithLLM(question) {
       tutor_response: null,
       source: 'llm_error',
       error: isAbort ? 'LLM request timed out' : String(error),
+      book_citations,
+      book_context_used,
     };
   } finally {
     clearTimeout(timeout);
@@ -407,7 +486,13 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
     const selected = selectChunksForContext(bookIndex.chunks, sqlClean, contextQuestion, 5);
     if (selected.length) {
       bookCitations = selected.map((c) => ({ section: c.section, file: c.file }));
-      bookUserMsg = { role: 'user', content: formatContextForPrompt(selected) };
+      bookUserMsg = {
+        role: 'user',
+        content:
+          formatContextForPrompt(selected) +
+          '\n\nIf an excerpt clearly relates to the SQL or question, you may start with one line: **Course book:** … (**exact section title** from the headers). ' +
+          'If excerpts are not on-topic, do not claim the book covers this—explain from the query only.',
+      };
     }
   }
 
@@ -419,7 +504,9 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
         role: 'system',
         content:
           'You are a SQL tutor for learners and interview prep. Explain SQL clearly and concisely. ' +
-          'Use bullet points. For queries, cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
+          'Format your answer in Markdown: use ## for sections, - bullet lists, **bold** for emphasis, `code` for identifiers. ' +
+          'Put any sample or corrected SQL in ```sql fenced blocks (not as loose plain text). ' +
+          'For queries, cover: goal, tables, joins, filters, grouping/aggregation, ordering, limits. ' +
           'For conceptual or interview-style questions, define terms, give intuition, and note common pitfalls. ' +
           'If you suggest alternative or example Oracle SQL, use only the user practice schema: tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP ' +
           'with TPC-H column prefixes (C_, O_, L_, N_, R_, S_, P_, PS_). Never suggest fake tables like Sales or employees. ' +
@@ -476,6 +563,8 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
 }
 
 async function generateSql(question, mode = 'hybrid') {
+  const noBook = { book_citations: [], book_context_used: false };
+
   if (mode === 'lookup') {
     const hit = lookupSql(question);
     return {
@@ -483,6 +572,7 @@ async function generateSql(question, mode = 'hybrid') {
       tutor_response: null,
       source: hit.source,
       error: hit.sql ? null : 'No SQL rule found for question',
+      ...noBook,
     };
   }
 
@@ -493,7 +583,7 @@ async function generateSql(question, mode = 'hybrid') {
   // hybrid: exact rule match only, then LLM (handles interview + open-ended questions)
   const hit = lookupSql(question);
   if (hit.sql) {
-    return { sql: hit.sql, tutor_response: null, source: hit.source, error: null };
+    return { sql: hit.sql, tutor_response: null, source: hit.source, error: null, ...noBook };
   }
   return generateSqlWithLLM(question);
 }
@@ -557,7 +647,8 @@ const requestHandler = (request, response) => {
         api_info: 'GET /api-info — this JSON',
         health: 'GET /health',
         egress_ip: 'GET /egress-ip — outbound IP (Oracle ACL allow list)',
-        generate_sql: 'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" } — returns generated_sql and/or tutor_response (interview/concept answers)',
+        generate_sql:
+          'POST /generate-sql — body: { "question": "…", "mode": "llm|lookup|hybrid" } — returns generated_sql and/or tutor_response; when EPUB is loaded, searches book first (BOOK_CONTEXT_IN_GENERATE) and returns book_citations',
         generate_batch: 'POST /generate-batch — body: { "questions": ["q1"], "mode": "…" }',
         explain_sql: 'POST /explain-sql — body: { "sql": "…", "question": "…", "use_book_context": true }',
         execute_sql: 'POST /execute-sql — body: { "sql": "…" } (opt-in)',
@@ -720,6 +811,7 @@ const requestHandler = (request, response) => {
       epub_path: bookIndex.meta?.epubPath || null,
       error: bookIndex.error || null,
       context_in_explain: config.bookContextInExplain,
+      context_in_generate: config.bookContextInGenerate,
     }));
     return;
   }
@@ -830,6 +922,8 @@ const requestHandler = (request, response) => {
           source: result.source,
           mode,
           success: true,
+          book_context_used: !!result.book_context_used,
+          book_citations: result.book_citations || [],
         }));
       } catch (error) {
         response.writeHead(400);
@@ -965,6 +1059,8 @@ const requestHandler = (request, response) => {
               source: generated.source,
               success: generated.sql !== null || !!generated.tutor_response,
               error: generated.sql || generated.tutor_response ? null : generated.error,
+              book_context_used: !!generated.book_context_used,
+              book_citations: generated.book_citations || [],
             };
           })
         );
