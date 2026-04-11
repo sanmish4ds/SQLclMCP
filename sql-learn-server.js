@@ -582,24 +582,46 @@ function getGuidedCurriculum() {
 }
 
 /**
- * LLM builds on a fixed chapter: deeper intuition, new analogy, one TPC-H SQL example, self-check.
+ * LLM teaches a book section: EPUB-grounded when indexed, plus broader SQL coverage. No static UI summary — this is the lesson.
  */
 async function expandGuidedChapterWithLLM(chapterId, level) {
+  const emptyBook = { book_citations: [], book_context_used: false };
+
   if (!config.enableLLMSqlGeneration) {
-    return { markdown: null, source: 'llm_disabled', error: 'LLM is disabled (set ENABLE_LLM_SQL_GEN=true)' };
+    return {
+      markdown: null,
+      source: 'llm_disabled',
+      error: 'LLM is disabled (set ENABLE_LLM_SQL_GEN=true)',
+      ...emptyBook,
+    };
   }
   if (!config.llmApiKey) {
-    return { markdown: null, source: 'llm_disabled', error: 'LLM_API_KEY is not set' };
+    return {
+      markdown: null,
+      source: 'llm_disabled',
+      error: 'LLM_API_KEY is not set',
+      ...emptyBook,
+    };
   }
 
   const curriculum = getGuidedCurriculum();
   if (!curriculum || !curriculum.chapters) {
-    return { markdown: null, source: 'error', error: 'guided-curriculum.json not available' };
+    return {
+      markdown: null,
+      source: 'error',
+      error: 'guided-curriculum.json not available',
+      ...emptyBook,
+    };
   }
 
   const ch = curriculum.chapters[chapterId];
   if (!ch) {
-    return { markdown: null, source: 'error', error: `Unknown chapter: ${chapterId}` };
+    return {
+      markdown: null,
+      source: 'error',
+      error: `Unknown chapter: ${chapterId}`,
+      ...emptyBook,
+    };
   }
 
   let nextHint = '';
@@ -608,65 +630,96 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     const idx = track.indexOf(chapterId);
     if (idx >= 0 && idx < track.length - 1) {
       const nextCh = curriculum.chapters[track[idx + 1]];
-      if (nextCh) nextHint = `Next chapter in this learning path: "${nextCh.title}".`;
+      if (nextCh) nextHint = `Next section on the learning path: **${nextCh.label || 'Chapter'}** — ${nextCh.title}.`;
     }
   }
 
   const schemaTables =
-    'Only tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP with real TPC-H columns (C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
+    'Oracle: only tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP with real TPC-H columns (C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
 
   const bookTitle =
     (curriculum.bookAlignment && String(curriculum.bookAlignment.title || '').trim()) ||
     'the indexed course book';
 
+  const bookQuery = [
+    ch.label,
+    ch.title,
+    ch.bookSearch || '',
+    bookTitle,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  let bookChunks = [];
+  let book_citations = [];
+  let book_context_used = false;
+  if (config.bookContextInGenerate !== false) {
+    const picked = pickBookContextForQuestion(bookQuery, { maxChunks: 8, searchLimit: 28 });
+    bookChunks = picked.chunks;
+    book_citations = picked.book_citations;
+    book_context_used = picked.book_context_used;
+  }
+
+  let bookUserMessage = null;
+  if (book_context_used && bookChunks.length) {
+    bookUserMessage = {
+      role: 'user',
+      content:
+        formatContextForPrompt(bookChunks) +
+        '\n\n---\n\n' +
+        `**Using the excerpts above (from *${bookTitle}*):** Teach the section **"${ch.label || ''}: ${ch.title}"**. ` +
+        'When excerpts clearly match this section, align your teaching with those ideas (paraphrase; do not paste long quotes). ' +
+        'If excerpts are thin or off-topic, still teach the section fully from expert SQL knowledge and say so briefly. ' +
+        'Always complete the full outline in the next message.',
+    };
+  }
+
   const system = [
-    'You are a warm, expert SQL tutor for interactive web learning.',
-    `The on-screen summaries are aligned with sections of **${bookTitle}** (same chapter titles as the learner’s EPUB path). Build on those themes; do not invent different chapter names.`,
-    'The learner already read a short chapter summary. You must BUILD ON it — extend and deepen; do not repeat the same analogy or paraphrase the whole summary.',
-    'Output Markdown: ## and ### headings, **bold**, bullets where useful.',
-    'Include exactly one ```sql fenced block in ## See it in the lab — Oracle SELECT (or WITH … SELECT), runnable on that schema, FETCH FIRST for row limits. If the book section is DDL/DML/TCL, still use SELECT for the lab example and mention DDL/DML/TCL in prose.',
-    'Keep prose tight and friendly; avoid filler and apologies.',
+    'You are an expert SQL educator for an interactive web course.',
+    `The learner is studying **${bookTitle}** one section at a time. There is **no pre-shown summary** on the page — your Markdown **is** the lesson.`,
+    'Write clear Markdown: ## and ### headings, **bold**, bullet lists, short paragraphs.',
+    'Cover **both**: (1) concepts this book section would plausibly contain, and (2) **related SQL topics** common in interviews and production (ANSI + Oracle), even if the book does not spell them all out — mark extra breadth with a short phrase like “Beyond the book:” when helpful.',
+    'Use **analogies** wherever they clarify (not only one).',
+    'Include **at least one** ```sql fenced block with **runnable Oracle SELECT** (or WITH … SELECT) on the TPC-H schema. For DDL/DML/TCL-focused sections, still include that SELECT, and **also** explain DDL/DML/TCL in prose; you may add a second fence with DDL/DML examples clearly commented as sandbox-only.',
+    'Add **3–4 self-check** questions (plain English). End with **What to study next** (bullets): next path section + one adjacent SQL topic.',
+    'Aim for **roughly 900–1400 words** of prose plus code — thorough but scannable. No apologies or “as an AI”.',
   ].join(' ');
 
-  const summaryLines = (ch.summary || []).map((s) => `- ${s}`).join('\n');
   const user = [
-    `Canonical book: **${bookTitle}** (interactive path follows its table of contents).`,
-    `Learner level: **${level}** (beginner = slower, more hand-holding; advanced = crisper, slightly deeper).`,
+    `**Section:** ${ch.label || 'Chapter'} — ${ch.title}`,
+    `**Learner level:** ${level} (beginner = slower, more definitions; advanced = denser, more edge cases and interview angles).`,
     '',
-    `## Chapter: ${ch.label || 'Chapter'} — ${ch.title}`,
+    '**Teach this section with the following structure (use these ## headings):**',
+    '## What this section covers — overview in your own words.',
+    '## Core concepts (from the book’s angle) — all major ideas a reader would expect here.',
+    '## Broader SQL you should know here — standard SQL + Oracle; interview and real-world hooks; include “beyond the book” where you extend.',
+    '## Analogies and mental models — short subsections or bullets.',
+    `## See it in the lab — ${schemaTables}`,
+    '## Self-check — 3–4 questions.',
+    '## What to study next — bullets.',
     '',
-    '**Summary (ground truth — do not contradict):**',
-    summaryLines,
+    nextHint ? `**Path context:** ${nextHint}` : '',
     '',
-    ch.analogy ? `**Existing analogy (do not reuse this metaphor — invent a different one):** ${ch.analogy}` : '',
-    '',
-    '**Takeaways:** ' + (ch.takeaways || []).join(' · '),
-    '',
-    nextHint || '**Path:** learner is mid-path; mention what skill typically comes next in SQL.',
-    '',
-    '## Your task',
-    '1. ## Going deeper — 2–4 short paragraphs that connect ideas simply.',
-    '2. ## A new analogy — one memorable analogy from a **different** life domain than any above.',
-    '3. ## See it in the lab — one minimal example using ' + schemaTables,
-    '4. ## Self-check — exactly 2 plain-English questions (no multiple choice required).',
-    '5. End with a **What is next** one-line bridge to the next SQL idea.',
-    '',
-    'Cap prose around 400 words plus one SQL block.',
+    'Also mention **window functions**, **CTEs**, **NULL handling**, **transactions/isolation**, and **index/plan intuition** somewhere in the lesson **when** they naturally relate to this section (do not force unrelated digressions).',
   ]
     .filter((line) => line !== '')
     .join('\n');
 
+  const messages = [{ role: 'system', content: system }];
+  if (bookUserMessage) messages.push(bookUserMessage);
+  messages.push({ role: 'user', content: user });
+
   const payload = {
     model: config.llmModel,
-    temperature: 0.35,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ],
+    temperature: 0.4,
+    messages,
   };
+  if (config.llmApiUrl.includes('openai.com')) {
+    payload.max_tokens = 4096;
+  }
 
   const controller = new AbortController();
-  const expandTimeoutMs = Math.min(Math.max(config.llmTimeoutMs * 2, 20000), 45000);
+  const expandTimeoutMs = Math.min(Math.max(config.llmTimeoutMs * 3, 45000), 120000);
   const timeout = setTimeout(() => controller.abort(), expandTimeoutMs);
 
   try {
@@ -686,21 +739,37 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
         markdown: null,
         source: 'llm_error',
         error: `LLM HTTP ${res.status}: ${bodyText.slice(0, 400)}`,
+        book_citations,
+        book_context_used,
       };
     }
 
     const data = await res.json();
     const content = String(data?.choices?.[0]?.message?.content || '').trim();
     if (!content) {
-      return { markdown: null, source: 'llm_error', error: 'LLM returned empty content' };
+      return {
+        markdown: null,
+        source: 'llm_error',
+        error: 'LLM returned empty content',
+        book_citations,
+        book_context_used,
+      };
     }
-    return { markdown: content, source: 'llm', error: null };
+    return {
+      markdown: content,
+      source: 'llm',
+      error: null,
+      book_citations,
+      book_context_used,
+    };
   } catch (error) {
     const isAbort = error && error.name === 'AbortError';
     return {
       markdown: null,
       source: 'llm_error',
       error: isAbort ? 'LLM request timed out' : String(error),
+      book_citations,
+      book_context_used,
     };
   } finally {
     clearTimeout(timeout);
@@ -807,7 +876,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "ch1", "level": "beginner|intermediate|advanced" } — LLM expands chapter (analogy + lab SQL + self-check); requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "beginner|intermediate|advanced" } — returns markdown (full AI lesson), book_context_used, book_citations; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -855,6 +924,8 @@ const requestHandler = (request, response) => {
             source: r.source,
             chapter_id: chapterId,
             level,
+            book_context_used: !!r.book_context_used,
+            book_citations: r.book_citations || [],
           }));
           return;
         }
@@ -864,6 +935,8 @@ const requestHandler = (request, response) => {
           success: false,
           error: r.error || 'Chapter expansion failed',
           source: r.source,
+          book_context_used: !!r.book_context_used,
+          book_citations: r.book_citations || [],
         }));
       } catch (err) {
         response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });

@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Learn SQL along The SQL Universe with an AI-guided path, or ask natural-language questions for Oracle-style SQL. Practice, lab chat, and interview prep in one place.">
+  <meta name="theme-color" content="#0d9488">
+  <meta name="color-scheme" content="light">
   <!-- Optional direct API base (bypasses Netlify proxies). Leave empty when using easynlsql.netlify.app + netlify.toml proxies. -->
   <meta name="sql-learn-api" content="">
   <title>Easy NL2SQL — Natural language to Oracle SQL</title>
@@ -50,10 +53,29 @@
         radial-gradient(ellipse 50% 40% at 100% 10%, rgba(3, 105, 161, 0.07), transparent 50%);
     }
 
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0.5rem;
+      z-index: 100;
+      padding: 0.5rem 1rem;
+      background: var(--text);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+    }
+    .skip-link:focus {
+      left: 0.5rem;
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     .app {
-      max-width: 900px;
+      max-width: 920px;
       margin: 0 auto;
-      padding: 1.25rem 1.15rem 3.5rem;
+      padding: 1.25rem max(1.15rem, env(safe-area-inset-right)) calc(2.5rem + env(safe-area-inset-bottom)) max(1.15rem, env(safe-area-inset-left));
     }
 
     .app-header {
@@ -793,7 +815,9 @@
       .brand-row { flex-direction: column; align-items: center; text-align: center; }
       .sub { max-width: none; }
       .tabs { flex-direction: column; }
+      .tab-btn { min-height: 44px; }
       .msg-user .msg-bubble, .msg-bot .msg-bubble { max-width: 100%; }
+      .guided-nav--chapter .guided-choice { flex: 1 1 100%; justify-content: center; min-height: 44px; }
     }
 
     .text-warn { color: var(--danger); font-weight: 500; }
@@ -914,9 +938,14 @@
       filter: brightness(1.05);
       color: #fff;
     }
+    .guided-choice.primary:disabled {
+      opacity: 0.65;
+      cursor: wait;
+      filter: none;
+    }
     .guided-progress {
-      font-size: 0.78rem;
-      color: var(--text-dim);
+      font-size: 0.8125rem;
+      color: var(--text-muted);
       margin: 0 0 0.85rem;
       line-height: 1.45;
     }
@@ -965,7 +994,84 @@
     .guided-chip:hover { border-color: var(--accent); color: var(--accent); }
     .guided-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; align-items: center; }
     .guided-muted { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.65rem; line-height: 1.45; }
-    .guided-loader { color: var(--text-dim); font-size: 0.85rem; }
+    .guided-loader { color: var(--text-dim); font-size: 0.85rem; margin: 0; }
+    .guided-loader-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.1rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      line-height: 1.45;
+    }
+    .guided-book-banner {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.85rem 0.65rem 0.95rem;
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+      background: var(--accent-muted);
+      border: 1px solid rgba(13, 148, 136, 0.2);
+      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--accent);
+    }
+    .guided-section-eyebrow {
+      margin: 0 0 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+    .guided-chapter-head { margin-bottom: 0.25rem; }
+    .guided-lesson-shell {
+      margin-top: 0.5rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      min-height: 3.5rem;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+    .guided-lesson-shell .guided-llm-out {
+      margin-top: 0;
+      padding: 1rem 1.15rem 1.15rem;
+    }
+    .guided-lesson-shell .guided-llm-out .tutor-response {
+      margin-top: 0;
+    }
+    .guided-ai-actions {
+      margin-bottom: 0.65rem;
+    }
+    .guided-ai-actions .guided-nav { margin-top: 0; }
+    .guided-disclaimer {
+      margin-top: 0.65rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    .guided-disclaimer > p:last-child { margin-bottom: 0; }
+    .guided-book-sources {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    .app-footer {
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.55;
+      text-align: center;
+    }
+    .app-footer strong { color: var(--text-muted); font-weight: 600; }
 
     .guided-analogy {
       margin: 1rem 0;
@@ -1007,12 +1113,12 @@
     .guided-level-note strong { color: var(--text); }
 
     .guided-llm-panel {
-      margin-top: 1.15rem;
-      padding-top: 1rem;
-      border-top: 1px dashed var(--border-strong);
+      margin-top: 0.25rem;
+      padding-top: 0;
+      border-top: none;
     }
     .guided-llm-out {
-      margin-top: 0.75rem;
+      margin-top: 0;
     }
     .guided-llm-out .tutor-response {
       text-align: left;
@@ -1031,24 +1137,26 @@
   </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <div class="app">
   <header class="app-header">
     <div class="brand-row">
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> follows <strong>The SQL Universe</strong> — Preface, Introduction, and Chapters 1–5 from the book’s table of contents — with summaries, analogies, optional <strong>AI boost</strong>, and practice chips. <strong>Interview prep</strong> uses topic cards. Or use <strong>Guided practice</strong> for any question. Verify critical answers; models can be wrong.</p>
+        <p class="sub"><strong>Interactive path</strong> — book-aligned SQL learning (<em>The SQL Universe</em>): each section opens with an <strong>AI-generated lesson</strong> (book-grounded when the server has the index). <strong>Interview prep</strong> uses topic cards and chips. <strong>Guided practice</strong> answers any question in natural language. Always verify SQL and facts before you rely on them.</p>
       </div>
     </div>
   </header>
 
   <div class="tabs" role="tablist" aria-label="Main views">
-    <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="path">Interactive path</button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="practice">Guided practice · any question</button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="lab">SQL lab</button>
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-path" id="tab-btn-path" data-tab="path">Interactive path</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-practice" id="tab-btn-practice" data-tab="practice" title="Ask any question in natural language">Guided practice</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-lab" id="tab-btn-lab" data-tab="lab">SQL lab</button>
   </div>
 
-  <div id="tab-path" class="tab-panel active" role="tabpanel">
+  <main id="main-content" tabindex="-1">
+  <div id="tab-path" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-path">
     <div class="card guided-wrap">
       <div class="card-title">Interactive path</div>
       <p class="guided-progress" id="guidedProgress"></p>
@@ -1056,7 +1164,7 @@
     </div>
   </div>
 
-  <div id="tab-practice" class="tab-panel" role="tabpanel">
+  <div id="tab-practice" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-practice">
   <p class="status" id="serverStatus">Checking server…</p>
 
   <div class="card schema-section" id="schemaSection">
@@ -1084,7 +1192,7 @@
   <div id="executeResult"></div>
   </div><!-- /tab-practice -->
 
-  <div id="tab-lab" class="tab-panel" role="tabpanel">
+  <div id="tab-lab" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-lab">
     <p class="status" id="labStatus">Checking database connection…</p>
     <div class="chat-wrap card" style="padding:0;overflow:hidden;box-shadow:var(--shadow)">
       <div class="chat-history" id="chatHistory" style="padding:0.75rem 1rem 0">
@@ -1110,7 +1218,11 @@
       </div>
     </div>
   </div><!-- /tab-lab -->
+  </main>
 
+  <footer class="app-footer">
+    <p><strong>Educational use.</strong> AI output may be incorrect or incomplete. Do not paste secrets into the chat. This site does not replace official database documentation or your organization’s policies.</p>
+  </footer>
 </div><!-- /.app -->
 
   <script>
@@ -1146,10 +1258,10 @@
         clearTimeout(timer);
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
-        statusEl.textContent = 'Server: ' + (data.status === 'ok' ? 'OK' : 'Unknown') +
-          '. Rules: ' + (data.loaded_rules || 'unknown') +
-          '. LLM: ' + (data.llm_enabled ? 'on' : 'off') +
-          '. Execute: ' + (executeAvailable ? 'on' : 'off');
+        statusEl.textContent = (data.status === 'ok' ? 'Connected to the tutor service.' : 'Server status unclear.') +
+          ' AI tutor: ' + (data.llm_enabled ? 'on' : 'off') +
+          '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.';
+        statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
       } catch (e) {
@@ -1157,6 +1269,7 @@
         statusEl.textContent = isTimeout
           ? 'Server waking up. Retry in 15s.'
           : 'Server unreachable. Check URL or CORS.';
+        statusEl.removeAttribute('title');
         statusEl.className = 'status fail';
         executeAvailable = false;
         if (btnExecute) btnExecute.disabled = true;
@@ -1170,6 +1283,7 @@
     const GUIDED_STORAGE_KEY = 'easynl_guided_v1';
     let guidedCurriculum = null;
     let guidedState = { visit: null, level: null, step: 0, ids: [] };
+    let guidedChapterLlmAbort = null;
 
     function guidedCurriculumUrl() {
       if (typeof location !== 'undefined' && location.protocol !== 'file:') {
@@ -1264,7 +1378,7 @@
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead">SQL learning mirrors <strong>The SQL Universe</strong>: <strong>7 steps</strong> (Preface → Introduction → Chapters 1–5), same order as the book’s EPUB. Optional <strong>AI boost</strong> on each step. Interview prep uses topic cards. You can change this any time.</p>' +
+        '<p class="guided-lead"><strong>SQL learning</strong> follows <strong>The SQL Universe</strong> in <strong>seven sections</strong> (Preface → Introduction → Chapters 1–5). Each section loads an <strong>AI-written lesson</strong> tailored to your level (book-grounded when the server has the index). <strong>Interview prep</strong> uses topic cards and chips. You can switch paths any time.</p>' +
         '<div class="guided-choice-grid">' +
         '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — The SQL Universe (full TOC)</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
@@ -1275,7 +1389,7 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : '**Everyone follows the same 7 book sections** — Preface, Introduction, then the five numbered chapters (Essentials → Basic to Advance → DDL/DML/TCL → Advance Data Management → Final Frontier). Your level only changes the **tips** on each screen; you always cover the full book arc.';
+        : '**Everyone follows the same seven book sections** — Preface, Introduction, then the five numbered chapters (Essentials → Basic to Advance → DDL/DML/TCL → Advance Data Management → Final Frontier). Your level shapes **how the AI explains** each section; you still move through the full arc.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
         '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
@@ -1333,7 +1447,7 @@
         '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsI : chipsP) + '</div>' +
         '<div class="guided-chip-label">' + escapeHtml(secondaryLabel) + '</div>' +
         '<div class="guided-chip-row">' + (guidedState.visit === 'interview' ? chipsP : chipsI) + '</div>' +
-        '<p class="guided-muted">Tip: a chip copies its text into <strong>Your question</strong> on the Guided practice tab and switches there — press <strong>Get answer</strong> to use the AI (and book context when enabled on the server).</p>' +
+        '<p class="guided-muted">Tap a chip to open <strong>Guided practice</strong>, paste into <strong>Your question</strong>, then <strong>Get answer</strong>.</p>' +
         '<div class="guided-nav">' +
         '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous</button>' +
         '<button type="button" class="guided-choice primary" data-guided-next style="min-width:auto;flex:0">' +
@@ -1354,63 +1468,38 @@
         return;
       }
 
+      if (guidedChapterLlmAbort) {
+        try { guidedChapterLlmAbort.abort(); } catch (_) {}
+        guidedChapterLlmAbort = null;
+      }
+
       const prog = document.getElementById('guidedProgress');
       prog.textContent =
         visitLabel(guidedState.visit) + ' · ' + levelLabel(guidedState.level) +
-        ' · Chapter ' + (step + 1) + ' of ' + ids.length + ' — ' + ch.title;
-
-      const paras = (ch.summary || []).map(function (p) {
-        return '<p>' + formatGuidedBold(p) + '</p>';
-      }).join('');
-
-      const analogyHtml = ch.analogy
-        ? '<div class="guided-analogy"><span class="guided-analogy-label">Analogy</span>' + formatGuidedBold(ch.analogy) + '</div>'
-        : '';
-
-      const takeList = (ch.takeaways || []).map(function (line) {
-        return '<li>' + formatGuidedBold(line) + '</li>';
-      }).join('');
-
-      const levelNote = ch.levelNotes && ch.levelNotes[guidedState.level]
-        ? '<div class="guided-level-note"><strong>For your level (' + escapeHtml(levelLabel(guidedState.level)) + '):</strong> ' +
-          formatGuidedBold(ch.levelNotes[guidedState.level]) + '</div>'
-        : '';
-
-      const pq = ch.practiceQuestions || [];
-      const chipsP = pq.map(function (q) {
-        return '<button type="button" class="guided-chip" data-guided-prompt="1">' + escapeHtml(q) + '</button>';
-      }).join('');
+        ' · Section ' + (step + 1) + ' of ' + ids.length + ' — ' + ch.title;
 
       var bookBanner = '';
       if (cur.bookAlignment && cur.bookAlignment.title) {
-        bookBanner = '<p class="guided-muted" style="margin:0 0 0.6rem;font-size:0.78rem;border-left:3px solid var(--accent);padding-left:0.65rem;line-height:1.45">' +
-          'From <strong>' + escapeHtml(cur.bookAlignment.title) + '</strong> — same section order as the book (Preface through Chapter 5).</p>';
+        bookBanner = '<div class="guided-book-banner" role="note"><strong>' + escapeHtml(cur.bookAlignment.title) + '</strong> — You are on a section that matches this book’s table of contents. The lesson below is generated for you and may include related SQL topics beyond the page.</div>';
       }
       root.innerHTML =
         bookBanner +
-        '<p class="guided-muted" style="margin:0 0 0.5rem;font-size:0.82rem">' + escapeHtml(ch.label || 'Chapter') + '</p>' +
-        '<h2 class="guided-step-title">' + escapeHtml(ch.title) + '</h2>' +
-        '<div class="guided-concept-body">' + paras + '</div>' +
-        analogyHtml +
-        (takeList
-          ? '<h4 class="guided-chip-label" style="margin-top:1rem">Key takeaways</h4><ul class="guided-takeaways">' + takeList + '</ul>'
-          : '') +
-        levelNote +
+        '<p class="guided-section-eyebrow">' + escapeHtml(ch.label || 'Section') + '</p>' +
+        '<div class="guided-chapter-head"><h2 class="guided-step-title" style="margin-bottom:0.35rem">' + escapeHtml(ch.title) + '</h2></div>' +
         '<div class="guided-llm-panel" id="guidedLlmPanel">' +
-        '<h4 class="guided-chip-label" style="margin-top:0">AI learning boost</h4>' +
-        '<p class="guided-muted" style="margin:0 0 0.55rem">Uses the same LLM as Guided practice: a <strong>new analogy</strong>, a short <strong>See it in the lab</strong> Oracle example on TPC-H tables, and <strong>self-check</strong> questions — on top of the chapter above.</p>' +
-        '<div class="guided-nav" style="margin-top:0.35rem">' +
-        '<button type="button" class="guided-choice primary" data-guided-llm-expand="1" style="flex:1;min-width:200px">Build on this chapter with AI</button>' +
-        '</div>' +
-        '<div id="guidedLlmOut" class="guided-llm-out" hidden></div>' +
-        '</div>' +
-        '<div class="guided-chip-label">Try in Guided practice</div>' +
-        '<div class="guided-chip-row">' + chipsP + '</div>' +
-        '<p class="guided-muted">Chips copy into <strong>Your question</strong> on the Guided practice tab — press <strong>Get answer</strong> for AI help with the lab schema.</p>' +
-        '<div class="guided-nav">' +
-        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous chapter</button>' +
+        '<div class="guided-ai-actions"><div class="guided-nav">' +
+        '<button type="button" class="guided-choice primary" data-guided-llm-expand="1">Build on this chapter with AI</button>' +
+        '</div></div>' +
+        '<div class="guided-lesson-shell">' +
+        '<div id="guidedLlmOut" class="guided-llm-out">' +
+        '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
+        '<span class="loader" aria-hidden="true"></span>' +
+        '<span>Preparing your lesson…</span></div>' +
+        '</div></div></div>' +
+        '<div class="guided-nav guided-nav--chapter" style="margin-top:1.25rem">' +
+        '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous section</button>' +
         '<button type="button" class="guided-choice primary" data-guided-next style="min-width:auto;flex:0">' +
-        (step >= ids.length - 1 ? 'Finish path' : 'Next chapter →') +
+        (step >= ids.length - 1 ? 'Finish path' : 'Next section →') +
         '</button>' +
         '<button type="button" class="guided-choice" data-guided-reset style="min-width:auto;flex:0">Start over</button>' +
         '</div>';
@@ -1457,6 +1546,7 @@
       prog.textContent = '';
       if (guidedState.visit === 'learning') {
         renderGuidedChapter(root);
+        queueMicrotask(function () { runGuidedChapterLlmExpand(); });
       } else {
         renderGuidedConcept(root);
       }
@@ -1754,30 +1844,58 @@
       var out = document.getElementById('guidedLlmOut');
       var btn = panel && panel.querySelector('[data-guided-llm-expand]');
       if (!out || !btn) return;
+
+      if (guidedChapterLlmAbort) {
+        try { guidedChapterLlmAbort.abort(); } catch (_) {}
+      }
+      guidedChapterLlmAbort = new AbortController();
+      var signal = guidedChapterLlmAbort.signal;
+      var expectChapter = chapterId;
+
       btn.disabled = true;
-      out.hidden = false;
-      out.innerHTML = '<p class="guided-loader">Asking the AI to build on this chapter…</p>';
+      out.innerHTML = '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
+        '<span class="loader" aria-hidden="true"></span>' +
+        '<span>Generating your lesson… This can take up to a minute.</span></div>';
       try {
         var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chapter_id: chapterId, level: level }),
+          signal: signal,
         });
+        if (guidedState.ids[guidedState.step] !== expectChapter) return;
         var data = await r.json().catch(function () { return {}; });
+        if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (data.success && data.markdown) {
-          btn.textContent = 'Regenerate AI boost';
+          var bookLine = '';
+          if (data.book_context_used && data.book_citations && data.book_citations.length) {
+            var secs = [];
+            data.book_citations.forEach(function (c) {
+              if (c && c.section && secs.indexOf(c.section) === -1) secs.push(c.section);
+            });
+            if (secs.length) {
+              bookLine = '<p class="guided-book-sources">Book index used for this lesson includes: ' +
+                secs.map(function (s) { return escapeHtml(s); }).join(' · ') + '</p>';
+            }
+          }
           out.innerHTML = tutorMarkdownToHtml(data.markdown) +
-            '<p class="guided-muted" style="margin-top:0.75rem;font-size:0.8rem">AI-generated — verify SQL on your database. Source: ' +
-            escapeHtml(String(data.source || 'llm')) + '</p>';
+            '<div class="guided-disclaimer" role="note">' +
+            '<p class="guided-muted" style="margin-top:0">This lesson is <strong>AI-generated</strong>. Check SQL and definitions before you run anything. ' +
+            'Source: ' + escapeHtml(String(data.source || 'llm')) +
+            (data.book_context_used ? ' · book index <strong>on</strong>' : ' · book index <strong>off</strong>') +
+            '.</p>' + bookLine + '</div>';
         } else {
           var err = data.error || ('HTTP ' + r.status);
-          out.innerHTML = '<p class="guided-muted">' + escapeHtml(err) + '</p>' +
-            '<p class="guided-muted" style="font-size:0.78rem;margin-top:0.45rem">Enable <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code> on the API server, or check the network / API URL.</p>';
+          out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +
+            '<p class="guided-muted">This screen has no static chapter text — the lesson comes from the API only.</p>' +
+            '<p class="guided-book-sources">Running your own server? Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code>, then try again.</p>';
         }
       } catch (e) {
+        if (e.name === 'AbortError') return;
+        if (guidedState.ids[guidedState.step] !== expectChapter) return;
         out.innerHTML = '<p class="guided-muted">Request failed: ' + escapeHtml(e.message) + '</p>';
       }
-      btn.disabled = false;
+      if (guidedState.ids[guidedState.step] === expectChapter) btn.disabled = false;
     }
 
     btnGenerate.addEventListener('click', async () => {
@@ -2391,6 +2509,17 @@
       });
       return html + '</tbody></table>';
     }
+
+    (function initSkipLinkFocus() {
+      var skip = document.querySelector('.skip-link');
+      var mainEl = document.getElementById('main-content');
+      if (!skip || !mainEl) return;
+      skip.addEventListener('click', function () {
+        window.requestAnimationFrame(function () {
+          try { mainEl.focus({ preventScroll: true }); } catch (_) { try { mainEl.focus(); } catch (_) {} }
+        });
+      });
+    })();
   </script>
 </body>
 </html>
