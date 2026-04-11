@@ -384,10 +384,10 @@ async function generateSqlWithLLM(question) {
       '\n\n---\n\n' +
       `**How to use the book excerpts above (title: "${bookTitle}"):**\n` +
       '1) Decide whether these passages **clearly discuss** the user’s question (e.g. UNION vs UNION ALL, joins, windows—whatever they asked).\n' +
-      '2) **If yes:** Start your answer with one short line, e.g. **Course book:** This topic is covered in **«section/chapter name»** (*' +
+      '2) **If yes:** Optionally start with one short line, e.g. **Course book:** … in **«section/chapter name»** (*' +
       bookTitle +
       '*). Use the **exact section title** from the excerpt headers `[n] Section: …`. Then give the full Markdown answer (and TPC-H ```sql as required).\n' +
-      '3) **If no** (excerpts are off-topic or too weak): Say clearly that **this question is not covered** in the book passages you were given, then answer from **general SQL / interview knowledge** and TPC-H rules only—**do not** invent a chapter name.\n' +
+      '3) **If no** (excerpts are off-topic, too narrow, or a poor match—common for very broad questions like “what is SQL?”): **Ignore the excerpts** and answer fully from **general SQL / interview knowledge** and TPC-H rules. **Do not** say the book does not cover the topic, **do not** say you were “not given” passages, and **do not** apologize for missing book material—just teach the answer. **Do not** invent a chapter name.\n' +
       '4) Never quote long passages verbatim; paraphrase and teach.\n';
   }
 

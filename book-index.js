@@ -124,8 +124,9 @@ function chunkText(text, maxLen, overlap) {
   return chunks;
 }
 
+// Note: do not stopword "sql" — questions like "What is SQL?" must retrieve book chunks about SQL.
 const STOP = new Set(
-  'a an the and or for to of in on at by is are was were be been being it as if with from this that these those sql select where join left right inner outer on group by order having limit fetch first rows only null not'.split(
+  'a an the and or for to of in on at by is are was were be been being it as if with from this that these those select where join left right inner outer on group by order having limit fetch first rows only null not'.split(
     ' ',
   ),
 );
