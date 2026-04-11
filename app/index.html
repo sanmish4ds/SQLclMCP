@@ -1007,6 +1007,20 @@
       font-size: 0.875rem;
       line-height: 1.45;
     }
+    .guided-loader-row--lesson {
+      align-items: center;
+      padding: 1rem 1.1rem;
+      background: linear-gradient(165deg, rgba(13, 148, 136, 0.06), var(--bg-elevated));
+      border-color: rgba(13, 148, 136, 0.18);
+    }
+    .guided-loader-row--lesson .loader {
+      flex-shrink: 0;
+    }
+    .guided-loader-msg {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
     .guided-section-eyebrow {
       margin: 0 0 0.35rem;
       font-size: 0.75rem;
@@ -1355,6 +1369,12 @@
       return t && t[level] ? t[level].slice() : [];
     }
 
+    function guidedLessonLoaderHtml() {
+      return '<div class="guided-loader-row guided-loader-row--lesson" role="status" aria-busy="true" aria-live="polite">' +
+        '<span class="loader" aria-hidden="true"></span>' +
+        '<span class="guided-loader-msg">Loading… Should not take more than 30 seconds.</span></div>';
+    }
+
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
@@ -1467,9 +1487,7 @@
         '</div></div>' +
         '<div class="guided-lesson-shell">' +
         '<div id="guidedLlmOut" class="guided-llm-out">' +
-        '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
-        '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Loading short lesson…</span></div>' +
+        guidedLessonLoaderHtml() +
         '</div></div></div>' +
         '<div class="guided-nav guided-nav--chapter" style="margin-top:1.25rem">' +
         '<button type="button" class="guided-choice" data-guided-prev style="min-width:auto;flex:0"' + (step <= 0 ? ' disabled' : '') + '>← Previous part</button>' +
@@ -1828,9 +1846,7 @@
       var expectChapter = chapterId;
 
       btn.disabled = true;
-      out.innerHTML = '<div class="guided-loader-row" aria-busy="true" aria-live="polite">' +
-        '<span class="loader" aria-hidden="true"></span>' +
-        '<span>Loading lesson… Often ~10–35s for a short part (busy servers take longer).</span></div>';
+      out.innerHTML = guidedLessonLoaderHtml();
       try {
         var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
           method: 'POST',
