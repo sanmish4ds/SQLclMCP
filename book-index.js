@@ -1,6 +1,6 @@
 /**
  * Load an EPUB (ZIP) into searchable text chunks with section labels from nav.
- * No network; used as canonical in-app source when BOOK_EPUB_PATH is set.
+ * No network; loaded from BOOK_EPUB_PATH, data/latest_book.epub, or a URL-fetched copy (see sql-learn-server.js).
  */
 
 const path = require('path');

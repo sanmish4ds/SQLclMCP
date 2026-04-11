@@ -111,8 +111,10 @@ htmlcov/
 package-lock.json
 yarn.lock
 
-# Local book source (optional path: data/latest_book.epub)
+# EPUBs under data/ (keep repo default book tracked for deploy)
 data/*.epub
+!data/latest_book.epub
+data/.fetched_book.epub
 
 # Miscellaneous
 .cache/

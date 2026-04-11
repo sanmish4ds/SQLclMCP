@@ -263,19 +263,49 @@ const config = {
 
 let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
 
+const MAX_BOOK_EPUB_FETCH_BYTES = 50 * 1024 * 1024;
+
 function resolveBookEpubPath() {
   const env = (process.env.BOOK_EPUB_PATH || '').trim();
   if (env) return path.resolve(env);
-  const local = path.join(__dirname, 'data', 'latest_book.epub');
-  if (fs.existsSync(local)) return local;
+  for (const name of ['latest_book.epub', '.fetched_book.epub']) {
+    const local = path.join(__dirname, 'data', name);
+    if (fs.existsSync(local)) return local;
+  }
   return null;
+}
+
+/** If no file on disk yet, download BOOK_EPUB_URL → data/.fetched_book.epub (then loadBookIndex picks it up). */
+async function ensureBookEpubFromUrl() {
+  if (resolveBookEpubPath()) return;
+  const url = (process.env.BOOK_EPUB_URL || '').trim();
+  if (!url) return;
+  const dest = path.join(__dirname, 'data', '.fetched_book.epub');
+  console.log(`[${APP_DISPLAY_NAME}] Book: fetching EPUB from BOOK_EPUB_URL…`);
+  const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': `${APP_DISPLAY_NAME}/1` } });
+  if (!res.ok) {
+    throw new Error(`BOOK_EPUB_URL HTTP ${res.status}`);
+  }
+  const cl = res.headers.get('content-length');
+  if (cl && Number(cl) > MAX_BOOK_EPUB_FETCH_BYTES) {
+    throw new Error('BOOK_EPUB_URL Content-Length too large');
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > MAX_BOOK_EPUB_FETCH_BYTES) {
+    throw new Error('BOOK_EPUB_URL response body too large');
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, buf);
+  console.log(`[${APP_DISPLAY_NAME}] Book: saved fetched EPUB (${buf.length} bytes)`);
 }
 
 function loadBookIndex() {
   const p = resolveBookEpubPath();
   if (!p) {
     bookIndex = { loaded: false, chunks: [], meta: null, error: null };
-    console.log(`[${APP_DISPLAY_NAME}] Book EPUB: not configured (BOOK_EPUB_PATH or data/latest_book.epub)`);
+    console.log(
+      `[${APP_DISPLAY_NAME}] Book EPUB: not configured (BOOK_EPUB_PATH, BOOK_EPUB_URL, or data/latest_book.epub)`,
+    );
     return;
   }
   const r = loadBookFromEpub(p);
@@ -552,10 +582,8 @@ async function generateSql(question, mode = 'hybrid') {
   return generateSqlWithLLM(question);
 }
 
-// Load rules on startup
+// Load rules on startup (book loads in startServer after optional URL fetch)
 loadSQLRules();
-loadBookIndex();
-
 
 // ── HTTP Request Handler ──────────────────────────────────────────────────────
 
@@ -575,16 +603,26 @@ const requestHandler = (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const pathname = url.pathname;
 
-  // GET / — chat UI (same origin as API; avoids hardcoding Render URL after service rename)
+  // GET / — browser UI (app/index.html; Netlify publishes the same folder)
   if ((pathname === '/' || pathname === '') && request.method === 'GET') {
-    try {
-      const html = fs.readFileSync(path.join(__dirname, 'app', 'sql-learn-ui.html'), 'utf8');
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      response.end(html);
-    } catch (err) {
-      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end('Missing app/sql-learn-ui.html: ' + err.message);
+    const appDir = path.join(__dirname, 'app');
+    let html;
+    for (const name of ['index.html', 'sql-learn-ui.html']) {
+      const p = path.join(appDir, name);
+      if (fs.existsSync(p)) {
+        try {
+          html = fs.readFileSync(p, 'utf8');
+          break;
+        } catch (_) { /* try next */ }
+      }
     }
+    if (!html) {
+      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end('Missing app/index.html (or sql-learn-ui.html)');
+      return;
+    }
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    response.end(html);
     return;
   }
 
@@ -774,7 +812,11 @@ const requestHandler = (request, response) => {
   if (pathname === '/book/search' && request.method === 'GET') {
     if (!bookIndex.loaded || !bookIndex.chunks.length) {
       response.writeHead(503);
-      response.end(JSON.stringify({ error: 'Book not loaded', hint: 'Set BOOK_EPUB_PATH or add data/latest_book.epub', results: [] }));
+      response.end(JSON.stringify({
+        error: 'Book not loaded',
+        hint: 'Set BOOK_EPUB_PATH, BOOK_EPUB_URL, or add data/latest_book.epub to the server',
+        results: [],
+      }));
       return;
     }
     const q = url.searchParams.get('q') || '';
@@ -1471,19 +1513,31 @@ if (RENDER_KEEP_ALIVE_URL) {
 }
 
 const listenHost = process.env.BIND_HOST || '0.0.0.0';
-server.listen(config.httpPort, listenHost, () => {
-  console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
-  console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
-  console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
-  console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
-  console.log(`  GET  /health          - Server health check`);
-  console.log(`  POST /reload-rules    - Reload SQL rules from experiments/sql-practice-rules.json`);
-  console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
-  console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
-  if (bookIndex.loaded) {
-    console.log(`  GET  /book/search     - Search "${bookIndex.meta.title}" (${bookIndex.meta.chunkCount} chunks)`);
+
+async function startServer() {
+  try {
+    await ensureBookEpubFromUrl();
+  } catch (e) {
+    console.warn(`[${APP_DISPLAY_NAME}] Book EPUB URL fetch skipped:`, e.message || e);
   }
-});
+  loadBookIndex();
+
+  server.listen(config.httpPort, listenHost, () => {
+    console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
+    console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
+    console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
+    console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
+    console.log(`  GET  /health          - Server health check`);
+    console.log(`  POST /reload-rules    - Reload SQL rules from experiments/sql-practice-rules.json`);
+    console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
+    console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
+    if (bookIndex.loaded) {
+      console.log(`  GET  /book/search     - Search "${bookIndex.meta.title}" (${bookIndex.meta.chunkCount} chunks)`);
+    }
+  });
+}
+
+startServer();
 
 server.on('error', (error) => {
   console.error(`[${APP_DISPLAY_NAME}] Error:`, error);
