@@ -1037,7 +1037,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> is a <strong>full 15-chapter</strong> path (beginner → advanced) with summaries, analogies, optional <strong>AI boost</strong> per chapter, and practice chips. <strong>Interview prep</strong> uses topic cards. Or use <strong>Guided practice</strong> for any question. Verify critical answers; models can be wrong.</p>
+        <p class="sub">Start with <strong>Interactive path</strong>: <strong>SQL learning</strong> follows <strong>The SQL Universe</strong> — Preface, Introduction, and Chapters 1–5 from the book’s table of contents — with summaries, analogies, optional <strong>AI boost</strong>, and practice chips. <strong>Interview prep</strong> uses topic cards. Or use <strong>Guided practice</strong> for any question. Verify critical answers; models can be wrong.</p>
       </div>
     </div>
   </header>
@@ -1264,9 +1264,9 @@
     function renderGuidedPurpose(root) {
       root.innerHTML =
         '<h2 class="guided-step-title">What is the purpose of your visit?</h2>' +
-        '<p class="guided-lead">SQL learning is a <strong>full 15-chapter</strong> journey (core SQL through windows and modeling), with optional <strong>AI boost</strong> on each chapter. Interview prep uses topic cards. You can change this any time.</p>' +
+        '<p class="guided-lead">SQL learning mirrors <strong>The SQL Universe</strong>: <strong>7 steps</strong> (Preface → Introduction → Chapters 1–5), same order as the book’s EPUB. Optional <strong>AI boost</strong> on each step. Interview prep uses topic cards. You can change this any time.</p>' +
         '<div class="guided-choice-grid">' +
-        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — chapters + optional AI boost</button>' +
+        '<button type="button" class="guided-choice primary" data-guided-visit="learning">SQL learning — The SQL Universe (full TOC)</button>' +
         '<button type="button" class="guided-choice primary" data-guided-visit="interview">Interview prep — concepts and drill questions</button>' +
         '</div>';
     }
@@ -1275,7 +1275,7 @@
       const v = guidedState.visit;
       const lead = v === 'interview'
         ? 'Pick the level that best matches the roles you are targeting. We will emphasize interview-style prompts and depth.'
-        : '**Everyone follows the same 15 chapters** from basics to advanced (SELECT → joins → aggregates → subqueries → sets → CTEs → windows → Oracle → performance → modeling). Your level only changes the **tips** on each screen: beginner pacing, intermediate shortcuts, advanced interview depth — not how many chapters you get.';
+        : '**Everyone follows the same 7 book sections** — Preface, Introduction, then the five numbered chapters (Essentials → Basic to Advance → DDL/DML/TCL → Advance Data Management → Final Frontier). Your level only changes the **tips** on each screen; you always cover the full book arc.';
       root.innerHTML =
         '<h2 class="guided-step-title">What is your level?</h2>' +
         '<p class="guided-lead">' + formatGuidedBold(lead) + '</p>' +
@@ -1381,7 +1381,13 @@
         return '<button type="button" class="guided-chip" data-guided-prompt="1">' + escapeHtml(q) + '</button>';
       }).join('');
 
+      var bookBanner = '';
+      if (cur.bookAlignment && cur.bookAlignment.title) {
+        bookBanner = '<p class="guided-muted" style="margin:0 0 0.6rem;font-size:0.78rem;border-left:3px solid var(--accent);padding-left:0.65rem;line-height:1.45">' +
+          'From <strong>' + escapeHtml(cur.bookAlignment.title) + '</strong> — same section order as the book (Preface through Chapter 5).</p>';
+      }
       root.innerHTML =
+        bookBanner +
         '<p class="guided-muted" style="margin:0 0 0.5rem;font-size:0.82rem">' + escapeHtml(ch.label || 'Chapter') + '</p>' +
         '<h2 class="guided-step-title">' + escapeHtml(ch.title) + '</h2>' +
         '<div class="guided-concept-body">' + paras + '</div>' +

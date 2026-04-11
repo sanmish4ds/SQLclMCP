@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "tracks": {
     "interview": {
       "beginner": [
@@ -449,434 +449,212 @@
   },
   "learningChapterTracks": {
     "beginner": [
-      "ch1",
-      "ch2",
-      "ch3",
-      "ch4",
-      "ch5",
-      "ch6",
-      "ch7",
-      "ch8",
-      "ch9",
-      "ch10",
-      "ch11",
-      "ch12",
-      "ch13",
-      "ch14",
-      "ch15"
+      "bu_preface",
+      "bu_intro",
+      "bu_ch1",
+      "bu_ch2",
+      "bu_ch3",
+      "bu_ch4",
+      "bu_ch5"
     ],
     "intermediate": [
-      "ch1",
-      "ch2",
-      "ch3",
-      "ch4",
-      "ch5",
-      "ch6",
-      "ch7",
-      "ch8",
-      "ch9",
-      "ch10",
-      "ch11",
-      "ch12",
-      "ch13",
-      "ch14",
-      "ch15"
+      "bu_preface",
+      "bu_intro",
+      "bu_ch1",
+      "bu_ch2",
+      "bu_ch3",
+      "bu_ch4",
+      "bu_ch5"
     ],
     "advanced": [
-      "ch1",
-      "ch2",
-      "ch3",
-      "ch4",
-      "ch5",
-      "ch6",
-      "ch7",
-      "ch8",
-      "ch9",
-      "ch10",
-      "ch11",
-      "ch12",
-      "ch13",
-      "ch14",
-      "ch15"
+      "bu_preface",
+      "bu_intro",
+      "bu_ch1",
+      "bu_ch2",
+      "bu_ch3",
+      "bu_ch4",
+      "bu_ch5"
     ]
   },
   "chapters": {
-    "ch1": {
-      "label": "Chapter 1",
-      "title": "The world of data — in plain English",
+    "bu_preface": {
+      "label": "Preface",
+      "title": "Why fundamentals beat buzzwords",
       "summary": [
-        "A database is an organized place where your business facts live: customers, orders, products, payments. You ask questions in a structured language instead of scrolling endless spreadsheets.",
-        "**SQL** (Structured Query Language) is how you ask those questions. You describe **what** you want; the engine figures out **how** to retrieve it.",
-        "This app uses a **TPC-H–style** practice schema: REGION, NATION, CUSTOMER, ORDERS, LINEITEM, PART, SUPPLIER, PARTSUPP. Technical names (like C_CUSTKEY) are normal — each table is one kind of entity, and **keys** link them."
+        "The book opens by arguing that **SQL is more than syntax** — it is the durable language of data underneath shifting tools and trends.",
+        "Interviewers often probe **fundamentals**; candidates with flashy resumes can still stumble on core SQL. This path mirrors the book so you build lasting skill, not just keywords.",
+        "You will use the same **TPC-H–style lab** (REGION, NATION, CUSTOMER, ORDERS, LINEITEM, PART, SUPPLIER, PARTSUPP) to practice ideas the book discusses in a concrete Oracle setting."
       ],
-      "analogy": "Think of a **three-ring binder**. Each **tab** is a table. Each **row** is one real-world record. SQL is the **librarian** who opens the right tab, applies your rules, and returns only the columns you asked for.",
+      "analogy": "Think of SQL as **learning to read music**. Gadgets change like instruments; reading music (core SQL) keeps working everywhere.",
       "takeaways": [
-        "Table = entity type; row = one instance; column = one attribute.",
-        "Primary/foreign keys connect tables — the spine of relational SQL.",
-        "Oracle + this lab: exact table and column spelling matters."
+        "Fundamentals compound — skipping them shows up under interview pressure.",
+        "The book is structured for interview-style thinking; we follow that spine.",
+        "Your lab gives you somewhere to run real SELECTs while you read."
       ],
-      "bookSearch": "RDBMS relational table row column key warehouse",
+      "bookSearch": "Preface SQL fundamentals interview enduring principles The SQL Universe",
       "levelNotes": {
-        "beginner": "You will walk every chapter in order — same full path as intermediate and advanced; take your time here.",
-        "intermediate": "Same full curriculum; skim chapters that are pure review and use practice chips where you want depth.",
-        "advanced": "Full path end-to-end; use early chapters to sharpen how you explain basics to others."
+        "beginner": "Read slowly; the Preface sets expectations for the whole book.",
+        "intermediate": "Use this as a reset — align your practice with fundamentals, not tool-chasing.",
+        "advanced": "Note how you would explain “why SQL still matters” to a junior — interview meta-skill."
       },
       "practiceQuestions": [
-        "In your own words: what is a table vs a row vs a column?",
-        "Name two tables in the lab schema and what kind of business thing each represents."
+        "In one paragraph, why does the book say SQL is “more than syntax”?",
+        "Name one risk of focusing only on trendy tools instead of SQL fundamentals."
       ]
     },
-    "ch2": {
-      "label": "Chapter 2",
-      "title": "Your first reads: SELECT, FROM, and DISTINCT",
+    "bu_intro": {
+      "label": "INTRODUCTION",
+      "title": "SQL, interviews, and how this book is organized",
       "summary": [
-        "**SELECT** chooses which columns (or expressions) appear in the result. **FROM** names the table. That pair is the smallest useful query: “from this pile, show me these fields.”",
-        "Listing columns by name is clearer and safer than **SELECT *** in production code — your API and reports stay stable when new columns are added.",
-        "**DISTINCT** removes duplicate rows from the result — useful for “which values appear at least once?” (e.g. which nations appear among customers)."
+        "The **Introduction** explains the book’s origin: interview prep for data engineering, moving from scattered notes to one structured path.",
+        "You will see how SQL questions show up in real interviews — not just definitions, but **thinking under time pressure**.",
+        "The book’s layout (Essentials → Basic to Advanced → DDL/DML/TCL → Advanced data management → Final frontier) is the same journey you will click through here, step by step."
       ],
-      "analogy": "**FROM** is “which drawer”; **SELECT** is “which labels on the folders you pull out.” **DISTINCT** is “remove duplicate sticky notes so each color appears once.”",
+      "analogy": "The book is a **single map** instead of fifty browser tabs — each chapter is the next leg of the same trail.",
       "takeaways": [
-        "SELECT … FROM is always the starting shape.",
-        "Expressions in SELECT (e.g. price * quantity) must match what you mean for the grain of each row.",
-        "DISTINCT operates on the whole selected row, not a single column in isolation."
+        "Interview SQL rewards clarity and structure, not panic Googling.",
+        "Later chapters deliberately raise difficulty; that matches the book.",
+        "Use practice chips to connect prose to your Oracle lab."
       ],
-      "bookSearch": "SELECT FROM DISTINCT column expression alias",
+      "bookSearch": "INTRODUCTION SQL Universe interview preparation Data Engineering organization chapters",
       "levelNotes": {
-        "beginner": "Run simple SELECTs on REGION and NATION until comfortable.",
-        "intermediate": "Try expressions like O_TOTALPRICE with ORDERS and naming columns with aliases.",
-        "advanced": "Think about select-list grain vs duplicates when joining later."
+        "beginner": "Don’t skip — it frames how Chapters 1–5 fit together.",
+        "intermediate": "Compare the book’s roadmap to gaps in your own knowledge.",
+        "advanced": "Use the intro to coach others: how would you summarize the book’s arc?"
       },
       "practiceQuestions": [
-        "Select R_NAME and R_REGIONKEY from REGION.",
-        "From CUSTOMER, list distinct C_MKTSEGMENT values."
+        "What problem was the author solving when they structured this book?",
+        "List the five numbered chapters of The SQL Universe in order."
       ]
     },
-    "ch3": {
-      "label": "Chapter 3",
-      "title": "Filtering rows: WHERE, logic, and NULL basics",
+    "bu_ch1": {
+      "label": "CHAPTER 1: ESSENTIALS",
+      "title": "Foundation — 30 questions that build execution muscle",
       "summary": [
-        "**WHERE** keeps only rows that pass a condition — applied **before** grouping or sorting in the logical order of operations.",
-        "Combine predicates with **AND**, **OR**, and **parentheses** so “A or B and C” is unambiguous.",
-        "**NULL** means unknown. `col = NULL` is not valid — use **IS NULL** / **IS NOT NULL**. Comparisons involving NULL often yield UNKNOWN, which acts like false in WHERE.",
-        "**LIKE** matches patterns (`%` wildcard); **BETWEEN** is inclusive range tests — great for dates and amounts."
+        "**Chapter 1** moves from concepts to **practice**: how interview questions are phrased, how to think through them, and how to answer with both technique and communication.",
+        "Expect **core retrieval patterns**: SELECT / FROM / WHERE, sorting, DISTINCT, basic filters — the “30 questions” style foundation the book advertises.",
+        "The goal is **execution under stress** — the ability to apply what you know when the clock is ticking."
       ],
-      "analogy": "WHERE is a **sieve**: only pieces that fit the holes fall through. NULL is a **mystery label** — the sieve cannot guess “yes” or “no” until you check for blanks explicitly.",
+      "analogy": "Chapter 1 is **scales and arpeggios** for SQL — not glamorous, but what you reach for automatically in an audition.",
       "takeaways": [
-        "Parentheses matter when mixing AND and OR.",
-        "Always use IS NULL, never = NULL.",
-        "LIKE/BETWEEN/IN are everyday filter tools."
+        "Read questions carefully; interviewers reward structured thinking.",
+        "Master basics on REGION, NATION, ORDERS before fancy joins.",
+        "Practice explaining your logic out loud while you type."
       ],
-      "bookSearch": "WHERE AND OR NULL IS NULL LIKE BETWEEN predicate",
+      "bookSearch": "CHAPTER 1 ESSENTIALS 30 Questions foundation interview execution SELECT WHERE ORDER BY",
       "levelNotes": {
-        "beginner": "Practice one condition per query, then combine two with AND.",
-        "intermediate": "Filter ORDERS by O_ORDERDATE ranges and O_ORDERSTATUS.",
-        "advanced": "Trace UNKNOWN through complex predicates and short-circuiting mentally."
+        "beginner": "Spend the most time here — everything later assumes this is solid.",
+        "intermediate": "Drill for speed and clean column lists, not just correctness.",
+        "advanced": "Coach someone else through one “Essentials”-style question from the book’s spirit."
       },
       "practiceQuestions": [
-        "Customers in one nation with C_ACCTBAL above a threshold — which columns do you filter?",
-        "Orders placed in a given year using a date range on O_ORDERDATE."
+        "List region names from REGION sorted alphabetically.",
+        "Fetch the 10 largest orders by O_TOTALPRICE using FETCH FIRST."
       ]
     },
-    "ch4": {
-      "label": "Chapter 4",
-      "title": "Sorting and limiting: ORDER BY and FETCH FIRST",
+    "bu_ch2": {
+      "label": "CHAPTER 2 : BASIC TO ADVANCE",
+      "title": "Joins, subqueries, CTEs — the junior-to-mid bridge",
       "summary": [
-        "**ORDER BY** sorts the final result — by column, expression, or column position (avoid position numbers in production; prefer names).",
-        "**ASC** (default) vs **DESC** control direction. Multi-column sorts break ties (e.g. nation, then customer name).",
-        "Oracle uses **FETCH FIRST n ROWS ONLY** (often with ORDER BY) instead of LIMIT. This is how you get “top 10” style answers."
+        "After foundations, the book pushes into patterns that show up in **most junior interviews**: **joins** across tables, **subqueries**, and **CTEs** for readable, maintainable SQL.",
+        "The text notes these ~30 query patterns cover a **large share** of early-career interviews; depth here separates hesitant from confident candidates.",
+        "You still stay in the **read/query** world; schema changes and transactions come in Chapter 3."
       ],
-      "analogy": "ORDER BY is **ranking finishers** in a race. FETCH FIRST is “medal ceremony for top three only” — you still need a fair sort first.",
+      "analogy": "If Chapter 1 is solo melody, Chapter 2 is **playing with the band** — multiple tables must stay in time (keys) or the music turns to noise.",
       "takeaways": [
-        "Without ORDER BY, row order is not guaranteed.",
-        "Top-N needs a meaningful sort key (e.g. by date or amount).",
-        "FETCH FIRST pairs naturally with ORDER BY."
+        "INNER vs LEFT joins answer different business questions.",
+        "Subqueries vs joins — often interchangeable; choose clarity.",
+        "WITH (CTE) breaks complex questions into interview-friendly steps."
       ],
-      "bookSearch": "ORDER BY ASC DESC FETCH FIRST ROWS ONLY Oracle top",
+      "bookSearch": "CHAPTER 2 BASIC TO ADVANCE joins subqueries CTEs junior interview 30 queries",
       "levelNotes": {
-        "beginner": "Sort REGION by name; then top 5 ORDERS by O_TOTALPRICE.",
-        "intermediate": "Multi-column ORDER BY on LINEITEM within an order.",
-        "advanced": "Contrast FETCH FIRST with ROWNUM pitfalls historically in Oracle."
+        "beginner": "Learn one join pattern at a time; draw keys on paper.",
+        "intermediate": "Time yourself on a 3-table question with a CTE.",
+        "advanced": "Be ready to discuss when the optimizer rewrites subqueries to joins."
       },
       "practiceQuestions": [
-        "List nations alphabetically by N_NAME.",
-        "Ten largest O_TOTALPRICE orders with FETCH FIRST."
+        "Join ORDERS to CUSTOMER and show order key, customer name, and total price.",
+        "Describe in words how a CTE could split “compute revenue per customer” from “filter top customers.”"
       ]
     },
-    "ch5": {
-      "label": "Chapter 5",
-      "title": "INNER JOIN: linking two tables correctly",
+    "bu_ch3": {
+      "label": "CHAPTER 3 : DDL, DML,TCL",
+      "title": "Defining, changing, and controlling data — beyond SELECT",
       "summary": [
-        "Rarely is everything in one table. **INNER JOIN** matches rows from two tables on a condition — usually **key = key** (e.g. ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY).",
-        "Only rows with a **match on both sides** appear. Missing keys mean the row disappears from the result — by design.",
-        "You can chain many joins (CUSTOMER → ORDERS → LINEITEM → PART). Each link should use the **documented relationship**, not accidental text equality."
+        "**Chapter 3** shifts from querying to **managing** the database: **DDL** (schema), **DML** (insert/update/delete), and **TCL** (transactions — commit, rollback, savepoints).",
+        "Interviews here test whether you understand **integrity**, **concurrency**, and **safety** — not only reporting.",
+        "Your hosted lab may only allow SELECT; still learn the concepts so you can discuss them and run DDL/DML in a sandbox when you have rights."
       ],
-      "analogy": "INNER JOIN is **two puzzles** where pieces snap together only when the **notch IDs match**. No match, no combined piece in the picture.",
+      "analogy": "If SELECT is **reading a recipe**, DDL/DML/TCL is **stocking the pantry, cooking, and deciding whether to serve or scrap the dish** (commit/rollback).",
       "takeaways": [
-        "Always specify ON with keys, not guessed columns.",
-        "One-to-many joins multiply rows on the “many” side — that is expected.",
-        "Qualify columns (table.column) when names collide."
+        "DDL changes structure; DML changes rows; TCL wraps units of work.",
+        "Transactions protect consistency when sessions overlap.",
+        "Know what you *would* run even if the practice UI is read-only."
       ],
-      "bookSearch": "INNER JOIN ON key ORDERS CUSTOMER LINEITEM",
+      "bookSearch": "CHAPTER 3 DDL DML TCL schema transaction commit rollback INSERT UPDATE DELETE",
       "levelNotes": {
-        "beginner": "Draw CUSTOMER ↔ ORDERS on paper with keys labeled.",
-        "intermediate": "Three-table join: order + customer + nation.",
-        "advanced": "Estimate row counts after joins to catch accidental cross products."
+        "beginner": "Memorize the three acronyms and one example statement each.",
+        "intermediate": "Trace a small money-transfer story with COMMIT vs ROLLBACK.",
+        "advanced": "Prepare examples of isolation problems (dirty read, etc.) at a conceptual level."
       },
       "practiceQuestions": [
-        "Join ORDERS to CUSTOMER: show O_ORDERKEY, C_NAME, O_TOTALPRICE.",
-        "Why is O_CUSTKEY = C_CUSTKEY safer than joining on customer name?"
+        "What is the difference between DDL and DML in one sentence?",
+        "Why might you ROLLBACK instead of COMMIT after a batch job fails halfway?"
       ]
     },
-    "ch6": {
-      "label": "Chapter 6",
-      "title": "OUTER JOINs and when rows “disappear”",
+    "bu_ch4": {
+      "label": "CHAPTER 4 : ADVANCE DATA MANAGEMENT",
+      "title": "Partitioning, VLDBs, and architecture-level thinking",
       "summary": [
-        "**LEFT [OUTER] JOIN** keeps **every** row from the left table; right-side columns are NULL when there is no match — perfect for “all customers, even with zero orders.”",
-        "**RIGHT JOIN** is LEFT with tables swapped; **FULL OUTER JOIN** keeps non-matches from **both** sides (less common, useful for reconciliation).",
-        "Watch **NULL** in join keys: they do not match each other in equality joins, which can surprise you in outer joins and filters."
+        "**Chapter 4** focuses on **table partitioning** and **very large databases (VLDBs)** — how to design for scale, maintenance, and performance at the **architecture** layer.",
+        "Interview questions here target senior DBA / data-engineering depth: not just “write a query,” but **why** data is laid out the way it is.",
+        "Connect the ideas to **fact tables** and time/range pruning even when your lab is small — the mental model transfers."
       ],
-      "analogy": "LEFT JOIN is a **class photo**: everyone on the left shows up; if someone has no partner on the right, you still leave an empty chair (NULL) instead of cutting them out.",
+      "analogy": "Partitioning is **sorting a warehouse into aisles** so you only open the aisle that holds today’s shipments instead of searching the whole building.",
       "takeaways": [
-        "INNER = must match; LEFT = preserve driving table.",
-        "Anti-join pattern: LEFT JOIN … WHERE right.key IS NULL.",
-        "FULL is for “in A or B but compare both sides.”"
+        "Partitions reduce scanned data for time- or key-range queries.",
+        "VLDB concerns: load, maintenance windows, statistics, archiving.",
+        "Be ready to discuss trade-offs (more files/metadata vs faster pruning)."
       ],
-      "bookSearch": "LEFT OUTER JOIN RIGHT FULL NULL preserve anti-join",
+      "bookSearch": "CHAPTER 4 ADVANCE DATA MANAGEMENT partitioning VLDB performance maintenance",
       "levelNotes": {
-        "beginner": "Contrast one INNER vs one LEFT on the same tables and count rows.",
-        "intermediate": "Find customers with no orders using LEFT JOIN.",
-        "advanced": "Discuss when optimizers rewrite outer joins and cardinality effects."
+        "beginner": "Learn definitions and a simple range-partition story first.",
+        "intermediate": "Relate partitioning to how you might filter ORDERS by year in a huge table.",
+        "advanced": "Prepare a spoken design: partition by month vs hash — when each?"
       },
       "practiceQuestions": [
-        "List every CUSTOMER with order count zero using LEFT JOIN.",
-        "When would FULL OUTER JOIN help compare two supplier lists?"
+        "In plain English, what problem does table partitioning try to solve?",
+        "How might partitioning help a query that always filters on O_ORDERDATE by month?"
       ]
     },
-    "ch7": {
-      "label": "Chapter 7",
-      "title": "GROUP BY, aggregates, and HAVING",
+    "bu_ch5": {
+      "label": "CHAPTER 5 : FINAL FRONTEIR",
+      "title": "Security (DCL), objects, materialized views, JSON — the capstone",
       "summary": [
-        "**COUNT, SUM, AVG, MIN, MAX** collapse many rows into one value per group. **GROUP BY** defines the groups (e.g. per NATION, per C_MKTSEGMENT).",
-        "Every non-aggregated column in SELECT must appear in GROUP BY (or be functionally dependent — rules vary by mode; be explicit in learning).",
-        "**HAVING** filters **groups after** aggregation (e.g. HAVING COUNT(*) > 100). **WHERE** filters rows **before** grouping — different jobs."
+        "The book’s final chapter (spelled **FRONTEIR** in the TOC) covers **DCL** (security / grants), **database objects** such as views and synonyms, **global temporary tables**, **materialized views** for analytics, and **modern types like JSON**.",
+        "This is **comprehensive interview territory**: objects, refresh strategies, who can see what, and semi-structured data.",
+        "You tie together the whole arc from **Essentials** through **enterprise-scale** concerns."
       ],
-      "analogy": "GROUP BY is **sorting coins into jars by country**. Aggregates are **counting or weighing each jar**. HAVING is “only show jars heavier than 1 kg.”",
+      "analogy": "Chapter 5 is the **locks, signage, and display cases** in a museum — who can enter, what labels (views) visitors see, and how featured exhibits (materialized summaries) stay fresh.",
       "takeaways": [
-        "WHERE vs HAVING = row filter vs group filter.",
-        "COUNT(*) vs COUNT(col) differs when col has NULLs.",
-        "Multiple GROUP BY columns = finer buckets."
+        "DCL = who may run which commands on which objects.",
+        "Views simplify access; materialized views trade storage for read speed.",
+        "JSON in SQL bridges relational cores to modern APIs and logs."
       ],
-      "bookSearch": "GROUP BY HAVING COUNT SUM AVG aggregate",
+      "bookSearch": "CHAPTER 5 FINAL FRONTEIR DCL views materialized JSON synonyms security",
       "levelNotes": {
-        "beginner": "One GROUP BY column first; then add a second dimension.",
-        "intermediate": "Revenue per nation using joins + SUM.",
-        "advanced": "ROLLUP/CUBE as optional stretch (conceptual)."
+        "beginner": "Get vocabulary straight (view vs materialized view vs synonym).",
+        "intermediate": "Explain one use case for a materialized view in reporting.",
+        "advanced": "Be ready for refresh strategies (ON DEMAND vs ON COMMIT) at a high level."
       },
       "practiceQuestions": [
-        "Count customers per nation; filter nations with at least 50 customers (HAVING).",
-        "Average O_TOTALPRICE per O_ORDERSTATUS."
-      ]
-    },
-    "ch8": {
-      "label": "Chapter 8",
-      "title": "Subqueries: IN, EXISTS, and correlated logic",
-      "summary": [
-        "A **subquery** is a query nested inside another. It can return a scalar, a column list, or be used with **EXISTS** (true/false: “is there any row?”).",
-        "**IN (subquery)** tests membership; be careful with **NULL** inside the list — odd behavior. **EXISTS** often reads more clearly for existence.",
-        "**Correlated** subqueries reference the outer query; powerful, sometimes rewritten by the optimizer as joins."
-      ],
-      "analogy": "A subquery is a **question inside a question**: “Among customers who pass the inner test, who passes the outer test?” EXISTS is a **yes/no flashlight** — it stops once it finds one match.",
-      "takeaways": [
-        "EXISTS vs IN: prefer EXISTS when NULLs muddy IN.",
-        "Scalar subquery must return at most one row one column.",
-        "Read nested SQL from the inside out until it clicks."
-      ],
-      "bookSearch": "subquery EXISTS IN correlated scalar nested",
-      "levelNotes": {
-        "beginner": "Start with IN on a static list; move to subquery IN.",
-        "intermediate": "Rewrite IN subquery as JOIN when equivalence holds.",
-        "advanced": "Compare semi-join plans for EXISTS vs DISTINCT inner join."
-      },
-      "practiceQuestions": [
-        "Orders for customers in a specific nation using a subquery or join.",
-        "Parts that have never appeared in LINEITEM — EXISTS or anti-join pattern."
-      ]
-    },
-    "ch9": {
-      "label": "Chapter 9",
-      "title": "Combining results: UNION, INTERSECT, and MINUS",
-      "summary": [
-        "**UNION** stacks two compatible result sets and **removes duplicates**. **UNION ALL** keeps duplicates and is usually faster when you know duplicates are OK or irrelevant.",
-        "**INTERSECT** returns rows appearing in **both** queries. **MINUS** (Oracle) / EXCEPT (ANSI elsewhere) returns rows in the first set **not** in the second.",
-        "Column counts and compatible types must align across branches."
-      ],
-      "analogy": "UNION is **merging two guest lists**; UNION ALL is **photocopying both pages** even if names repeat. INTERSECT is “who RSVP’d **both** events?”",
-      "takeaways": [
-        "UNION implies extra work to dedupe; UNION ALL when safe.",
-        "MINUS is great for reconciliation and data QA patterns.",
-        "Use parentheses and ORDER BY on the outermost query when needed."
-      ],
-      "bookSearch": "UNION ALL INTERSECT MINUS EXCEPT combine",
-      "levelNotes": {
-        "beginner": "Stack two SELECTs with same columns using UNION ALL.",
-        "intermediate": "Use MINUS to find keys in one set but not another.",
-        "advanced": "Discuss sort/hash algorithms at a high level for large sets."
-      },
-      "practiceQuestions": [
-        "When would UNION ALL be strictly better than UNION?",
-        "Describe a report where INTERSECT answers a business question."
-      ]
-    },
-    "ch10": {
-      "label": "Chapter 10",
-      "title": "CTEs and readable SQL with WITH",
-      "summary": [
-        "**WITH** (common table expression) names a sub-result you reuse in the main query. It reads **top to bottom** like a recipe — great for long pipelines.",
-        "You can chain multiple CTEs. **Recursive** CTEs walk hierarchies (org charts, bills of material) — advanced but powerful.",
-        "CTEs often mirror what you’d do in temp tables in other tools, but inline and scoped to one statement."
-      ],
-      "analogy": "CTE is **mise en place**: chop and measure into bowls **before** cooking the main dish so the final steps stay readable.",
-      "takeaways": [
-        "Name each step; reference earlier CTEs in later ones.",
-        "Readability win is the main beginner benefit.",
-        "Recursion = same CTE references itself with a base case + union."
-      ],
-      "bookSearch": "WITH CTE common table expression recursive",
-      "levelNotes": {
-        "beginner": "Rewrite a nested FROM subquery as a single WITH step.",
-        "intermediate": "Two-step: filter orders in CTE1, aggregate in main query.",
-        "advanced": "Sketch a recursive CTE for a part explosion (conceptual)."
-      },
-      "practiceQuestions": [
-        "Use WITH to compute per-customer revenue then filter customers above a threshold.",
-        "Why might a colleague prefer WITH over a 200-line nested SELECT?"
-      ]
-    },
-    "ch11": {
-      "label": "Chapter 11",
-      "title": "Window functions: PARTITION BY and ranking",
-      "summary": [
-        "**Window functions** compute over a **window** of rows **without** collapsing the result like GROUP BY. Syntax: `func(...) OVER (PARTITION BY … ORDER BY …)`.",
-        "**ROW_NUMBER()** assigns unique integers; **RANK()** and **DENSE_RANK()** handle ties differently (gaps vs no gaps).",
-        "**PARTITION BY** slices rows into groups; each partition gets its own ranking sequence."
-      ],
-      "analogy": "Windows are **per-row sticky notes** next to a spreadsheet: everyone still sees every row, but each row knows its **rank in its group**.",
-      "takeaways": [
-        "PARTITION BY is like GROUP BY for the window, but rows remain.",
-        "ROW_NUMBER never ties; RANK/DENSE_RANK do.",
-        "ORDER BY inside OVER defines ranking order."
-      ],
-      "bookSearch": "OVER PARTITION BY ROW_NUMBER RANK DENSE_RANK window",
-      "levelNotes": {
-        "beginner": "Rank customers by C_ACCTBAL within each nation.",
-        "intermediate": "Top 3 orders per customer using ROW_NUMBER in a subquery/CTE.",
-        "advanced": "Compare tie-breaking strategies in interviews."
-      },
-      "practiceQuestions": [
-        "Assign row numbers to LINEITEM rows partitioned by L_ORDERKEY.",
-        "Explain when DENSE_RANK beats RANK for a leaderboard."
-      ]
-    },
-    "ch12": {
-      "label": "Chapter 12",
-      "title": "Window frames: running totals and sliding windows",
-      "summary": [
-        "**ROWS BETWEEN** and **RANGE BETWEEN** define which rows participate relative to the current row — e.g. running sum, moving average, year-to-date.",
-        "**UNBOUNDED PRECEDING** to current row is classic **cumulative** logic. Careful framing avoids off-by-one.",
-        "Combine windows with aggregates for **share of total** (ratio to SUM over partition)."
-      ],
-      "analogy": "A frame is a **camera lens zoom**: only neighbors in the frame affect the “local average” — widen the frame, smoother the curve.",
-      "takeaways": [
-        "Default frame differs by function — read docs for your engine.",
-        "Running totals need a sensible ORDER BY in OVER.",
-        "Share-of-group = value / SUM(x) OVER (PARTITION BY g)."
-      ],
-      "bookSearch": "ROWS BETWEEN RANGE frame running total cumulative analytic",
-      "levelNotes": {
-        "beginner": "Conceptual: describe running revenue by month without coding first.",
-        "intermediate": "Write SUM(amount) OVER (ORDER BY date ROWS UNBOUNDED PRECEDING).",
-        "advanced": "RANGE vs ROWS with duplicates and temporal logic."
-      },
-      "practiceQuestions": [
-        "Conceptually, how would you compute each order’s share of that customer’s lifetime spend?",
-        "What does ROWS BETWEEN 1 PRECEDING AND CURRENT ROW mean?"
-      ]
-    },
-    "ch13": {
-      "label": "Chapter 13",
-      "title": "Oracle SQL: dates, strings, and handy functions",
-      "summary": [
-        "Oracle favors **DATE** and **TIMESTAMP** types; literals like `DATE '1992-01-01'` are clear. **TRUNC** for date bucketing; **TO_CHAR** for formatting and quarters.",
-        "**COALESCE** / **NVL** handle NULL defaults; **CASE** expressions branch in the middle of a query.",
-        "**LISTAGG** builds comma-separated lists per group (with ordering). **FETCH FIRST** remains your portable row cap."
-      ],
-      "analogy": "Date functions are **time-zone aware kitchen timers** — same recipe, but you must read Oracle’s clock labels (TRUNC vs EXTRACT quirks).",
-      "takeaways": [
-        "Prefer explicit DATE literals in learning queries.",
-        "CASE is SQL’s if/else inside expressions.",
-        "LISTAGG needs WITHIN GROUP (ORDER BY …) in Oracle."
-      ],
-      "bookSearch": "Oracle DATE TRUNC TO_CHAR LISTAGG NVL COALESCE CASE FETCH",
-      "levelNotes": {
-        "beginner": "Format one date column with TO_CHAR; use COALESCE on a nullable field.",
-        "intermediate": "Bucket ORDERS by month with TRUNC(O_ORDERDATE,'MM').",
-        "advanced": "Compare EXTRACT limitations vs TO_CHAR for quarters."
-      },
-      "practiceQuestions": [
-        "Write FETCH FIRST 20 ORDERS ordered by O_ORDERDATE descending.",
-        "Use CASE to label orders as large or small based on O_TOTALPRICE."
-      ]
-    },
-    "ch14": {
-      "label": "Chapter 14",
-      "title": "Indexes, plans, and why queries feel fast or slow",
-      "summary": [
-        "**Indexes** (often B-tree) help find rows by key or range without scanning every block — great for **selective** predicates.",
-        "The **optimizer** picks join order, join methods (nested loop, hash, merge), and index vs full scan using **statistics**.",
-        "Tiny tables may be **full scanned** on purpose; **stale stats** cause bad plans. **EXPLAIN PLAN** (conceptually) shows the chosen shape."
-      ],
-      "analogy": "An index is the **back-of-book index**; a full scan is **reading the whole novel**. If you only need one chapter, the index wins — if you need every page anyway, skip the index.",
-      "takeaways": [
-        "Selectivity drives index usefulness.",
-        "Indexes speed reads, cost writes.",
-        "Debugging slowness starts with the plan, not random hints."
-      ],
-      "bookSearch": "index optimizer execution plan hash join nested loop statistics",
-      "levelNotes": {
-        "beginner": "Understand “seek vs scan” metaphorically before EXPLAIN output.",
-        "intermediate": "Guess whether O_ORDERKEY equality vs O_COMMENT LIKE would use an index.",
-        "advanced": "Walk through a bad plan story: stale histograms, join order."
-      },
-      "practiceQuestions": [
-        "Why might adding ten indexes hurt INSERT performance?",
-        "Name one reason the optimizer might pick a full table scan."
-      ]
-    },
-    "ch15": {
-      "label": "Chapter 15",
-      "title": "NULL deep dive, data modeling, and putting it together",
-      "summary": [
-        "**Three-valued logic**: TRUE, FALSE, UNKNOWN. UNKNOWN in WHERE filters rows out — subtle bugs with **NOT IN** when the subquery can return NULL.",
-        "Prefer **NOT EXISTS** or careful NULL handling when excluding sets. **COUNT(*)** vs **COUNT(col)** differs on NULLs.",
-        "**Star schema** thinking: facts (LINEITEM, ORDERS) vs dimensions (CUSTOMER, PART). **Normalization** vs **denormalization** trade read/write and redundancy.",
-        "You now have a **full arc**: read, filter, join, aggregate, subqueries, sets, CTEs, windows, dialect, performance, and pitfalls."
-      ],
-      "analogy": "NULL is **Schrodinger’s checkbox** — until you open IS NULL, the database cannot treat it as yes or no. Modeling is **city planning**: facts are intersections, dimensions are neighborhoods.",
-      "takeaways": [
-        "NOT IN + NULL subquery = classic trap; use NOT EXISTS.",
-        "Grain of a fact table = what one row means.",
-        "Revisit weak chapters; use Guided practice + AI boost for weak spots."
-      ],
-      "bookSearch": "NULL NOT EXISTS three-valued star schema fact dimension normalization",
-      "levelNotes": {
-        "beginner": "Solidify IS NULL / IS NOT NULL; skim modeling terms as vocabulary.",
-        "intermediate": "Rewrite a NOT IN pattern to NOT EXISTS mentally.",
-        "advanced": "Tie modeling to real interview “design this report” questions."
-      },
-      "practiceQuestions": [
-        "Why can NOT IN (subquery) return zero rows unexpectedly?",
-        "Name one fact-like and one dimension-like table in TPC-H."
+        "What is one difference between a view and a materialized view?",
+        "Why might JSON support matter in a SQL interview in 2026?"
       ]
     }
+  },
+  "bookAlignment": {
+    "title": "The SQL Universe",
+    "note": "Interactive path follows the EPUB table of contents: Preface → Introduction → Chapters 1–5."
   }
 }

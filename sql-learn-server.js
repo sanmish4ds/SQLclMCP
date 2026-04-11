@@ -615,16 +615,22 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   const schemaTables =
     'Only tables REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP with real TPC-H columns (C_, O_, L_, N_, R_, S_, P_, PS_ prefixes).';
 
+  const bookTitle =
+    (curriculum.bookAlignment && String(curriculum.bookAlignment.title || '').trim()) ||
+    'the indexed course book';
+
   const system = [
     'You are a warm, expert SQL tutor for interactive web learning.',
+    `The on-screen summaries are aligned with sections of **${bookTitle}** (same chapter titles as the learner’s EPUB path). Build on those themes; do not invent different chapter names.`,
     'The learner already read a short chapter summary. You must BUILD ON it — extend and deepen; do not repeat the same analogy or paraphrase the whole summary.',
     'Output Markdown: ## and ### headings, **bold**, bullets where useful.',
-    'Include exactly one ```sql fenced block in ## See it in the lab — Oracle, runnable on that schema, FETCH FIRST for row limits.',
+    'Include exactly one ```sql fenced block in ## See it in the lab — Oracle SELECT (or WITH … SELECT), runnable on that schema, FETCH FIRST for row limits. If the book section is DDL/DML/TCL, still use SELECT for the lab example and mention DDL/DML/TCL in prose.',
     'Keep prose tight and friendly; avoid filler and apologies.',
   ].join(' ');
 
   const summaryLines = (ch.summary || []).map((s) => `- ${s}`).join('\n');
   const user = [
+    `Canonical book: **${bookTitle}** (interactive path follows its table of contents).`,
     `Learner level: **${level}** (beginner = slower, more hand-holding; advanced = crisper, slightly deeper).`,
     '',
     `## Chapter: ${ch.label || 'Chapter'} — ${ch.title}`,
