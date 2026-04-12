@@ -1593,6 +1593,8 @@
     /**
      * Build lesson text for TTS: walk prose blocks so headings (Essentials, At a glance, …)
      * are spoken like a teacher calling out sections, not as a flat wall of text.
+     * Podcast: “At a glance” is read as “Here are the key points that we will discuss” so
+     * it matches classroom framing; a duplicate lead paragraph in the lesson is skipped once.
      */
     function guidedLessonPlainTextForSpeech(container) {
       if (!container) return '';
@@ -1603,14 +1605,32 @@
         el.remove();
       });
       var parts = [];
+      /** After H2 “At a glance”, skip one paragraph if it only repeats the podcast lead-in. */
+      var skipNextAtGlanceLeadParagraph = false;
+
+      function guidedSpeechIsAtGlanceKeyPointsLead(pt) {
+        var s = String(pt || '')
+          .replace(/\u00a0/g, ' ')
+          .replace(/\*+/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+        return /^here are the key points that we will discuss[.:]?\s*$/.test(s);
+      }
 
       function pushHeading(level, title) {
         var t = guidedSpeechNormalizeInline(title);
         if (!t) return;
+        skipNextAtGlanceLeadParagraph = false;
         if (level === 1) {
           parts.push('The headline: ' + t + '.');
         } else if (level === 2) {
-          parts.push("Here's our next segment: " + t + '.');
+          if (/^at a glance\b/i.test(t)) {
+            parts.push("Here's our next segment: Here are the key points that we will discuss.");
+            skipNextAtGlanceLeadParagraph = true;
+          } else {
+            parts.push("Here's our next segment: " + t + '.');
+          }
         } else if (level === 3) {
           parts.push('Zooming in: ' + t + '.');
         } else {
@@ -1629,10 +1649,16 @@
         }
         if (tag === 'P' && /\btutor-p\b/.test(cls)) {
           var pt = guidedSpeechNormalizeInline(el.textContent || '');
+          if (skipNextAtGlanceLeadParagraph && guidedSpeechIsAtGlanceKeyPointsLead(pt)) {
+            skipNextAtGlanceLeadParagraph = false;
+            return;
+          }
+          if (skipNextAtGlanceLeadParagraph) skipNextAtGlanceLeadParagraph = false;
           if (pt) parts.push(pt);
           return;
         }
         if (tag === 'UL' && /\btutor-ul\b/.test(cls)) {
+          if (skipNextAtGlanceLeadParagraph) skipNextAtGlanceLeadParagraph = false;
           for (var ui = 0; ui < el.children.length; ui++) {
             var li = el.children[ui];
             if (li.tagName !== 'LI') continue;
@@ -1642,6 +1668,7 @@
           return;
         }
         if (tag === 'OL' && /\btutor-ol\b/.test(cls)) {
+          if (skipNextAtGlanceLeadParagraph) skipNextAtGlanceLeadParagraph = false;
           var n = 0;
           for (var oi = 0; oi < el.children.length; oi++) {
             var oli = el.children[oi];
