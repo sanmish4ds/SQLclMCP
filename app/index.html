@@ -1410,7 +1410,7 @@
       if (mode === 'idle') {
         listen.disabled = !hasLesson || !guidedSpeechSupported;
         listen.textContent = 'Listen';
-        listen.setAttribute('aria-label', 'Play lesson audio — conversational, with pauses at punctuation');
+        listen.setAttribute('aria-label', 'Play lesson as a short podcast-style narration');
         listen.removeAttribute('aria-pressed');
         if (hasLesson && guidedSpeechSupported) listen.removeAttribute('title');
         if (pauseB) {
@@ -1480,13 +1480,13 @@
         var t = guidedSpeechNormalizeInline(title);
         if (!t) return;
         if (level === 1) {
-          parts.push('Overview: ' + t + '.');
+          parts.push('The headline: ' + t + '.');
         } else if (level === 2) {
-          parts.push("Let's focus on this section: " + t + '.');
+          parts.push("Here's our next segment: " + t + '.');
         } else if (level === 3) {
-          parts.push('Going deeper: ' + t + '.');
+          parts.push('Zooming in: ' + t + '.');
         } else {
-          parts.push('Also note: ' + t + '.');
+          parts.push('Quick aside: ' + t + '.');
         }
       }
 
@@ -1548,10 +1548,10 @@
       return t;
     }
 
-    /** True when this chunk is a teacher-style section lead-in (slightly slower / clearer). */
+    /** True when this chunk is a podcast-style section bumper (slightly slower / clearer). */
     function guidedSpeechChunkIsHeadingCue(text) {
       var s = String(text || '').trim();
-      return /^(Overview:|Let's focus on this section:|Going deeper:|Also note:)/i.test(s);
+      return /^(The headline:|Here's our next segment:|Zooming in:|Quick aside:)/i.test(s);
     }
 
     /** Normalize text so the engine pauses naturally at punctuation; friendlier for speech. */
@@ -1615,7 +1615,7 @@
       var merged = [];
       var acc = '';
       chunks.forEach(function (ch) {
-        if (acc.length + ch.length < 220) {
+        if (acc.length + ch.length < 280) {
           acc = acc ? acc + ' ' + ch : ch;
         } else {
           if (acc) merged.push(acc);
@@ -1702,11 +1702,11 @@
       var text = guidedSpeechSession.chunks[guidedSpeechSession.index];
       var u = new SpeechSynthesisUtterance(text);
       if (guidedSpeechChunkIsHeadingCue(text)) {
-        u.rate = 0.91;
-        u.pitch = 1.03;
+        u.rate = 0.88;
+        u.pitch = 1.02;
       } else {
-        u.rate = 0.97;
-        u.pitch = 1;
+        u.rate = 0.92;
+        u.pitch = 0.99;
       }
       u.volume = 1;
       if (guidedSpeechSession.voice) {
@@ -1724,11 +1724,11 @@
         }
         var t = guidedSpeechSession.chunks[guidedSpeechSession.index - 1] || '';
         var tr = t.trim();
-        var gap = 55;
-        if (guidedSpeechChunkIsHeadingCue(t)) gap = 320;
-        else if (/[.!?…]$/.test(tr)) gap = 230;
-        else if (/[:,]$/.test(tr)) gap = 120;
-        else if (/[;]$/.test(tr)) gap = 140;
+        var gap = 95;
+        if (guidedSpeechChunkIsHeadingCue(t)) gap = 560;
+        else if (/[.!?…]$/.test(tr)) gap = 340;
+        else if (/[:,]$/.test(tr)) gap = 155;
+        else if (/[;]$/.test(tr)) gap = 180;
         window.setTimeout(function () { guidedSpeakStep(); }, gap);
       };
       u.onerror = function () {
@@ -1756,8 +1756,21 @@
       guidedSpeechSession.stopped = false;
       guidedSpeechSession.pauseRequested = false;
       guidedSpeechSession.voice = guidedPickEnglishVoice();
-      var intro = "I'll take you through this lesson in a relaxed way. ";
-      guidedSpeechSession.chunks = guidedBuildSpeechChunksForLesson(intro, body);
+      var coldOpen =
+        "You've tuned in to a mini lesson podcast — think audio show notes for this chapter.\n\n" +
+        "I'll unpack the ideas at a relaxed pace, with room to breathe between segments.\n\n" +
+        "Here we go.";
+      guidedSpeechSession.chunks = guidedBuildSpeechChunksForLesson(coldOpen, body);
+      var signOff =
+        "That's the gist for this part of the path.\n\n" +
+        "When you're ready, try the guided practice chips or run the sample SQL in the lesson.\n\n" +
+        "Thanks for listening — I'll catch you in the next chapter.";
+      var signPrepared = guidedPrepareTextForConversationalSpeech(signOff).trim();
+      if (signPrepared) {
+        guidedSplitSpeechChunks(signPrepared).forEach(function (c) {
+          guidedSpeechSession.chunks.push(c);
+        });
+      }
       if (!guidedSpeechSession.chunks.length) {
         guidedSpeechSession.stopped = true;
         guidedVoiceControlsSetMode('idle');
@@ -1996,7 +2009,7 @@
         '<div class="guided-voice-controls">' +
         '<button type="button" class="guided-choice" data-guided-voice="1" disabled ' +
         (guidedSpeechSupported ? '' : 'title="Voice not supported in this browser" ') +
-        'aria-label="Play lesson audio">Listen</button>' +
+        'aria-label="Play lesson as podcast-style audio">Listen</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-pause="1" hidden disabled ' +
         'aria-label="Pause">Pause</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-stop="1" hidden disabled ' +
