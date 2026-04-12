@@ -1636,15 +1636,43 @@
       return chunks;
     }
 
+    /** Prefer a male-presenting English voice (names vary by OS/browser). */
     function guidedPickEnglishVoice() {
       if (!guidedSpeechSupported) return null;
       var voices = window.speechSynthesis.getVoices();
       if (!voices || !voices.length) return null;
-      var v = voices.find(function (x) { return x.lang && /^en-US/i.test(x.lang); });
-      if (v) return v;
-      v = voices.find(function (x) { return x.lang && /^en-GB/i.test(x.lang); });
-      if (v) return v;
-      return voices.find(function (x) { return x.lang && /^en/i.test(x.lang); }) || null;
+      function voiceKey(v) {
+        return ((v && v.name) || '') + ' ' + ((v && v.voiceURI) || '');
+      }
+      function soundsFemale(v) {
+        var s = voiceKey(v).toLowerCase();
+        return /\b(female|woman|girl|zira|samantha|karen|victoria|fiona|moira|tessa|serena|joanna|ivy|kimberly|kendra|nicole|freya|martha|salli|catherine|hazel|sonia|google uk english female)\b/.test(s) ||
+          (/\bgoogle us english\b/.test(s) && !/\bmale\b/.test(s));
+      }
+      function soundsMale(v) {
+        var s = voiceKey(v).toLowerCase();
+        if (soundsFemale(v)) return false;
+        return /\b(male|microsoft david|google us english male|google uk english male|daniel|fred\b|arthur|aaron|oliver|george|ryan|guy|philip|thomas|tony|brian|lee\b|william|james|tom\b|mark\s*-|nathan|elliott)\b/.test(s) ||
+          (/\bdavid\b/.test(s) && /\benglish\b/.test(s));
+      }
+      function isEn(v) {
+        return v.lang && /^en/i.test(v.lang);
+      }
+      var en = voices.filter(isEn);
+      if (!en.length) return null;
+      var preferOrder = [
+        en.filter(function (v) { return /^en-US/i.test(v.lang) && soundsMale(v); }),
+        en.filter(function (v) { return /^en-GB/i.test(v.lang) && soundsMale(v); }),
+        en.filter(function (v) { return soundsMale(v); }),
+        en.filter(function (v) { return /^en-US/i.test(v.lang) && !soundsFemale(v); }),
+        en.filter(function (v) { return /^en-GB/i.test(v.lang) && !soundsFemale(v); }),
+        en.filter(function (v) { return !soundsFemale(v); }),
+        en,
+      ];
+      for (var i = 0; i < preferOrder.length; i++) {
+        if (preferOrder[i].length) return preferOrder[i][0];
+      }
+      return null;
     }
 
     function guidedSpeakStep() {
