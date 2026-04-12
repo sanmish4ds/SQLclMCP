@@ -1361,6 +1361,7 @@
         executeAvailable = !!data.execute_sql_available;
         guidedElevenLabsPodcastAvailable = !!data.guided_podcast_elevenlabs;
         guidedElevenLabsDialogueAvailable = !!data.guided_podcast_dialogue;
+        guidedDialogueVoiceCollision = !!data.guided_podcast_dialogue_collision;
         try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
         statusEl.textContent = (data.status === 'ok' ? 'Connected to the tutor service.' : 'Server status unclear.') +
           ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
@@ -1380,6 +1381,7 @@
         executeAvailable = false;
         guidedElevenLabsPodcastAvailable = false;
         guidedElevenLabsDialogueAvailable = false;
+        guidedDialogueVoiceCollision = false;
         if (btnExecute) btnExecute.disabled = true;
         if (isTimeout) setTimeout(checkHealth, 15000);
       }
@@ -1395,6 +1397,7 @@
     const guidedSpeechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
     var guidedElevenLabsPodcastAvailable = false;
     var guidedElevenLabsDialogueAvailable = false;
+    var guidedDialogueVoiceCollision = false;
 
     function guidedLessonVoiceUiAvailable() {
       return guidedSpeechSupported || guidedElevenLabsPodcastAvailable;
@@ -1427,6 +1430,11 @@
           guidedElevenLabsDialogueAvailable = d.dialogue_enabled;
         } else {
           guidedElevenLabsDialogueAvailable = false;
+        }
+        if (d && typeof d.dialogue_voice_collision === 'boolean') {
+          guidedDialogueVoiceCollision = d.dialogue_voice_collision;
+        } else {
+          guidedDialogueVoiceCollision = false;
         }
         try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
       } catch (_) { /* keep previous flag */ }
@@ -1491,7 +1499,14 @@
             : 'Play lesson as a short podcast (ElevenLabs on server, or browser voice)'
         );
         listen.removeAttribute('aria-pressed');
-        if (hasLesson && guidedLessonVoiceUiAvailable()) listen.removeAttribute('title');
+        if (hasLesson && guidedLessonVoiceUiAvailable()) {
+          if (guidedDialogueVoiceCollision) {
+            listen.title =
+              'Host and guest use the same ElevenLabs voice id — set a different ELEVENLABS_DIALOGUE_VOICE_ID on the server.';
+          } else {
+            listen.removeAttribute('title');
+          }
+        }
         if (pauseB) {
           pauseB.hidden = true;
           pauseB.disabled = true;
@@ -1876,13 +1891,29 @@
           return s.trim();
         })
         .filter(Boolean);
+      var prevGuest = false;
+      var bridgeN = 0;
+      var hostBridges = [
+        'Got it — keep going.',
+        'What should listeners lock in there?',
+        'Break that down one more step.',
+      ];
       segs.forEach(function (seg) {
         var p = guidedPrepareTextForConversationalSpeech(seg).trim();
         if (!p) return;
         if (guidedSpeechChunkIsHeadingCue(p)) {
           turns.push({ speaker: 'host', text: p });
+          prevGuest = false;
         } else {
+          if (prevGuest) {
+            turns.push({
+              speaker: 'host',
+              text: guidedPrepareTextForConversationalSpeech(hostBridges[bridgeN % hostBridges.length]),
+            });
+            bridgeN++;
+          }
           turns.push({ speaker: 'guest', text: p });
+          prevGuest = true;
         }
       });
       turns.push({
@@ -1896,6 +1927,14 @@
         text: guidedPrepareTextForConversationalSpeech('Thanks for listening — catch you in the next chapter.'),
       });
       return turns;
+    }
+
+    /** First chunk of dialogue for quicker time-to-play; server needs ≥2 turns per request. */
+    function guidedSplitDialogueForEarlyPlay(turns) {
+      if (!turns || turns.length < 8) return { first: turns, second: null };
+      var mid = Math.min(6, Math.max(4, Math.round(turns.length * 0.32)));
+      if (mid < 2 || turns.length - mid < 2) return { first: turns, second: null };
+      return { first: turns.slice(0, mid), second: turns.slice(mid) };
     }
 
     /** Rebuild chunk queue from script produced by guidedBuildPodcastScriptForApi. */
@@ -1934,50 +1973,140 @@
         try {
           var useDialogue =
             guidedElevenLabsDialogueAvailable && dialogueTurns && dialogueTurns.length >= 2;
-          var podcastBody = useDialogue
-            ? JSON.stringify({ dialogue: dialogueTurns, text: script })
-            : JSON.stringify({ text: script });
-          var r = await fetch(API_BASE_URL + '/guided-podcast-tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: podcastBody,
-            signal: guidedSpeechSession.elevenLabsAbort.signal,
-          });
-          if (!r.ok) {
-            var errJ = await r.json().catch(function () { return {}; });
-            throw new Error(errJ.error || ('HTTP ' + r.status));
+          var sig = guidedSpeechSession.elevenLabsAbort.signal;
+          if (useDialogue) {
+            guidedSetPodcastError(dialogueTurns.length >= 8 ? 'Preparing audio (first part)…' : 'Preparing audio…');
           }
-          if (guidedSpeechSession.stopped) return;
-          var blob = await r.blob();
-          if (guidedSpeechSession.stopped) return;
-          if (guidedSpeechSession.objectUrl) {
-            try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
-          }
-          guidedSpeechSession.objectUrl = URL.createObjectURL(blob);
-          var audio = new Audio(guidedSpeechSession.objectUrl);
-          guidedSpeechSession.audioEl = audio;
-          audio.setAttribute('playsinline', '');
-          audio.onended = function () {
-            if (guidedSpeechSession.mode === 'elevenlabs') guidedStopLessonSpeech();
-          };
-          audio.onerror = function () {
-            guidedStopLessonSpeech();
-          };
-          var playP = audio.play();
-          if (playP && playP.catch) {
-            playP.catch(function () {
-              if (guidedSpeechSupported) {
-                guidedSpeechSession.mode = 'browser';
-                if (guidedSpeechSession.objectUrl) {
-                  try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+
+          function playElevenLabsBlob(blob, onEndedFn) {
+            if (guidedSpeechSession.stopped) return;
+            if (guidedSpeechSession.objectUrl) {
+              try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+            }
+            guidedSpeechSession.objectUrl = URL.createObjectURL(blob);
+            var audio = new Audio(guidedSpeechSession.objectUrl);
+            guidedSpeechSession.audioEl = audio;
+            audio.setAttribute('playsinline', '');
+            audio.onended =
+              onEndedFn ||
+              function () {
+                if (guidedSpeechSession.mode === 'elevenlabs') guidedStopLessonSpeech();
+              };
+            audio.onerror = function () {
+              guidedStopLessonSpeech();
+            };
+            var playP = audio.play();
+            if (playP && playP.catch) {
+              playP.catch(function () {
+                if (guidedSpeechSupported) {
+                  guidedSpeechSession.mode = 'browser';
+                  if (guidedSpeechSession.objectUrl) {
+                    try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+                  }
+                  guidedSpeechSession.objectUrl = null;
+                  guidedSpeechSession.audioEl = null;
+                  startGuidedBrowserSpeechFromScript(script);
+                } else {
+                  guidedStopLessonSpeech();
                 }
-                guidedSpeechSession.objectUrl = null;
-                guidedSpeechSession.audioEl = null;
-                startGuidedBrowserSpeechFromScript(script);
-              } else {
-                guidedStopLessonSpeech();
+              });
+            }
+          }
+
+          var split = useDialogue ? guidedSplitDialogueForEarlyPlay(dialogueTurns) : null;
+          var useSplit = !!(split && split.second && split.second.length >= 2);
+
+          if (useSplit) {
+            var p2 = fetch(API_BASE_URL + '/guided-podcast-tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dialogue: split.second, text: script }),
+              signal: sig,
+            }).then(function (r2) {
+              if (!r2.ok) {
+                return r2.json().catch(function () { return {}; }).then(function (j2) {
+                  throw new Error((j2 && j2.error) || 'HTTP ' + r2.status);
+                });
               }
+              return r2.blob();
             });
+            var r1 = await fetch(API_BASE_URL + '/guided-podcast-tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ dialogue: split.first, text: script }),
+              signal: sig,
+            });
+            if (!r1.ok) {
+              var errJ1 = await r1.json().catch(function () { return {}; });
+              throw new Error(errJ1.error || ('HTTP ' + r1.status));
+            }
+            if (guidedSpeechSession.stopped) return;
+            var blob1 = await r1.blob();
+            if (guidedSpeechSession.stopped) return;
+            guidedSetPodcastError('');
+            var audio1 = new Audio();
+            guidedSpeechSession.audioEl = audio1;
+            if (guidedSpeechSession.objectUrl) {
+              try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+            }
+            guidedSpeechSession.objectUrl = URL.createObjectURL(blob1);
+            audio1.src = guidedSpeechSession.objectUrl;
+            audio1.setAttribute('playsinline', '');
+            audio1.onended = function () {
+              if (guidedSpeechSession.stopped || guidedSpeechSession.mode !== 'elevenlabs') return;
+              p2.then(function (blob2) {
+                if (guidedSpeechSession.stopped || guidedSpeechSession.mode !== 'elevenlabs') return;
+                audio1.removeAttribute('src');
+                try { audio1.load(); } catch (_) {}
+                playElevenLabsBlob(blob2, function () {
+                  if (guidedSpeechSession.mode === 'elevenlabs') guidedStopLessonSpeech();
+                });
+              }).catch(function (e2) {
+                guidedSetPodcastError(
+                  'Second part of the podcast failed. ' +
+                    (e2 && e2.message ? String(e2.message).slice(0, 180) : '')
+                );
+                guidedStopLessonSpeech();
+              });
+            };
+            audio1.onerror = function () {
+              guidedStopLessonSpeech();
+            };
+            var playP1 = audio1.play();
+            if (playP1 && playP1.catch) {
+              playP1.catch(function () {
+                if (guidedSpeechSupported) {
+                  guidedSpeechSession.mode = 'browser';
+                  if (guidedSpeechSession.objectUrl) {
+                    try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+                  }
+                  guidedSpeechSession.objectUrl = null;
+                  guidedSpeechSession.audioEl = null;
+                  startGuidedBrowserSpeechFromScript(script);
+                } else {
+                  guidedStopLessonSpeech();
+                }
+              });
+            }
+          } else {
+            var podcastBody = useDialogue
+              ? JSON.stringify({ dialogue: dialogueTurns, text: script })
+              : JSON.stringify({ text: script });
+            var r = await fetch(API_BASE_URL + '/guided-podcast-tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: podcastBody,
+              signal: sig,
+            });
+            if (!r.ok) {
+              var errJ = await r.json().catch(function () { return {}; });
+              throw new Error(errJ.error || ('HTTP ' + r.status));
+            }
+            if (guidedSpeechSession.stopped) return;
+            var blob = await r.blob();
+            if (guidedSpeechSession.stopped) return;
+            guidedSetPodcastError('');
+            playElevenLabsBlob(blob);
           }
         } catch (err) {
           if (err && err.name === 'AbortError') {
@@ -2841,6 +2970,9 @@
           .then(function (d) {
             if (d && d.enabled) guidedElevenLabsPodcastAvailable = true;
             if (d && d.dialogue_enabled) guidedElevenLabsDialogueAvailable = true;
+            if (d && typeof d.dialogue_voice_collision === 'boolean') {
+              guidedDialogueVoiceCollision = d.dialogue_voice_collision;
+            }
           })
           .catch(function () { /* ignore */ })
           .then(function () {

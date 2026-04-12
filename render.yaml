@@ -46,9 +46,11 @@ services:
       # Optional: ElevenLabs podcast TTS for guided “Listen” (POST /guided-podcast-tts)
       # - ELEVENLABS_API_KEY
       # - ELEVENLABS_VOICE_ID (optional; default Rachel) — host in conversational mode
-      # - ELEVENLABS_DIALOGUE_VOICE_ID — second voice enables conversational (text-to-dialogue / eleven_v3)
-      # - ELEVENLABS_MODEL_ID (optional; default eleven_multilingual_v2) — single-voice fallback
-      # - ELEVENLABS_DIALOGUE_MODEL_ID (optional; default eleven_v3)
+      # - ELEVENLABS_DIALOGUE_VOICE_ID — second voice (must differ from ELEVENLABS_VOICE_ID); default engine: stitched TTS
+      # - ELEVENLABS_MODEL_ID (optional; default eleven_multilingual_v2) — per-line TTS when stitching
+      # - ELEVENLABS_USE_DIALOGUE_API=true — optional: try text-to-dialogue API first
+      # - ELEVENLABS_TTS_PARALLEL (optional; default 6) — parallel line synthesis when stitching
+      # - ELEVENLABS_DIALOGUE_MODEL_ID (optional; default eleven_v3) — only if USE_DIALOGUE_API
       # - ELEVENLABS_FALLBACK_MODEL_ID, ELEVENLABS_OUTPUT_FORMAT (optional)
       # Set these in Render Dashboard → Environment (never commit real values):
       # - LLM_API_KEY
