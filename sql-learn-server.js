@@ -835,6 +835,15 @@ const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilin
 const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_turbo_v2_5').trim();
 const ELEVENLABS_OUTPUT_FORMAT = (process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_128').trim();
 const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
+/** Second voice for guided “Listen” conversational mode (POST /v1/text-to-dialogue). Host = ELEVENLABS_VOICE_ID. */
+const ELEVENLABS_DIALOGUE_VOICE_ID = (process.env.ELEVENLABS_DIALOGUE_VOICE_ID || '').trim();
+/** Dialogue model (default Eleven v3). Override only if your account uses a different dialogue-capable model id. */
+const ELEVENLABS_DIALOGUE_MODEL_ID = (process.env.ELEVENLABS_DIALOGUE_MODEL_ID || 'eleven_v3').trim();
+const ELEVENLABS_DIALOGUE_BATCH_CHARS = Number(process.env.ELEVENLABS_DIALOGUE_BATCH_CHARS || 9000) || 9000;
+const ELEVENLABS_DIALOGUE_TURN_MAX = Math.min(
+  4500,
+  Math.max(400, Number(process.env.ELEVENLABS_DIALOGUE_TURN_MAX || 2000) || 2000)
+);
 
 function chunkTextForElevenLabs(text, maxLen) {
   const t = String(text || '').trim();
@@ -922,6 +931,99 @@ async function synthesizeElevenLabsPodcastMp3(fullText) {
   return Buffer.concat(buffers);
 }
 
+function flattenDialogueTurnsToText(turns) {
+  if (!Array.isArray(turns)) return '';
+  return turns
+    .map((t) => String((t && t.text) || '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** Map UI turns { speaker: 'host'|'guest', text } → ElevenLabs dialogue inputs (snake_case). */
+function dialogueInputsFromClientTurns(turns, voiceHost, voiceGuest) {
+  const inputs = [];
+  if (!Array.isArray(turns)) return inputs;
+  for (const row of turns.slice(0, 160)) {
+    const sp = String((row && row.speaker) || (row && row.role) || 'guest').toLowerCase();
+    const vid = sp === 'host' || sp === 'a' || sp === '1' ? voiceHost : voiceGuest;
+    let rest = String((row && row.text) || '').trim();
+    if (!rest) continue;
+    while (rest.length > ELEVENLABS_DIALOGUE_TURN_MAX) {
+      let cut = rest.lastIndexOf('. ', ELEVENLABS_DIALOGUE_TURN_MAX);
+      if (cut < ELEVENLABS_DIALOGUE_TURN_MAX * 0.35) cut = rest.lastIndexOf(' ', ELEVENLABS_DIALOGUE_TURN_MAX);
+      if (cut < 60) cut = ELEVENLABS_DIALOGUE_TURN_MAX;
+      const piece = rest.slice(0, cut).trim();
+      if (piece) inputs.push({ text: piece, voice_id: vid });
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) inputs.push({ text: rest, voice_id: vid });
+  }
+  return inputs;
+}
+
+async function elevenLabsDialogueOneBatch(inputs, modelId) {
+  const q = new URLSearchParams({ output_format: ELEVENLABS_OUTPUT_FORMAT });
+  const url = `https://api.elevenlabs.io/v1/text-to-dialogue?${q.toString()}`;
+  const ac = new AbortController();
+  const tid = setTimeout(() => ac.abort(), ELEVENLABS_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+        'Content-Type': 'application/json',
+        Accept: 'application/octet-stream',
+      },
+      body: JSON.stringify({ inputs, model_id: modelId }),
+      signal: ac.signal,
+    });
+  } finally {
+    clearTimeout(tid);
+  }
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => '');
+    const msg = formatElevenLabsErrorBody(errBody, r.status);
+    const err = new Error(msg);
+    err.statusCode = r.status;
+    throw err;
+  }
+  return Buffer.from(await r.arrayBuffer());
+}
+
+async function synthesizeElevenLabsDialogueMp3(turns) {
+  if (!ELEVENLABS_API_KEY) {
+    throw new Error('ELEVENLABS_API_KEY is not set');
+  }
+  if (!ELEVENLABS_DIALOGUE_VOICE_ID) {
+    throw new Error('ELEVENLABS_DIALOGUE_VOICE_ID is not set');
+  }
+  const voiceHost = ELEVENLABS_VOICE_ID;
+  const voiceGuest = ELEVENLABS_DIALOGUE_VOICE_ID;
+  const inputs = dialogueInputsFromClientTurns(turns, voiceHost, voiceGuest);
+  if (!inputs.length) {
+    throw new Error('Empty dialogue');
+  }
+  const maxBatch = Math.min(20000, Math.max(3500, ELEVENLABS_DIALOGUE_BATCH_CHARS));
+  const buffers = [];
+  let batch = [];
+  let batchChars = 0;
+  for (const inp of inputs) {
+    const len = inp.text.length;
+    if (batch.length && batchChars + len > maxBatch) {
+      buffers.push(await elevenLabsDialogueOneBatch(batch, ELEVENLABS_DIALOGUE_MODEL_ID));
+      batch = [];
+      batchChars = 0;
+    }
+    batch.push(inp);
+    batchChars += len;
+  }
+  if (batch.length) {
+    buffers.push(await elevenLabsDialogueOneBatch(batch, ELEVENLABS_DIALOGUE_MODEL_ID));
+  }
+  return Buffer.concat(buffers);
+}
+
 // Load rules on startup (book loads in startServer after optional URL fetch)
 loadSQLRules();
 
@@ -997,9 +1099,10 @@ const requestHandler = (request, response) => {
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
           'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — short markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 1400, cap 2048), GUIDED_EXPAND_TIMEOUT_MS (default 55000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
-        guided_podcast_tts_status: 'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id } when ELEVENLABS_API_KEY is set',
+        guided_podcast_tts_status:
+          'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, dialogue_model_id }',
         guided_podcast_tts:
-          'POST /guided-podcast-tts — body: { "text": "…" } — returns audio/mpeg (ElevenLabs); env: ELEVENLABS_API_KEY, optional ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID, ELEVENLABS_FALLBACK_MODEL_ID, ELEVENLABS_OUTPUT_FORMAT, ELEVENLABS_TIMEOUT_MS',
+          'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"host|guest", "text":"…" }], "text":"…" } — MP3; conversational mode when ELEVENLABS_DIALOGUE_VOICE_ID is set; env: ELEVENLABS_* (see .env.example)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -1073,10 +1176,14 @@ const requestHandler = (request, response) => {
   if (pathname === '/guided-podcast-tts-status' && request.method === 'GET') {
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.writeHead(200);
+    const dialogueOn = !!(ELEVENLABS_API_KEY && ELEVENLABS_DIALOGUE_VOICE_ID);
     response.end(JSON.stringify({
       enabled: !!ELEVENLABS_API_KEY,
       voice_id: ELEVENLABS_API_KEY ? ELEVENLABS_VOICE_ID : null,
       model_id: ELEVENLABS_API_KEY ? ELEVENLABS_MODEL_ID : null,
+      dialogue_enabled: dialogueOn,
+      dialogue_voice_id: dialogueOn ? ELEVENLABS_DIALOGUE_VOICE_ID : null,
+      dialogue_model_id: dialogueOn ? ELEVENLABS_DIALOGUE_MODEL_ID : null,
     }));
     return;
   }
@@ -1094,17 +1201,39 @@ const requestHandler = (request, response) => {
       try {
         const data = JSON.parse(body || '{}');
         const text = String(data.text || '').trim();
-        if (text.length < 20) {
+        const dialogue = Array.isArray(data.dialogue) ? data.dialogue : null;
+        const useDialogue = !!(dialogue && dialogue.length >= 2 && ELEVENLABS_DIALOGUE_VOICE_ID);
+        if (!useDialogue && text.length < 20) {
           response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           response.end(JSON.stringify({ success: false, error: 'text is required (min ~20 characters).' }));
           return;
+        }
+        if (useDialogue) {
+          const dChars = dialogue.reduce((n, row) => n + String((row && row.text) || '').length, 0);
+          if (dChars > 120000) {
+            response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            response.end(JSON.stringify({ success: false, error: 'dialogue text too long (max 120000 characters).' }));
+            return;
+          }
         }
         if (text.length > 120000) {
           response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           response.end(JSON.stringify({ success: false, error: 'text too long (max 120000 characters).' }));
           return;
         }
-        const mp3 = await synthesizeElevenLabsPodcastMp3(text);
+        let mp3;
+        if (useDialogue) {
+          try {
+            mp3 = await synthesizeElevenLabsDialogueMp3(dialogue);
+          } catch (dErr) {
+            const fallbackText = text.length >= 20 ? text : flattenDialogueTurnsToText(dialogue);
+            if (fallbackText.length < 20) throw dErr;
+            console.warn(`[${APP_DISPLAY_NAME}] Dialogue TTS failed, using single-voice fallback:`, dErr.message || dErr);
+            mp3 = await synthesizeElevenLabsPodcastMp3(fallbackText);
+          }
+        } else {
+          mp3 = await synthesizeElevenLabsPodcastMp3(text);
+        }
         response.writeHead(200, {
           'Content-Type': 'audio/mpeg',
           'Content-Length': String(mp3.length),
@@ -1246,6 +1375,7 @@ const requestHandler = (request, response) => {
       sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
       guided_podcast_elevenlabs: !!ELEVENLABS_API_KEY,
+      guided_podcast_dialogue: !!(ELEVENLABS_API_KEY && ELEVENLABS_DIALOGUE_VOICE_ID),
       book: bookIndex.loaded
         ? {
             loaded: true,
