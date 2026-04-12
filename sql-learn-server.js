@@ -781,6 +781,79 @@ async function generateSql(question, mode = 'hybrid') {
   return generateSqlWithLLM(question);
 }
 
+// ── ElevenLabs podcast TTS (guided lesson “Listen”) — API key stays on server ──
+const ELEVENLABS_API_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
+const ELEVENLABS_VOICE_ID = (process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM').trim();
+const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5').trim();
+const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
+
+function chunkTextForElevenLabs(text, maxLen) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  const max = Math.min(Math.max(500, maxLen), 4500);
+  if (t.length <= max) return [t];
+  const parts = [];
+  let rest = t;
+  while (rest.length > max) {
+    let cut = rest.lastIndexOf('\n\n', max);
+    if (cut < 240) cut = rest.lastIndexOf('. ', max);
+    if (cut < 240) cut = max;
+    parts.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) parts.push(rest);
+  return parts;
+}
+
+async function synthesizeElevenLabsPodcastMp3(fullText) {
+  if (!ELEVENLABS_API_KEY) {
+    throw new Error('ELEVENLABS_API_KEY is not set');
+  }
+  const segments = chunkTextForElevenLabs(fullText, 4500);
+  if (!segments.length) {
+    throw new Error('Empty text');
+  }
+  const buffers = [];
+  for (let i = 0; i < segments.length; i += 1) {
+    const payload = {
+      text: segments[i],
+      model_id: ELEVENLABS_MODEL_ID,
+    };
+    if (i > 0) {
+      const prev = segments[i - 1];
+      payload.previous_text = prev.length > 800 ? prev.slice(prev.length - 800) : prev;
+    }
+    if (i < segments.length - 1) {
+      const next = segments[i + 1];
+      payload.next_text = next.length > 800 ? next.slice(0, 800) : next;
+    }
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVENLABS_VOICE_ID)}?output_format=mp3_44100_128`;
+    const ac = new AbortController();
+    const tid = setTimeout(() => ac.abort(), ELEVENLABS_TIMEOUT_MS);
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': ELEVENLABS_API_KEY,
+          'Content-Type': 'application/json',
+          Accept: 'audio/mpeg',
+        },
+        body: JSON.stringify(payload),
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(tid);
+    }
+    if (!r.ok) {
+      const errBody = await r.text().catch(() => '');
+      throw new Error(errBody || `ElevenLabs HTTP ${r.status}`);
+    }
+    buffers.push(Buffer.from(await r.arrayBuffer()));
+  }
+  return Buffer.concat(buffers);
+}
+
 // Load rules on startup (book loads in startServer after optional URL fetch)
 loadSQLRules();
 
@@ -856,6 +929,9 @@ const requestHandler = (request, response) => {
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
           'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — short markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 1400, cap 2048), GUIDED_EXPAND_TIMEOUT_MS (default 55000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+        guided_podcast_tts_status: 'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id } when ELEVENLABS_API_KEY is set',
+        guided_podcast_tts:
+          'POST /guided-podcast-tts — body: { "text": "…" } — returns audio/mpeg (ElevenLabs); env: ELEVENLABS_API_KEY, optional ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID, ELEVENLABS_TIMEOUT_MS',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -920,6 +996,59 @@ const requestHandler = (request, response) => {
       } catch (err) {
         response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         response.end(JSON.stringify({ success: false, error: err.message || String(err) }));
+      }
+    });
+    return;
+  }
+
+  // GET /guided-podcast-tts-status — UI: enable ElevenLabs podcast when API key is configured
+  if (pathname === '/guided-podcast-tts-status' && request.method === 'GET') {
+    response.setHeader('Content-Type', 'application/json; charset=utf-8');
+    response.writeHead(200);
+    response.end(JSON.stringify({
+      enabled: !!ELEVENLABS_API_KEY,
+      voice_id: ELEVENLABS_API_KEY ? ELEVENLABS_VOICE_ID : null,
+      model_id: ELEVENLABS_API_KEY ? ELEVENLABS_MODEL_ID : null,
+    }));
+    return;
+  }
+
+  // POST /guided-podcast-tts — full lesson script → single MP3 (ElevenLabs)
+  if (pathname === '/guided-podcast-tts' && request.method === 'POST') {
+    let body = '';
+    request.on('data', (chunk) => { body += chunk.toString(); });
+    request.on('end', async () => {
+      if (!ELEVENLABS_API_KEY) {
+        response.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ success: false, error: 'ElevenLabs is not configured (set ELEVENLABS_API_KEY).' }));
+        return;
+      }
+      try {
+        const data = JSON.parse(body || '{}');
+        const text = String(data.text || '').trim();
+        if (text.length < 20) {
+          response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ success: false, error: 'text is required (min ~20 characters).' }));
+          return;
+        }
+        if (text.length > 120000) {
+          response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          response.end(JSON.stringify({ success: false, error: 'text too long (max 120000 characters).' }));
+          return;
+        }
+        const mp3 = await synthesizeElevenLabsPodcastMp3(text);
+        response.writeHead(200, {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': String(mp3.length),
+          'Cache-Control': 'no-store',
+        });
+        response.end(mp3);
+      } catch (err) {
+        response.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({
+          success: false,
+          error: err.message || String(err),
+        }));
       }
     });
     return;
@@ -1048,6 +1177,7 @@ const requestHandler = (request, response) => {
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
       sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
+      guided_podcast_elevenlabs: !!ELEVENLABS_API_KEY,
       book: bookIndex.loaded
         ? {
             loaded: true,

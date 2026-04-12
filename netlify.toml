@@ -40,6 +40,18 @@
   force = true
 
 [[redirects]]
+  from = "/guided-podcast-tts-status"
+  to = "https://sqlclmcp-1.onrender.com/guided-podcast-tts-status"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/guided-podcast-tts"
+  to = "https://sqlclmcp-1.onrender.com/guided-podcast-tts"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/explain-sql"
   to = "https://sqlclmcp-1.onrender.com/explain-sql"
   status = 200
