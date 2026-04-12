@@ -1875,26 +1875,12 @@
       }
     }
 
-    /** Full podcast script for ElevenLabs and for round-tripping browser chunks. */
+    /** Single-voice script for browser / fallback: lesson prose only (no cold open or sign-off). */
     function guidedBuildPodcastScriptForApi(outEl) {
       if (!outEl) return '';
       var body = guidedLessonPlainTextForSpeech(outEl);
       if (!body || body.length < 30) return '';
-      var coldOpen =
-        "You've tuned in to a mini lesson podcast — think audio show notes for this chapter.\n\n" +
-        "I'll unpack the ideas at a relaxed pace, with room to breathe between segments.\n\n" +
-        "Here we go.";
-      var chunks = guidedBuildSpeechChunksForLesson(coldOpen, body);
-      var signOff =
-        "That's the gist for this part of the path.\n\n" +
-        "When you're ready, try the guided practice chips or run the sample SQL in the lesson.\n\n" +
-        "Thanks for listening — I'll catch you in the next chapter.";
-      var signPrepared = guidedPrepareTextForConversationalSpeech(signOff).trim();
-      if (signPrepared) {
-        guidedSplitSpeechChunks(signPrepared).forEach(function (c) {
-          chunks.push(c);
-        });
-      }
+      var chunks = guidedBuildSpeechChunksForLesson('', body);
       return chunks.join('\n\n');
     }
 
@@ -1909,29 +1895,14 @@
     }
 
     /**
-     * Male professor (ELEVENLABS_VOICE_ID) + male student (ELEVENLABS_DIALOGUE_VOICE_ID).
-     * Student speaks only lesson-derived questions (lines ending in ?). Professor speaks headings and all other teaching text.
+     * Male professor + male student; starts at chapter content only (no scripted intro or outro).
+     * Student: lesson lines ending in ?. Professor: headings and other teaching text.
      */
     function guidedBuildDialogueTurnsForApi(outEl) {
       if (!outEl) return null;
       var body = guidedLessonPlainTextForSpeech(outEl);
       if (!body || body.length < 30) return null;
       var turns = [];
-      turns.push({
-        speaker: 'professor',
-        text: guidedPrepareTextForConversationalSpeech(
-          "Welcome. I'm your professor for this segment — fifteen years teaching SQL and working with production databases. " +
-            "I'll lean on real-world analogies, talk through how the engine tends to think when it helps, and call out Oracle-specific details where they matter. " +
-            "With me is a student focused on analytics — he'll ask the questions that actually show up in the lesson and on the job."
-        ),
-      });
-      turns.push({
-        speaker: 'student',
-        text: guidedPrepareTextForConversationalSpeech(
-          "I'm studying SQL for data analytics — reports, metrics, and explaining trends to the business. " +
-            "I'll only chime in with real questions from this chapter when they come up — like the quick checks — not a script."
-        ),
-      });
       String(body)
         .split(/\n\n+/)
         .map(function (s) {
@@ -1951,20 +1922,7 @@
           }
           turns.push({ speaker: 'professor', text: p });
         });
-      turns.push({
-        speaker: 'student',
-        text: guidedPrepareTextForConversationalSpeech(
-          "That helped — I'll hit the practice chips and the lab schema. How do I know I'm ready for the next part?"
-        ),
-      });
-      turns.push({
-        speaker: 'professor',
-        text: guidedPrepareTextForConversationalSpeech(
-          "When you can explain the core idea without the notes and reproduce the main SQL pattern from memory, you're in good shape. " +
-            "Work through the guided practice and sample SQL in this lesson — I'll see you in the next chapter."
-        ),
-      });
-      return turns;
+      return turns.length ? turns : null;
     }
 
     /** Rebuild chunk queue from script produced by guidedBuildPodcastScriptForApi. */
