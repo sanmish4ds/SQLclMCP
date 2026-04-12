@@ -31,9 +31,18 @@ function loadDotEnvFile(absPath) {
     for (const line of content.split('\n')) {
       const t = line.trim();
       if (!t || t.startsWith('#')) continue;
-      const m = t.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      // Allow spaces around = and optional "export " (common in hand-edited .env files)
+      let m = t.match(/^export\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (!m) m = t.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
       if (!m) continue;
-      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      } else {
+        const hash = val.search(/\s+#/);
+        if (hash > 0) val = val.slice(0, hash).trim();
+      }
+      process.env[m[1]] = val;
     }
   } catch (_) { /* missing file is OK */ }
 }
@@ -790,7 +799,36 @@ async function generateSql(question, mode = 'hybrid') {
 }
 
 // ── ElevenLabs podcast TTS (guided lesson “Listen”) — API key stays on server ──
-const ELEVENLABS_API_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
+function sanitizeElevenLabsApiKey(raw) {
+  let k = String(raw || '').trim();
+  k = k.replace(/^\uFEFF/, '');
+  if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) {
+    k = k.slice(1, -1).trim();
+  }
+  if (/^bearer\s+/i.test(k)) k = k.replace(/^bearer\s+/i, '').trim();
+  return k;
+}
+
+/** Turn ElevenLabs JSON error body into a short message for logs and JSON API errors. */
+function formatElevenLabsErrorBody(errBody, httpStatus) {
+  const raw = String(errBody || '').trim();
+  if (!raw) return `ElevenLabs HTTP ${httpStatus}`;
+  try {
+    const j = JSON.parse(raw);
+    const d = j.detail;
+    if (typeof d === 'object' && d !== null && d.message) {
+      let msg = String(d.message);
+      if (d.status === 'invalid_api_key' || httpStatus === 401) {
+        msg += ' Use the xi-api-key from https://elevenlabs.io → profile (not an OpenAI sk-… key). Check .env for extra spaces or quotes.';
+      }
+      return msg;
+    }
+    if (typeof d === 'string') return d;
+  } catch (_) { /* not JSON */ }
+  return raw.length > 500 ? `${raw.slice(0, 500)}…` : raw;
+}
+
+const ELEVENLABS_API_KEY = sanitizeElevenLabsApiKey(process.env.ELEVENLABS_API_KEY || '');
 const ELEVENLABS_VOICE_ID = (process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM').trim();
 /** Default multilingual model works on more accounts; override with eleven_turbo_v2_5 if you prefer. */
 const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
@@ -841,7 +879,8 @@ async function elevenLabsTtsOneSegment(segmentText, modelId, prevSlice, nextSlic
   }
   if (!r.ok) {
     const errBody = await r.text().catch(() => '');
-    const err = new Error(errBody || `ElevenLabs HTTP ${r.status}`);
+    const msg = formatElevenLabsErrorBody(errBody, r.status);
+    const err = new Error(msg);
     err.statusCode = r.status;
     throw err;
   }
