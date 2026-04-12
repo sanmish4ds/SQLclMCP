@@ -835,7 +835,7 @@ const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilin
 const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_turbo_v2_5').trim();
 const ELEVENLABS_OUTPUT_FORMAT = (process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_128').trim();
 const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
-/** Female student voice for guided “Listen” (stitched TTS). Male professor = ELEVENLABS_VOICE_ID. */
+/** Second male voice (student) for guided “Listen” (stitched TTS). Male professor = ELEVENLABS_VOICE_ID. */
 const ELEVENLABS_DIALOGUE_VOICE_ID = (process.env.ELEVENLABS_DIALOGUE_VOICE_ID || '').trim();
 const ELEVENLABS_DIALOGUE_TURN_MAX = Math.min(
   4500,
@@ -1107,7 +1107,7 @@ const requestHandler = (request, response) => {
         guided_podcast_tts_status:
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:
-          'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (professor=ELEVENLABS_VOICE_ID, student=guest voice)',
+          'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (professor=ELEVENLABS_VOICE_ID, student=ELEVENLABS_DIALOGUE_VOICE_ID)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));

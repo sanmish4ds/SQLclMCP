@@ -46,8 +46,8 @@ services:
       # Optional: ElevenLabs podcast TTS for guided “Listen” (POST /guided-podcast-tts)
       # - ELEVENLABS_API_KEY
       # - ELEVENLABS_GUIDED_LISTEN_ONLY=true (optional; no browser speech fallback for Listen)
-      # - ELEVENLABS_VOICE_ID — professor (male voice recommended; default preset is female)
-      # - ELEVENLABS_DIALOGUE_VOICE_ID — student (female voice; must differ from ELEVENLABS_VOICE_ID)
+      # - ELEVENLABS_VOICE_ID — professor (male voice)
+      # - ELEVENLABS_DIALOGUE_VOICE_ID — student, second male voice (must differ from ELEVENLABS_VOICE_ID)
       # - ELEVENLABS_MODEL_ID (optional; default eleven_multilingual_v2)
       # - ELEVENLABS_TTS_PARALLEL (optional; default 6)
       # - ELEVENLABS_FALLBACK_MODEL_ID, ELEVENLABS_OUTPUT_FORMAT (optional)

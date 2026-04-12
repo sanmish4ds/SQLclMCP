@@ -1534,7 +1534,7 @@
         if (hasLesson && guidedLessonVoiceUiAvailable()) {
           if (guidedDialogueVoiceCollision) {
             listen.title =
-              'Professor and student need different voice ids — set ELEVENLABS_DIALOGUE_VOICE_ID to the student voice on the server.';
+              'Professor and student need different voice ids — set ELEVENLABS_DIALOGUE_VOICE_ID to the second (student) voice on the server.';
           } else {
             listen.removeAttribute('title');
           }
@@ -1909,7 +1909,7 @@
     }
 
     /**
-     * Male professor (ELEVENLABS_VOICE_ID) + female student (ELEVENLABS_DIALOGUE_VOICE_ID).
+     * Male professor (ELEVENLABS_VOICE_ID) + male student (ELEVENLABS_DIALOGUE_VOICE_ID).
      * Student speaks only lesson-derived questions (lines ending in ?). Professor speaks headings and all other teaching text.
      */
     function guidedBuildDialogueTurnsForApi(outEl) {
@@ -1922,7 +1922,7 @@
         text: guidedPrepareTextForConversationalSpeech(
           "Welcome. I'm your professor for this segment — fifteen years teaching SQL and working with production databases. " +
             "I'll lean on real-world analogies, talk through how the engine tends to think when it helps, and call out Oracle-specific details where they matter. " +
-            "With me is a student focused on analytics — she'll ask the questions that actually show up in the lesson and on the job."
+            "With me is a student focused on analytics — he'll ask the questions that actually show up in the lesson and on the job."
         ),
       });
       turns.push({
