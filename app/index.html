@@ -1103,6 +1103,11 @@
       font-size: 0.82rem;
       line-height: 1.45;
     }
+    .guided-quickcheck-actions {
+      margin: 0.5rem 0 0.85rem;
+      padding: 0.65rem 0 0;
+      border-top: 1px dashed var(--border-strong);
+    }
     .guided-ai-actions {
       margin-bottom: 0.65rem;
     }
@@ -1240,7 +1245,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts); each part loads a <strong>self-contained on-demand lesson</strong> (novice-friendly depth, Oracle + TPC-H lab SQL). <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
+        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts); each part loads a <strong>self-contained on-demand lesson</strong> (novice-friendly depth, Oracle + TPC-H lab SQL, quick-check questions you can send to Guided practice). <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
       </div>
     </div>
   </header>
@@ -1596,7 +1601,7 @@
       var tr = container.querySelector('.tutor-response');
       if (!tr) return '';
       var clone = tr.cloneNode(true);
-      clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result').forEach(function (el) {
+      clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result, .guided-quickcheck-actions').forEach(function (el) {
         el.remove();
       });
       var parts = [];
@@ -1895,7 +1900,7 @@
       return chunks.join('\n\n');
     }
 
-    /** True when this block is already a question from the lesson, not a canned prompt. */
+    /** True when this block is already a question from the lesson (e.g. Quick check), not a canned prompt. */
     function guidedSegmentIsLessonQuestion(p) {
       var s = String(p || '').trim();
       if (!s || s.length > 360) return false;
@@ -2786,6 +2791,64 @@
       return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
     }
 
+    /** After lesson HTML is set, add Guided practice chips under ## Quick check. */
+    function enhanceLessonQuickCheck(container) {
+      if (!container) return;
+      var headings = container.querySelectorAll('h2.tutor-h2, h3.tutor-h3, h4.tutor-h4');
+      for (var hi = 0; hi < headings.length; hi++) {
+        var h = headings[hi];
+        var ht = (h.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/\bquick\s*check\b/i.test(ht)) continue;
+        var chips = [];
+        var insertAfter = h;
+        var el = h.nextElementSibling;
+        while (el) {
+          var tag = el.tagName;
+          var cls = el.className || '';
+          if ((tag === 'H2' || tag === 'H3' || tag === 'H4') && /\btutor-h\b/.test(cls)) break;
+          if (tag === 'UL' && /\btutor-ul\b/.test(cls)) {
+            el.querySelectorAll('li').forEach(function (li) {
+              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
+              if (q.length >= 8) chips.push(q);
+            });
+          } else if (tag === 'OL' && /\btutor-ol\b/.test(cls)) {
+            el.querySelectorAll('li').forEach(function (li) {
+              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
+              if (q.length >= 8) chips.push(q);
+            });
+          } else if (tag === 'P' && /\btutor-p\b/.test(cls)) {
+            var pq = (el.textContent || '').replace(/\s+/g, ' ').trim();
+            if (pq.length >= 20) chips.push(pq);
+          }
+          insertAfter = el;
+          el = el.nextElementSibling;
+        }
+        if (!chips.length) continue;
+        var wrap = document.createElement('div');
+        wrap.className = 'guided-quickcheck-actions';
+        var lbl = document.createElement('p');
+        lbl.className = 'guided-chip-label';
+        lbl.style.marginTop = '0';
+        lbl.style.marginBottom = '0.4rem';
+        lbl.textContent = 'Ask in Guided practice';
+        var row = document.createElement('div');
+        row.className = 'guided-chip-row';
+        chips.forEach(function (q) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'guided-chip';
+          b.setAttribute('data-guided-prompt', '1');
+          b.setAttribute('title', 'Open Guided practice with this question');
+          b.textContent = q;
+          row.appendChild(b);
+        });
+        wrap.appendChild(lbl);
+        wrap.appendChild(row);
+        insertAfter.insertAdjacentElement('afterend', wrap);
+        break;
+      }
+    }
+
     async function runGuidedChapterLlmExpand() {
       if (!guidedState.ids.length || guidedState.visit !== 'learning' || !guidedState.level) return;
       var chapterId = guidedState.ids[guidedState.step];
@@ -2818,6 +2881,7 @@
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (expandData.success && expandData.markdown) {
           out.innerHTML = tutorMarkdownToLessonHtml(expandData.markdown);
+          enhanceLessonQuickCheck(out);
         } else {
           var err = expandData.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +

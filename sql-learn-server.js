@@ -681,7 +681,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     '**Do not** add shallow, generic “pitfall” one-liners (e.g. “forgetting NULL causes unexpected results in filtering”) unless this chapter is **about** NULLs, predicates, or that exact behavior — and then **explain the mechanism**, not just the warning.',
     '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** INSERT/UPDATE/DDL/transaction topics: **prose only** — never DDL/DML inside ```sql.',
     'Touch the **depth hints** (if any) with enough explanation that a motivated novice could apply them on the lab schema.',
-    '**Do not** include a ## Quick check section or end-of-lesson quiz list.',
+    '## Quick check: **at least 5** distinct questions as a **markdown bullet list** (`-` lines), one full question per line (UI opens each in Guided practice). Cover recall, applying to TPC-H, Oracle nuance where relevant, compare/contrast, and short reasoning — all **answerable from this lesson**.',
     '## What’s next: **exactly 2 bullets** (next path part if given + one related skill).',
     'Use **real** TPC-H identifiers in SQL — **no** placeholders or pseudo-tables.',
   ].join(' ');
@@ -695,7 +695,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     '## At a glance — As in system: required lead-in line, 4–6 bullets aligned with **Essentials**.',
     `## Essentials — **Substantial** teaching per system rules. Include: ${schemaTables}.`,
     '## Lab — **one** fenced SQL code block only (markdown sql): a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). One or two sentences above the fence explaining what the query demonstrates.',
-    '**No** ## Quick check section.',
+    '## Quick check — **at least 5** questions (5–7 is fine), each its own markdown list line starting with a hyphen and a space, full question text.',
     '## What’s next — 2 bullets only.',
     '',
     prevHint || nextHint ? `**Path:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
@@ -715,7 +715,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   };
   const expandMaxTok = Math.min(
     4096,
-    Math.max(1024, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 2800),
+    Math.max(1024, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 3000),
   );
   payload.max_tokens = expandMaxTok;
 
@@ -1130,7 +1130,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 2800, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 3000, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
         guided_podcast_tts_status:
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:
