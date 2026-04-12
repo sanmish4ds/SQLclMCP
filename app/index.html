@@ -1111,7 +1111,21 @@
     .guided-ai-actions {
       margin-bottom: 0.65rem;
     }
-    .guided-ai-actions .guided-nav { margin-top: 0; }
+    .guided-ai-actions .guided-nav { margin-top: 0; flex-wrap: wrap; }
+    .guided-ai-actions [data-guided-voice] {
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
+      color: var(--text-muted);
+    }
+    .guided-ai-actions [data-guided-voice]:not(:disabled):hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-muted);
+    }
+    .guided-ai-actions [data-guided-voice]:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .guided-admin-hint {
       margin-top: 0.5rem;
       font-size: 0.75rem;
@@ -1341,6 +1355,75 @@
     let guidedCurriculum = null;
     let guidedState = { visit: null, level: null, step: 0, ids: [] };
     let guidedChapterLlmAbort = null;
+    const guidedSpeechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+    function guidedStopLessonSpeech() {
+      if (guidedSpeechSupported) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+      }
+      guidedUpdateVoiceButtonUi(false);
+    }
+
+    function guidedUpdateVoiceButtonUi(speaking) {
+      var btn = document.querySelector('#guidedLlmPanel [data-guided-voice]');
+      if (!btn) return;
+      btn.textContent = speaking ? 'Stop' : 'Listen';
+      btn.setAttribute('aria-label', speaking ? 'Stop reading the lesson' : 'Listen to lesson as audio');
+      btn.setAttribute('aria-pressed', speaking ? 'true' : 'false');
+    }
+
+    function guidedLessonPlainTextForSpeech(container) {
+      if (!container) return '';
+      var tr = container.querySelector('.tutor-response');
+      if (!tr) return '';
+      var clone = tr.cloneNode(true);
+      clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result, .guided-quickcheck-actions').forEach(function (el) {
+        el.remove();
+      });
+      var t = (clone.innerText || clone.textContent || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      return t;
+    }
+
+    function guidedPickEnglishVoice() {
+      if (!guidedSpeechSupported) return null;
+      var voices = window.speechSynthesis.getVoices();
+      if (!voices || !voices.length) return null;
+      var v = voices.find(function (x) { return x.lang && /^en-US/i.test(x.lang); });
+      if (v) return v;
+      v = voices.find(function (x) { return x.lang && /^en-GB/i.test(x.lang); });
+      if (v) return v;
+      return voices.find(function (x) { return x.lang && /^en/i.test(x.lang); }) || null;
+    }
+
+    function guidedToggleLessonVoice(btn) {
+      if (!guidedSpeechSupported) return;
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        guidedUpdateVoiceButtonUi(false);
+        return;
+      }
+      var out = document.getElementById('guidedLlmOut');
+      var body = guidedLessonPlainTextForSpeech(out);
+      if (!body || body.length < 30) return;
+      var intro = "Let's walk through this lesson together. ";
+      var u = new SpeechSynthesisUtterance(intro + body);
+      u.rate = 0.9;
+      u.pitch = 1;
+      var voice = guidedPickEnglishVoice();
+      if (voice) u.voice = voice;
+      u.onend = function () { guidedUpdateVoiceButtonUi(false); };
+      u.onerror = function () { guidedUpdateVoiceButtonUi(false); };
+      guidedUpdateVoiceButtonUi(true);
+      try {
+        window.speechSynthesis.speak(u);
+      } catch (_) {
+        guidedUpdateVoiceButtonUi(false);
+      }
+    }
 
     function guidedCurriculumUrl() {
       if (typeof location !== 'undefined' && location.protocol !== 'file:') {
@@ -1535,6 +1618,7 @@
         try { guidedChapterLlmAbort.abort(); } catch (_) {}
         guidedChapterLlmAbort = null;
       }
+      guidedStopLessonSpeech();
 
       const prog = document.getElementById('guidedProgress');
       prog.textContent =
@@ -1547,6 +1631,9 @@
         '<div class="guided-llm-panel" id="guidedLlmPanel">' +
         '<div class="guided-ai-actions"><div class="guided-nav">' +
         '<button type="button" class="guided-choice primary" data-guided-llm-expand="1">Load lesson</button>' +
+        '<button type="button" class="guided-choice" data-guided-voice="1" disabled ' +
+        (guidedSpeechSupported ? '' : 'title="Voice not supported in this browser" ') +
+        'aria-label="Listen to lesson as audio" aria-pressed="false">Listen</button>' +
         '</div></div>' +
         '<div class="guided-lesson-shell">' +
         '<div id="guidedLlmOut" class="guided-llm-out">' +
@@ -1675,6 +1762,12 @@
         void runGuidedLessonSql(lessonSqlBtn);
         return;
       }
+      const voiceBtn = t.closest('[data-guided-voice]');
+      if (voiceBtn) {
+        e.preventDefault();
+        if (!voiceBtn.disabled) guidedToggleLessonVoice(voiceBtn);
+        return;
+      }
       const visitBtn = t.closest('[data-guided-visit]');
       if (visitBtn) {
         guidedState = { visit: visitBtn.getAttribute('data-guided-visit'), level: null, step: 0, ids: [] };
@@ -1746,6 +1839,14 @@
     }
 
     loadGuidedState();
+    if (guidedSpeechSupported) {
+      try {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.addEventListener('voiceschanged', function () {
+          window.speechSynthesis.getVoices();
+        });
+      } catch (_) {}
+    }
     const guidedRootEl = document.getElementById('guidedRoot');
     if (guidedRootEl) {
       guidedRootEl.addEventListener('click', bindGuidedRootClicks);
@@ -2067,7 +2168,13 @@
       var expectChapter = chapterId;
 
       btn.disabled = true;
+      var voiceBtnEl = panel.querySelector('[data-guided-voice]');
+      if (voiceBtnEl) {
+        voiceBtnEl.disabled = true;
+        guidedStopLessonSpeech();
+      }
       out.innerHTML = guidedLessonLoaderHtml();
+      var expandData = null;
       try {
         var r = await fetch(API_BASE_URL + '/guided-expand-chapter', {
           method: 'POST',
@@ -2076,13 +2183,13 @@
           signal: signal,
         });
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
-        var data = await r.json().catch(function () { return {}; });
+        expandData = await r.json().catch(function () { return {}; });
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
-        if (data.success && data.markdown) {
-          out.innerHTML = tutorMarkdownToLessonHtml(data.markdown);
+        if (expandData.success && expandData.markdown) {
+          out.innerHTML = tutorMarkdownToLessonHtml(expandData.markdown);
           enhanceLessonQuickCheck(out);
         } else {
-          var err = data.error || ('HTTP ' + r.status);
+          var err = expandData.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +
             '<p class="guided-muted">This screen has no static chapter text — the lesson comes from the API only.</p>' +
             '<p class="guided-admin-hint">Running your own server? Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code>, then try again.</p>';
@@ -2091,8 +2198,25 @@
         if (e.name === 'AbortError') return;
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         out.innerHTML = '<p class="guided-muted">Request failed: ' + escapeHtml(e.message) + '</p>';
+        expandData = null;
       }
-      if (guidedState.ids[guidedState.step] === expectChapter) btn.disabled = false;
+      if (guidedState.ids[guidedState.step] === expectChapter) {
+        btn.disabled = false;
+        var vb = panel.querySelector('[data-guided-voice]');
+        if (vb) {
+          var lessonOk = !!(expandData && expandData.success && expandData.markdown);
+          vb.textContent = 'Listen';
+          vb.setAttribute('aria-pressed', 'false');
+          if (!lessonOk || !guidedSpeechSupported) {
+            vb.disabled = true;
+            guidedStopLessonSpeech();
+          } else {
+            vb.disabled = false;
+            vb.removeAttribute('title');
+          }
+          if (!guidedSpeechSupported) vb.title = 'Voice not supported in this browser';
+        }
+      }
     }
 
     btnGenerate.addEventListener('click', async () => {
