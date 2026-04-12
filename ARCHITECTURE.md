@@ -64,7 +64,7 @@ The project answers four research questions (RQ1–RQ4) and produces both **eval
 
 | Component | Role |
 |-----------|------|
-| **sql-learn-server.js** | HTTP server: learning UI, book index, natural-language → Oracle SQL via LLM (OpenAI-compatible API), TPC-H schema hints, Oracle rules. Evaluation uses **LLM mode only**. |
+| **sql-learn-server.js** | HTTP server: learning UI, book index, natural-language → Oracle SQL via LLM (OpenAI-compatible API), TPC-H schema hints, Oracle rules. Guided “Listen” can use **ElevenLabs** (`ELEVENLABS_API_KEY`, `POST /guided-podcast-tts`) or the browser’s speech API. Evaluation uses **LLM mode only**. |
 | **run_sql_evaluation.py** | Orchestrator: loads tests, baseline phase (gold SQL), generated-SQL phase (HTTP API), compares results (semantic, exact order, extract string), EXPLAIN PLAN, writes `sql_evaluation_*.json`. |
 | **Oracle Database** | Runs baseline and generated SQL, returns rows and supports EXPLAIN PLAN (cost, cardinality, bytes). TPC-H schema; connection via oracledb (user/password/DSN). |
 | **visualize_results.py** | Reads evaluation JSON and produces 13 graphs (e.g. complexity distribution, accuracy by tier, latency comparison, EXPLAIN deltas) and 6 table PNGs. Invoked automatically after a run unless `--no-visualize`. |

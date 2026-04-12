@@ -1149,6 +1149,13 @@
     .guided-voice-controls [hidden] {
       display: none !important;
     }
+    .guided-podcast-err {
+      margin: 0.5rem 0 0;
+      font-size: 0.8rem;
+      max-width: 42rem;
+      line-height: 1.4;
+      color: #b45309;
+    }
     .guided-admin-hint {
       margin-top: 0.5rem;
       font-size: 0.75rem;
@@ -1356,7 +1363,8 @@
         try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
         statusEl.textContent = (data.status === 'ok' ? 'Connected to the tutor service.' : 'Server status unclear.') +
           ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
-          '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.';
+          '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.' +
+          (data.guided_podcast_elevenlabs ? ' Podcast (ElevenLabs): on.' : '');
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
@@ -1386,6 +1394,33 @@
 
     function guidedLessonVoiceUiAvailable() {
       return guidedSpeechSupported || guidedElevenLabsPodcastAvailable;
+    }
+
+    function guidedSetPodcastError(msg) {
+      var el = document.getElementById('guidedPodcastErr');
+      if (!el) return;
+      if (!msg) {
+        el.hidden = true;
+        el.textContent = '';
+        return;
+      }
+      el.textContent = msg;
+      el.hidden = false;
+    }
+
+    async function guidedRefreshPodcastTtsAvailable() {
+      try {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, 10000);
+        var r = await fetch(API_BASE_URL + '/guided-podcast-tts-status', { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!r.ok) return;
+        var d = await r.json().catch(function () { return null; });
+        if (d && typeof d.enabled === 'boolean') {
+          guidedElevenLabsPodcastAvailable = d.enabled;
+        }
+        try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
+      } catch (_) { /* keep previous flag */ }
     }
 
     var guidedSpeechSession = {
@@ -1422,6 +1457,7 @@
         try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
         guidedSpeechSession.objectUrl = null;
       }
+      guidedSetPodcastError('');
       if (guidedSpeechSupported) {
         try { window.speechSynthesis.cancel(); } catch (_) {}
       }
@@ -1818,13 +1854,18 @@
       var out = document.getElementById('guidedLlmOut');
       var script = guidedBuildPodcastScriptForApi(out);
       if (!script || script.length < 30) return;
+      guidedSetPodcastError('');
       guidedStopLessonSpeech();
+      await guidedRefreshPodcastTtsAvailable();
       guidedSpeechSession.stopped = false;
       guidedSpeechSession.pauseRequested = false;
 
       if (guidedElevenLabsPodcastAvailable) {
         guidedSpeechSession.mode = 'elevenlabs';
         guidedSpeechSession.elevenLabsAbort = new AbortController();
+        var podcastFetchTimer = setTimeout(function () {
+          try { guidedSpeechSession.elevenLabsAbort.abort(); } catch (_) {}
+        }, 300000);
         guidedVoiceControlsSetMode('playing');
         try {
           var r = await fetch(API_BASE_URL + '/guided-podcast-tts', {
@@ -1871,10 +1912,12 @@
           }
         } catch (err) {
           if (err && err.name === 'AbortError') {
+            guidedSetPodcastError('Podcast request timed out or was cancelled. If synthesis is long, wait and try again, or use browser voice if available.');
             guidedStopLessonSpeech();
             return;
           }
           if (guidedSpeechSupported) {
+            guidedSetPodcastError('ElevenLabs failed; using browser voice instead. ' + (err && err.message ? String(err.message).slice(0, 200) : ''));
             guidedSpeechSession.mode = 'browser';
             if (guidedSpeechSession.objectUrl) {
               try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
@@ -1884,8 +1927,10 @@
             startGuidedBrowserSpeechFromScript(script);
             return;
           }
-          alert('Podcast audio failed: ' + (err && err.message ? err.message : String(err)));
+          guidedSetPodcastError('Podcast failed: ' + (err && err.message ? err.message : String(err)));
           guidedStopLessonSpeech();
+        } finally {
+          try { clearTimeout(podcastFetchTimer); } catch (_) {}
         }
         return;
       }
@@ -2140,7 +2185,9 @@
         'aria-label="Pause">Pause</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-stop="1" hidden disabled ' +
         'aria-label="Stop reading">Stop</button>' +
-        '</div></div></div>' +
+        '</div>' +
+        '<p id="guidedPodcastErr" class="guided-podcast-err guided-muted" hidden></p>' +
+        '</div></div>' +
         '<div class="guided-lesson-shell">' +
         '<div id="guidedLlmOut" class="guided-llm-out">' +
         guidedLessonLoaderHtml() +
@@ -2195,7 +2242,10 @@
       prog.textContent = '';
       if (guidedState.visit === 'learning') {
         renderGuidedChapter(root);
-        queueMicrotask(function () { runGuidedChapterLlmExpand(); });
+        queueMicrotask(function () {
+          void guidedRefreshPodcastTtsAvailable();
+          runGuidedChapterLlmExpand();
+        });
       } else {
         renderGuidedConcept(root);
       }
@@ -2886,6 +2936,9 @@
         btn.classList.add('active');
         btn.setAttribute('aria-selected', 'true');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'path') {
+          void guidedRefreshPodcastTtsAvailable();
+        }
         if (btn.dataset.tab === 'lab' && labBootLoading) {
           renderLabLoader(labBootMsg);
         }

@@ -5,3 +5,4 @@ node_modules
 experiments/results
 .env
 .env.*
+!.env.example

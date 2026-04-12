@@ -21,20 +21,28 @@ function normalizeSqlGenerationMode(raw) {
  *   hybrid  – lookup first, LLM fallback
  */
 
-// Load .env into process.env (no external dependency)
-const envPath = require('path').join(__dirname, '.env');
-try {
-  const content = require('fs').readFileSync(envPath, 'utf8');
-  for (const line of content.split('\n')) {
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
-  }
-} catch (_) {}
+// Load .env (and optional .env.local) into process.env — no external dependency
+const path = require('path');
+const fs = require('fs');
+
+function loadDotEnvFile(absPath) {
+  try {
+    const content = fs.readFileSync(absPath, 'utf8');
+    for (const line of content.split('\n')) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const m = t.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      if (!m) continue;
+      process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
+    }
+  } catch (_) { /* missing file is OK */ }
+}
+
+loadDotEnvFile(path.join(__dirname, '.env'));
+loadDotEnvFile(path.join(__dirname, '.env.local')); // optional overrides (gitignored)
 
 const http = require('http');
-const fs = require('fs');
 const os = require('os');
-const path = require('path');
 const {
   loadBookFromEpub,
   searchChunks,
@@ -784,7 +792,10 @@ async function generateSql(question, mode = 'hybrid') {
 // ── ElevenLabs podcast TTS (guided lesson “Listen”) — API key stays on server ──
 const ELEVENLABS_API_KEY = (process.env.ELEVENLABS_API_KEY || '').trim();
 const ELEVENLABS_VOICE_ID = (process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM').trim();
-const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5').trim();
+/** Default multilingual model works on more accounts; override with eleven_turbo_v2_5 if you prefer. */
+const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
+const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_turbo_v2_5').trim();
+const ELEVENLABS_OUTPUT_FORMAT = (process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_128').trim();
 const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
 
 function chunkTextForElevenLabs(text, maxLen) {
@@ -805,6 +816,38 @@ function chunkTextForElevenLabs(text, maxLen) {
   return parts;
 }
 
+async function elevenLabsTtsOneSegment(segmentText, modelId, prevSlice, nextSlice) {
+  const payload = { text: segmentText, model_id: modelId };
+  if (prevSlice) payload.previous_text = prevSlice;
+  if (nextSlice) payload.next_text = nextSlice;
+  const q = new URLSearchParams({ output_format: ELEVENLABS_OUTPUT_FORMAT });
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVENLABS_VOICE_ID)}?${q.toString()}`;
+  const ac = new AbortController();
+  const tid = setTimeout(() => ac.abort(), ELEVENLABS_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+        'Content-Type': 'application/json',
+        Accept: 'audio/mpeg',
+      },
+      body: JSON.stringify(payload),
+      signal: ac.signal,
+    });
+  } finally {
+    clearTimeout(tid);
+  }
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => '');
+    const err = new Error(errBody || `ElevenLabs HTTP ${r.status}`);
+    err.statusCode = r.status;
+    throw err;
+  }
+  return Buffer.from(await r.arrayBuffer());
+}
+
 async function synthesizeElevenLabsPodcastMp3(fullText) {
   if (!ELEVENLABS_API_KEY) {
     throw new Error('ELEVENLABS_API_KEY is not set');
@@ -815,41 +858,27 @@ async function synthesizeElevenLabsPodcastMp3(fullText) {
   }
   const buffers = [];
   for (let i = 0; i < segments.length; i += 1) {
-    const payload = {
-      text: segments[i],
-      model_id: ELEVENLABS_MODEL_ID,
-    };
-    if (i > 0) {
-      const prev = segments[i - 1];
-      payload.previous_text = prev.length > 800 ? prev.slice(prev.length - 800) : prev;
+    const prev = i > 0 ? segments[i - 1] : null;
+    const next = i < segments.length - 1 ? segments[i + 1] : null;
+    const prevSlice = prev ? (prev.length > 800 ? prev.slice(prev.length - 800) : prev) : null;
+    const nextSlice = next ? (next.length > 800 ? next.slice(0, 800) : next) : null;
+    const tryModels = [ELEVENLABS_MODEL_ID];
+    if (ELEVENLABS_FALLBACK_MODEL_ID && ELEVENLABS_FALLBACK_MODEL_ID !== ELEVENLABS_MODEL_ID) {
+      tryModels.push(ELEVENLABS_FALLBACK_MODEL_ID);
     }
-    if (i < segments.length - 1) {
-      const next = segments[i + 1];
-      payload.next_text = next.length > 800 ? next.slice(0, 800) : next;
+    let buf = null;
+    for (let mi = 0; mi < tryModels.length; mi += 1) {
+      const mid = tryModels[mi];
+      try {
+        buf = await elevenLabsTtsOneSegment(segments[i], mid, prevSlice, nextSlice);
+        break;
+      } catch (e) {
+        const sc = e && e.statusCode;
+        if (sc === 401 || sc === 403) throw e;
+        if (mi === tryModels.length - 1) throw e;
+      }
     }
-    const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(ELEVENLABS_VOICE_ID)}?output_format=mp3_44100_128`;
-    const ac = new AbortController();
-    const tid = setTimeout(() => ac.abort(), ELEVENLABS_TIMEOUT_MS);
-    let r;
-    try {
-      r = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': ELEVENLABS_API_KEY,
-          'Content-Type': 'application/json',
-          Accept: 'audio/mpeg',
-        },
-        body: JSON.stringify(payload),
-        signal: ac.signal,
-      });
-    } finally {
-      clearTimeout(tid);
-    }
-    if (!r.ok) {
-      const errBody = await r.text().catch(() => '');
-      throw new Error(errBody || `ElevenLabs HTTP ${r.status}`);
-    }
-    buffers.push(Buffer.from(await r.arrayBuffer()));
+    buffers.push(buf);
   }
   return Buffer.concat(buffers);
 }
@@ -931,7 +960,7 @@ const requestHandler = (request, response) => {
           'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — short markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 1400, cap 2048), GUIDED_EXPAND_TIMEOUT_MS (default 55000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
         guided_podcast_tts_status: 'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id } when ELEVENLABS_API_KEY is set',
         guided_podcast_tts:
-          'POST /guided-podcast-tts — body: { "text": "…" } — returns audio/mpeg (ElevenLabs); env: ELEVENLABS_API_KEY, optional ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID, ELEVENLABS_TIMEOUT_MS',
+          'POST /guided-podcast-tts — body: { "text": "…" } — returns audio/mpeg (ElevenLabs); env: ELEVENLABS_API_KEY, optional ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID, ELEVENLABS_FALLBACK_MODEL_ID, ELEVENLABS_OUTPUT_FORMAT, ELEVENLABS_TIMEOUT_MS',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
