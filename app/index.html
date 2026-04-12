@@ -1455,6 +1455,17 @@
       }
     }
 
+    function guidedSpeechNormalizeInline(s) {
+      return String(s || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    /**
+     * Build lesson text for TTS: walk prose blocks so headings (Essentials, At a glance, …)
+     * are spoken like a teacher calling out sections, not as a flat wall of text.
+     */
     function guidedLessonPlainTextForSpeech(container) {
       if (!container) return '';
       var tr = container.querySelector('.tutor-response');
@@ -1463,12 +1474,84 @@
       clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result, .guided-quickcheck-actions').forEach(function (el) {
         el.remove();
       });
+      var parts = [];
+
+      function pushHeading(level, title) {
+        var t = guidedSpeechNormalizeInline(title);
+        if (!t) return;
+        if (level === 1) {
+          parts.push('Overview: ' + t + '.');
+        } else if (level === 2) {
+          parts.push("Let's focus on this section: " + t + '.');
+        } else if (level === 3) {
+          parts.push('Going deeper: ' + t + '.');
+        } else {
+          parts.push('Also note: ' + t + '.');
+        }
+      }
+
+      function walkProseBlock(el) {
+        if (!el || el.nodeType !== 1) return;
+        var tag = el.tagName;
+        var cls = el.className || '';
+        if (/^H[1-4]$/.test(tag) && /\btutor-h\b/.test(cls)) {
+          var level = parseInt(tag.charAt(1), 10);
+          pushHeading(level, el.textContent || '');
+          return;
+        }
+        if (tag === 'P' && /\btutor-p\b/.test(cls)) {
+          var pt = guidedSpeechNormalizeInline(el.textContent || '');
+          if (pt) parts.push(pt);
+          return;
+        }
+        if (tag === 'UL' && /\btutor-ul\b/.test(cls)) {
+          for (var ui = 0; ui < el.children.length; ui++) {
+            var li = el.children[ui];
+            if (li.tagName !== 'LI') continue;
+            var lt = guidedSpeechNormalizeInline(li.textContent || '');
+            if (lt) parts.push(lt);
+          }
+          return;
+        }
+        if (tag === 'OL' && /\btutor-ol\b/.test(cls)) {
+          var n = 0;
+          for (var oi = 0; oi < el.children.length; oi++) {
+            var oli = el.children[oi];
+            if (oli.tagName !== 'LI') continue;
+            var olt = guidedSpeechNormalizeInline(oli.textContent || '');
+            if (olt) parts.push(++n + '. ' + olt);
+          }
+        }
+      }
+
+      function walkProse(prose) {
+        for (var i = 0; i < prose.children.length; i++) {
+          walkProseBlock(prose.children[i]);
+        }
+      }
+
+      for (var c = 0; c < clone.children.length; c++) {
+        var ch = clone.children[c];
+        if (ch.classList && ch.classList.contains('tutor-prose')) {
+          walkProse(ch);
+        }
+      }
+
+      if (parts.length) {
+        return parts.join('\n\n');
+      }
       var t = (clone.innerText || clone.textContent || '')
         .replace(/\u00a0/g, ' ')
         .replace(/[ \t]+\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       return t;
+    }
+
+    /** True when this chunk is a teacher-style section lead-in (slightly slower / clearer). */
+    function guidedSpeechChunkIsHeadingCue(text) {
+      var s = String(text || '').trim();
+      return /^(Overview:|Let's focus on this section:|Going deeper:|Also note:)/i.test(s);
     }
 
     /** Normalize text so the engine pauses naturally at punctuation; friendlier for speech. */
@@ -1533,6 +1616,26 @@
       return merged;
     }
 
+    /** Intro + body segments: keep each teacher heading line as one utterance (do not split mid-title). */
+    function guidedBuildSpeechChunksForLesson(intro, bodyRaw) {
+      var chunks = [];
+      var introP = guidedPrepareTextForConversationalSpeech(intro).trim();
+      if (introP) {
+        guidedSplitSpeechChunks(introP).forEach(function (c) { chunks.push(c); });
+      }
+      var segs = String(bodyRaw || '').split(/\n\n+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      segs.forEach(function (seg) {
+        var p = guidedPrepareTextForConversationalSpeech(seg).trim();
+        if (!p) return;
+        if (guidedSpeechChunkIsHeadingCue(p)) {
+          chunks.push(p);
+        } else {
+          guidedSplitSpeechChunks(p).forEach(function (c) { chunks.push(c); });
+        }
+      });
+      return chunks;
+    }
+
     function guidedPickEnglishVoice() {
       if (!guidedSpeechSupported) return null;
       var voices = window.speechSynthesis.getVoices();
@@ -1559,8 +1662,13 @@
       }
       var text = guidedSpeechSession.chunks[guidedSpeechSession.index];
       var u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.93;
-      u.pitch = 1.02;
+      if (guidedSpeechChunkIsHeadingCue(text)) {
+        u.rate = 0.86;
+        u.pitch = 1.05;
+      } else {
+        u.rate = 0.93;
+        u.pitch = 1.02;
+      }
       if (guidedSpeechSession.voice) u.voice = guidedSpeechSession.voice;
       u.onend = function () {
         if (guidedSpeechSession.stopped) return;
@@ -1571,8 +1679,9 @@
         }
         var gap = 120;
         var t = guidedSpeechSession.chunks[guidedSpeechSession.index - 1] || '';
-        if (/[.!?]$/.test(t.trim())) gap = 280;
-        else if (/[,;]$/.test(t.trim())) gap = 160;
+        if (guidedSpeechChunkIsHeadingCue(t)) gap = Math.max(gap, 380);
+        if (/[.!?]$/.test(t.trim())) gap = Math.max(gap, 280);
+        else if (/[,;]$/.test(t.trim())) gap = Math.max(gap, 160);
         window.setTimeout(function () { guidedSpeakStep(); }, gap);
       };
       u.onerror = function () {
@@ -1600,9 +1709,8 @@
       guidedSpeechSession.stopped = false;
       guidedSpeechSession.pauseRequested = false;
       guidedSpeechSession.voice = guidedPickEnglishVoice();
-      var intro = "Let's walk through this part together. ";
-      var prepared = guidedPrepareTextForConversationalSpeech(intro + body);
-      guidedSpeechSession.chunks = guidedSplitSpeechChunks(prepared);
+      var intro = "I'll walk you through this like we're in class. ";
+      guidedSpeechSession.chunks = guidedBuildSpeechChunksForLesson(intro, body);
       if (!guidedSpeechSession.chunks.length) {
         guidedSpeechSession.stopped = true;
         guidedVoiceControlsSetMode('idle');
