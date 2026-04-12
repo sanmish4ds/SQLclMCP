@@ -672,26 +672,28 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   const focusLine = focus ? `**Depth hints for this part:** ${focus}` : '';
 
   const system = [
-    'You are an expert SQL educator. The page has **no static lesson text** — your Markdown **is** this part’s lesson.',
-    'Teach **practical SQL** for this topic: ANSI where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL, dates, etc.).',
-    'Do **not** mention textbooks, EPUBs, or that content is automated. Write as a tight course note.',
-    'Use **short** Markdown: ## headings, bullets, **bold** terms. No long essays — every line should earn its place.',
-    '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** Teach INSERT/UPDATE/DDL/transaction topics in **prose only**—never put DDL/DML inside ```sql**.',
-    'Touch the **depth hints** (if any) but **summarize**; do not lecture on every keyword.',
-    '**2** self-check questions under ## Quick check as a **markdown bullet list** (`-` lines), one full question per line (so the UI can open each in Guided practice). **What’s next:** **exactly 2 bullets** (next path part if given + one related skill).',
-    'Use **real** TPC-H identifiers only in SQL—**no** placeholders or pseudo-code. Hard cap: **~220–380 words** plus that single query.',
+    'You are an expert SQL educator. The page has **no static lesson text** — your Markdown **is** this part’s lesson, and it must be **self-contained**: a novice can learn this chapter **here** without opening other books or websites.',
+    'Assume the reader is **new to SQL** unless the level is intermediate or advanced: **define terms on first use**, build intuition before jargon, and connect ideas to **data analytics** (reporting, metrics, joins, filters).',
+    'Teach **practical SQL** for this topic: ANSI where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL/COALESCE, dates, etc.).',
+    'Use clear Markdown: ## headings, optional ### inside Essentials, bullets, **bold** key terms. **Elaborate** — prioritize teaching depth over brevity; each section should explain **why** and **how**, not one-line summaries.',
+    '**Do not** add shallow, generic “pitfall” one-liners (e.g. “forgetting NULL causes unexpected results in filtering”) unless this chapter is **about** NULLs, predicates, or that exact behavior — and then **explain the mechanism**, not just the warning.',
+    '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** INSERT/UPDATE/DDL/transaction topics: **prose only** — never DDL/DML inside ```sql.',
+    'Touch the **depth hints** (if any) with enough explanation that a motivated novice could apply them on the lab schema.',
+    '## Quick check: **at least 5** distinct questions as a **markdown bullet list** (`-` lines), one full question per line (UI opens each in Guided practice). Cover recall, applying to TPC-H, Oracle nuance where relevant, compare/contrast, and short reasoning — all **answerable from this lesson**.',
+    '## What’s next: **exactly 2 bullets** (next path part if given + one related skill).',
+    'Use **real** TPC-H identifiers in SQL — **no** placeholders or pseudo-tables.',
   ].join(' ');
 
   const user = [
     `**Chapter:** ${ch.label || 'Part'} — ${ch.title}`,
-    `**Learner level:** ${level} (beginner = more definitions and step-by-step; advanced = edge cases, optimizer and modeling depth).`,
+    `**Learner level:** ${level} — beginner: slow pace, full definitions, no assumed prior SQL; intermediate: still define terms briefly, add patterns; advanced: deeper trade-offs and internals while staying self-contained.`,
     focusLine,
     '',
-    '**Use exactly these ## headings (keep each section brief):**',
-    '## At a glance — 3–5 bullets: outcomes for this part.',
-    `## Essentials — one tight section: concepts, Oracle vs standard, 1–2 pitfalls or interview hooks. Tables: ${schemaTables}`,
-    '## Lab — **one** ```sql fence only**: a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). Minimal intro line above the fence.',
-    '## Quick check — 2 questions, each its own `-` bullet with the full question text.',
+    '**Use exactly these ## headings:**',
+    '## At a glance — 4–6 bullets: concrete skills or outcomes after this part (what they can write or explain).',
+    `## Essentials — **substantial** teaching: core concepts, how they show up in analytics queries, Oracle vs ANSI **with short prose examples** where useful. Use ### subheadings if it helps. Include: ${schemaTables}. Avoid a thin pitfalls list; if you warn about something, tie it to this chapter SQL and explain why.`,
+    '## Lab — **one** fenced SQL code block only (markdown sql): a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). One or two sentences above the fence explaining what the query demonstrates.',
+    '## Quick check — **at least 5** questions (5–7 is fine), each its own markdown list line starting with a hyphen and a space, full question text.',
     '## What’s next — 2 bullets only.',
     '',
     prevHint || nextHint ? `**Path:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
@@ -706,19 +708,19 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
 
   const payload = {
     model: config.llmModel,
-    temperature: 0.28,
+    temperature: 0.32,
     messages,
   };
   const expandMaxTok = Math.min(
-    2048,
-    Math.max(512, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 1400),
+    4096,
+    Math.max(1024, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 3200),
   );
   payload.max_tokens = expandMaxTok;
 
   const controller = new AbortController();
   const expandTimeoutMs = Math.min(
-    Math.max(config.llmTimeoutMs * 2, 35000),
-    Number(process.env.GUIDED_EXPAND_TIMEOUT_MS || 55000) || 55000,
+    Math.max(config.llmTimeoutMs * 3, 60000),
+    Number(process.env.GUIDED_EXPAND_TIMEOUT_MS || 90000) || 90000,
   );
   const timeout = setTimeout(() => controller.abort(), expandTimeoutMs);
 
@@ -1103,7 +1105,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — short markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 1400, cap 2048), GUIDED_EXPAND_TIMEOUT_MS (default 55000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 3200, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
         guided_podcast_tts_status:
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:

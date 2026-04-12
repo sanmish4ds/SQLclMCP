@@ -515,7 +515,7 @@
     "sql_08": {
       "label": "Part 8",
       "title": "NULLs, data types, and built-in functions",
-      "llmFocus": "three-valued logic IS NULL NOT IN pitfalls COALESCE NVL CAST dates timestamps strings Oracle TO_CHAR LISTAGG REGEXP"
+      "llmFocus": "three-valued logic IS NULL NOT IN unknown COALESCE NVL CAST dates timestamps strings Oracle TO_CHAR LISTAGG REGEXP"
     },
     "sql_09": {
       "label": "Part 9",
