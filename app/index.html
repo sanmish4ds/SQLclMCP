@@ -1560,16 +1560,26 @@
         .replace(/\r\n/g, '\n')
         .replace(/\n{2,}/g, '. ')
         .replace(/\n/g, ', ')
-        .replace(/\s*—\s*/g, '. ')
+        .replace(/(\d)\s*[–-]\s*(\d)/g, '$1 to $2')
+        .replace(/\s*—\s*/g, ', ')
         .replace(/\s*–\s*/g, ', ')
         .replace(/\s*\.\s*\.\s*\.\s*/g, '. ')
         .replace(/\s+/g, ' ')
         .replace(/\s+([.,;:!?])/g, '$1')
         .trim();
+      // Glosses in parentheses: "tables (relations)" → "tables, such as relations"
+      // Skip comma or nested-open inside so SQL-style calls like NVL(a, b) stay unchanged.
+      s = s.replace(/\s*\(([^)]+)\)/g, function (full, inner) {
+        var t = String(inner).replace(/\s+/g, ' ').trim();
+        if (!t || t.length > 160) return full;
+        if (/[,(]/.test(t)) return full;
+        return ', such as ' + t;
+      });
       s = s.replace(/\b(e\.g\.|i\.e\.)\s*/gi, function (m) {
         return m.toLowerCase().indexOf('e') === 0 ? 'for example, ' : 'that is, ';
       });
       s = s.replace(/\s*&\s*/g, ' and ');
+      s = s.replace(/\bvs\.\s*/gi, 'versus ');
       s = s.replace(/([.!?])([A-Za-z])/g, '$1 $2');
       return s.trim();
     }
@@ -1592,7 +1602,7 @@
             buf = '';
             while (i + 1 < s.length && /\s/.test(s[i + 1])) i++;
           }
-        } else if (c === ';' && buf.length > 30) {
+        } else if (c === ';' && buf.length > 55) {
           var semi = buf.trim();
           if (semi.length > 1) chunks.push(semi);
           buf = '';
@@ -1605,7 +1615,7 @@
       var merged = [];
       var acc = '';
       chunks.forEach(function (ch) {
-        if (acc.length + ch.length < 120) {
+        if (acc.length + ch.length < 220) {
           acc = acc ? acc + ' ' + ch : ch;
         } else {
           if (acc) merged.push(acc);
@@ -1692,13 +1702,19 @@
       var text = guidedSpeechSession.chunks[guidedSpeechSession.index];
       var u = new SpeechSynthesisUtterance(text);
       if (guidedSpeechChunkIsHeadingCue(text)) {
-        u.rate = 0.86;
-        u.pitch = 1.05;
+        u.rate = 0.91;
+        u.pitch = 1.03;
       } else {
-        u.rate = 0.93;
-        u.pitch = 1.02;
+        u.rate = 0.97;
+        u.pitch = 1;
       }
-      if (guidedSpeechSession.voice) u.voice = guidedSpeechSession.voice;
+      u.volume = 1;
+      if (guidedSpeechSession.voice) {
+        u.voice = guidedSpeechSession.voice;
+        if (guidedSpeechSession.voice.lang) u.lang = guidedSpeechSession.voice.lang;
+      } else {
+        u.lang = 'en-US';
+      }
       u.onend = function () {
         if (guidedSpeechSession.stopped) return;
         guidedSpeechSession.index++;
@@ -1706,11 +1722,13 @@
           guidedVoiceControlsSetMode('paused');
           return;
         }
-        var gap = 120;
         var t = guidedSpeechSession.chunks[guidedSpeechSession.index - 1] || '';
-        if (guidedSpeechChunkIsHeadingCue(t)) gap = Math.max(gap, 380);
-        if (/[.!?]$/.test(t.trim())) gap = Math.max(gap, 280);
-        else if (/[,;]$/.test(t.trim())) gap = Math.max(gap, 160);
+        var tr = t.trim();
+        var gap = 55;
+        if (guidedSpeechChunkIsHeadingCue(t)) gap = 320;
+        else if (/[.!?…]$/.test(tr)) gap = 230;
+        else if (/[:,]$/.test(tr)) gap = 120;
+        else if (/[;]$/.test(tr)) gap = 140;
         window.setTimeout(function () { guidedSpeakStep(); }, gap);
       };
       u.onerror = function () {
@@ -1738,7 +1756,7 @@
       guidedSpeechSession.stopped = false;
       guidedSpeechSession.pauseRequested = false;
       guidedSpeechSession.voice = guidedPickEnglishVoice();
-      var intro = "I'll walk you through this like we're in class. ";
+      var intro = "I'll take you through this lesson in a relaxed way. ";
       guidedSpeechSession.chunks = guidedBuildSpeechChunksForLesson(intro, body);
       if (!guidedSpeechSession.chunks.length) {
         guidedSpeechSession.stopped = true;
