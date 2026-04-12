@@ -1359,15 +1359,13 @@
         clearTimeout(timer);
         const data = await r.json();
         executeAvailable = !!data.execute_sql_available;
-        guidedElevenLabsPodcastAvailable = !!data.guided_podcast_elevenlabs;
-        guidedElevenLabsDialogueAvailable = !!data.guided_podcast_dialogue;
-        guidedDialogueVoiceCollision = !!data.guided_podcast_dialogue_collision;
+        guidedApplyPodcastStatusFromHealth(data);
         try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
         statusEl.textContent = (data.status === 'ok' ? 'Connected to the tutor service.' : 'Server status unclear.') +
           ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
           '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.' +
           (data.guided_podcast_elevenlabs ? ' Podcast (ElevenLabs): on.' : '') +
-          (data.guided_podcast_dialogue ? ' Conversational (2 voices): on.' : '');
+          (data.guided_podcast_dialogue ? ' Listen (professor + student): on.' : '');
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
@@ -1382,6 +1380,7 @@
         guidedElevenLabsPodcastAvailable = false;
         guidedElevenLabsDialogueAvailable = false;
         guidedDialogueVoiceCollision = false;
+        guidedListenElevenLabsOnly = false;
         if (btnExecute) btnExecute.disabled = true;
         if (isTimeout) setTimeout(checkHealth, 15000);
       }
@@ -1398,8 +1397,10 @@
     var guidedElevenLabsPodcastAvailable = false;
     var guidedElevenLabsDialogueAvailable = false;
     var guidedDialogueVoiceCollision = false;
+    var guidedListenElevenLabsOnly = false;
 
     function guidedLessonVoiceUiAvailable() {
+      if (guidedListenElevenLabsOnly) return !!guidedElevenLabsPodcastAvailable;
       return guidedSpeechSupported || guidedElevenLabsPodcastAvailable;
     }
 
@@ -1415,6 +1416,45 @@
       el.hidden = false;
     }
 
+    function guidedApplyPodcastStatusFromHealth(h) {
+      if (!h) return;
+      guidedElevenLabsPodcastAvailable = !!h.guided_podcast_elevenlabs;
+      guidedElevenLabsDialogueAvailable = !!h.guided_podcast_dialogue;
+      guidedDialogueVoiceCollision = !!h.guided_podcast_dialogue_collision;
+      guidedListenElevenLabsOnly = !!h.guided_listen_elevenlabs_only;
+    }
+
+    function guidedApplyPodcastStatusFromTts(d) {
+      if (!d) return;
+      if (typeof d.enabled === 'boolean') guidedElevenLabsPodcastAvailable = d.enabled;
+      guidedElevenLabsDialogueAvailable =
+        typeof d.dialogue_enabled === 'boolean' ? d.dialogue_enabled : false;
+      guidedDialogueVoiceCollision =
+        typeof d.dialogue_voice_collision === 'boolean' ? d.dialogue_voice_collision : false;
+      if (typeof d.guided_listen_elevenlabs_only === 'boolean') {
+        guidedListenElevenLabsOnly = d.guided_listen_elevenlabs_only;
+      }
+    }
+
+    function guidedHandleListenPlayFailure(script) {
+      if (!guidedListenElevenLabsOnly && guidedSpeechSupported) {
+        guidedSpeechSession.mode = 'browser';
+        if (guidedSpeechSession.objectUrl) {
+          try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
+        }
+        guidedSpeechSession.objectUrl = null;
+        guidedSpeechSession.audioEl = null;
+        startGuidedBrowserSpeechFromScript(script);
+        return;
+      }
+      guidedStopLessonSpeech(true);
+      guidedSetPodcastError(
+        guidedListenElevenLabsOnly
+          ? 'Could not play ElevenLabs audio (try clicking Listen again after interacting with the page).'
+          : 'Could not start audio playback.'
+      );
+    }
+
     async function guidedRefreshPodcastTtsAvailable() {
       try {
         var ctrl = new AbortController();
@@ -1423,19 +1463,7 @@
         clearTimeout(timer);
         if (!r.ok) return;
         var d = await r.json().catch(function () { return null; });
-        if (d && typeof d.enabled === 'boolean') {
-          guidedElevenLabsPodcastAvailable = d.enabled;
-        }
-        if (d && typeof d.dialogue_enabled === 'boolean') {
-          guidedElevenLabsDialogueAvailable = d.dialogue_enabled;
-        } else {
-          guidedElevenLabsDialogueAvailable = false;
-        }
-        if (d && typeof d.dialogue_voice_collision === 'boolean') {
-          guidedDialogueVoiceCollision = d.dialogue_voice_collision;
-        } else {
-          guidedDialogueVoiceCollision = false;
-        }
+        guidedApplyPodcastStatusFromTts(d);
         try { guidedVoiceControlsSetMode('idle'); } catch (_) {}
       } catch (_) { /* keep previous flag */ }
     }
@@ -1452,7 +1480,7 @@
       elevenLabsAbort: null,
     };
 
-    function guidedStopLessonSpeech() {
+    function guidedStopLessonSpeech(keepPodcastErrorMessage) {
       guidedSpeechSession.stopped = true;
       guidedSpeechSession.pauseRequested = false;
       guidedSpeechSession.chunks = [];
@@ -1474,7 +1502,7 @@
         try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
         guidedSpeechSession.objectUrl = null;
       }
-      guidedSetPodcastError('');
+      if (!keepPodcastErrorMessage) guidedSetPodcastError('');
       if (guidedSpeechSupported) {
         try { window.speechSynthesis.cancel(); } catch (_) {}
       }
@@ -1494,15 +1522,19 @@
         listen.textContent = 'Listen';
         listen.setAttribute(
           'aria-label',
-          guidedElevenLabsDialogueAvailable
-            ? 'Play lesson as a conversational two-voice podcast (ElevenLabs), or browser voice'
-            : 'Play lesson as a short podcast (ElevenLabs on server, or browser voice)'
+          guidedListenElevenLabsOnly
+            ? guidedElevenLabsDialogueAvailable
+              ? 'Play lesson as professor-and-student dialogue (ElevenLabs)'
+              : 'Play lesson as a podcast (ElevenLabs)'
+            : guidedElevenLabsDialogueAvailable
+              ? 'Play lesson as professor-and-student dialogue (ElevenLabs), or browser voice'
+              : 'Play lesson as a short podcast (ElevenLabs on server, or browser voice)'
         );
         listen.removeAttribute('aria-pressed');
         if (hasLesson && guidedLessonVoiceUiAvailable()) {
           if (guidedDialogueVoiceCollision) {
             listen.title =
-              'Host and guest use the same ElevenLabs voice id — set a different ELEVENLABS_DIALOGUE_VOICE_ID on the server.';
+              'Professor and student need different voice ids — set ELEVENLABS_DIALOGUE_VOICE_ID to the student voice on the server.';
           } else {
             listen.removeAttribute('title');
           }
@@ -1543,7 +1575,9 @@
         }
       }
       if (!guidedLessonVoiceUiAvailable()) {
-        listen.title = 'Podcast needs ElevenLabs on the server (ELEVENLABS_API_KEY) or a browser that supports speech synthesis';
+        listen.title = guidedListenElevenLabsOnly
+          ? 'ElevenLabs only: set ELEVENLABS_API_KEY on the server (browser speech is disabled).'
+          : 'Listen needs ElevenLabs on the server (ELEVENLABS_API_KEY) or a browser that supports speech synthesis';
         if (pauseB) pauseB.hidden = true;
         if (stopB) stopB.hidden = true;
       }
@@ -1865,76 +1899,73 @@
     }
 
     /**
-     * Host / guest turns for ElevenLabs text-to-dialogue (eleven_v3).
-     * Host frames sections; guest delivers the teaching paragraphs.
+     * Professor (ELEVENLABS_VOICE_ID) + student (ELEVENLABS_DIALOGUE_VOICE_ID) for stitched Listen.
+     * Headings → professor; each lesson paragraph → student question, then professor teaching that text.
      */
     function guidedBuildDialogueTurnsForApi(outEl) {
       if (!outEl) return null;
       var body = guidedLessonPlainTextForSpeech(outEl);
       if (!body || body.length < 30) return null;
       var turns = [];
+      var studentPrompts = [
+        'When would I actually use this at work in analytics — like, what kind of request lands on my desk?',
+        'How is this different from what we did in the last chapter? I do not want to mix the patterns up.',
+        'Could you tie this to a business problem — what would a stakeholder be trying to see in the data?',
+        'If I picture the database engine for a second, what is roughly happening under the hood when I run this kind of SQL?',
+        'Any Oracle-specific tip here — something I would trip over in SQL Developer or Autonomous Database?',
+        'Can you give me a real-world analogy so the idea sticks before we move on?',
+        'What is the practical gotcha people hit in production, even if the textbook version looks easy?',
+      ];
+      var promptI = 0;
       turns.push({
-        speaker: 'host',
+        speaker: 'professor',
         text: guidedPrepareTextForConversationalSpeech(
-          "You're listening to Path Notes — a quick, conversational take on this SQL lesson."
+          "Welcome. I am your professor for this segment — fifteen years teaching SQL and working with production data stacks. " +
+            'I will use real-world analogies, reference how the engine tends to think when it helps, and call out Oracle-specific details when they matter. ' +
+            'With me is a student focused on analytics — she will ask the job-level questions so we stay grounded.'
         ),
       });
       turns.push({
-        speaker: 'guest',
+        speaker: 'student',
         text: guidedPrepareTextForConversationalSpeech(
-          "I'll translate the lesson into plain language, and we'll move through it one beat at a time."
+          'I am learning SQL for data analytics — reports, metrics, and explaining trends to the business. ' +
+            'I will push on when I would use an idea on the job, how it differs from earlier material, and what executives actually care about.'
         ),
       });
-      var segs = String(body)
+      String(body)
         .split(/\n\n+/)
         .map(function (s) {
           return s.trim();
         })
-        .filter(Boolean);
-      var prevGuest = false;
-      var bridgeN = 0;
-      var hostBridges = [
-        'Got it — keep going.',
-        'What should listeners lock in there?',
-        'Break that down one more step.',
-      ];
-      segs.forEach(function (seg) {
-        var p = guidedPrepareTextForConversationalSpeech(seg).trim();
-        if (!p) return;
-        if (guidedSpeechChunkIsHeadingCue(p)) {
-          turns.push({ speaker: 'host', text: p });
-          prevGuest = false;
-        } else {
-          if (prevGuest) {
-            turns.push({
-              speaker: 'host',
-              text: guidedPrepareTextForConversationalSpeech(hostBridges[bridgeN % hostBridges.length]),
-            });
-            bridgeN++;
+        .filter(Boolean)
+        .forEach(function (seg) {
+          var p = guidedPrepareTextForConversationalSpeech(seg).trim();
+          if (!p) return;
+          if (guidedSpeechChunkIsHeadingCue(p)) {
+            turns.push({ speaker: 'professor', text: p });
+            return;
           }
-          turns.push({ speaker: 'guest', text: p });
-          prevGuest = true;
-        }
-      });
+          turns.push({
+            speaker: 'student',
+            text: guidedPrepareTextForConversationalSpeech(studentPrompts[promptI % studentPrompts.length]),
+          });
+          promptI += 1;
+          turns.push({ speaker: 'professor', text: p });
+        });
       turns.push({
-        speaker: 'host',
+        speaker: 'student',
         text: guidedPrepareTextForConversationalSpeech(
-          "That's the gist for this stop on the path. When you're ready, try the guided practice or the sample SQL in the lesson."
+          'That helped. I will hit the practice chips and run this against the lab schema. How do I know I am ready to move on?'
         ),
       });
       turns.push({
-        speaker: 'guest',
-        text: guidedPrepareTextForConversationalSpeech('Thanks for listening — catch you in the next chapter.'),
+        speaker: 'professor',
+        text: guidedPrepareTextForConversationalSpeech(
+          'When you can explain the core idea aloud without the notes and reproduce the main SQL pattern, you are in good shape. ' +
+            'Use the guided practice and sample SQL in this lesson — I will see you in the next chapter.'
+        ),
       });
       return turns;
-    }
-
-    /** First chunk of dialogue for quicker time-to-play; server needs ≥2 turns per request. */
-    function guidedSplitDialogueForEarlyPlay(turns) {
-      if (!turns || turns.length < 8) return { first: turns, second: null };
-      var mid = Math.min(6, Math.max(4, Math.round(turns.length * 0.32)));
-      if (mid < 2 || turns.length - mid < 2) return { first: turns, second: null };
-      return { first: turns.slice(0, mid), second: turns.slice(mid) };
     }
 
     /** Rebuild chunk queue from script produced by guidedBuildPodcastScriptForApi. */
@@ -1974,9 +2005,9 @@
           var useDialogue =
             guidedElevenLabsDialogueAvailable && dialogueTurns && dialogueTurns.length >= 2;
           var sig = guidedSpeechSession.elevenLabsAbort.signal;
-          if (useDialogue) {
-            guidedSetPodcastError(dialogueTurns.length >= 8 ? 'Preparing audio (first part)…' : 'Preparing audio…');
-          }
+          var podcastBody = useDialogue
+            ? JSON.stringify({ dialogue: dialogueTurns, text: script })
+            : JSON.stringify({ text: script });
 
           function playElevenLabsBlob(blob, onEndedFn) {
             if (guidedSpeechSession.stopped) return;
@@ -1998,123 +2029,37 @@
             var playP = audio.play();
             if (playP && playP.catch) {
               playP.catch(function () {
-                if (guidedSpeechSupported) {
-                  guidedSpeechSession.mode = 'browser';
-                  if (guidedSpeechSession.objectUrl) {
-                    try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
-                  }
-                  guidedSpeechSession.objectUrl = null;
-                  guidedSpeechSession.audioEl = null;
-                  startGuidedBrowserSpeechFromScript(script);
-                } else {
-                  guidedStopLessonSpeech();
-                }
+                guidedHandleListenPlayFailure(script);
               });
             }
           }
 
-          var split = useDialogue ? guidedSplitDialogueForEarlyPlay(dialogueTurns) : null;
-          var useSplit = !!(split && split.second && split.second.length >= 2);
-
-          if (useSplit) {
-            var p2 = fetch(API_BASE_URL + '/guided-podcast-tts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ dialogue: split.second, text: script }),
-              signal: sig,
-            }).then(function (r2) {
-              if (!r2.ok) {
-                return r2.json().catch(function () { return {}; }).then(function (j2) {
-                  throw new Error((j2 && j2.error) || 'HTTP ' + r2.status);
-                });
-              }
-              return r2.blob();
-            });
-            var r1 = await fetch(API_BASE_URL + '/guided-podcast-tts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ dialogue: split.first, text: script }),
-              signal: sig,
-            });
-            if (!r1.ok) {
-              var errJ1 = await r1.json().catch(function () { return {}; });
-              throw new Error(errJ1.error || ('HTTP ' + r1.status));
-            }
-            if (guidedSpeechSession.stopped) return;
-            var blob1 = await r1.blob();
-            if (guidedSpeechSession.stopped) return;
-            guidedSetPodcastError('');
-            var audio1 = new Audio();
-            guidedSpeechSession.audioEl = audio1;
-            if (guidedSpeechSession.objectUrl) {
-              try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
-            }
-            guidedSpeechSession.objectUrl = URL.createObjectURL(blob1);
-            audio1.src = guidedSpeechSession.objectUrl;
-            audio1.setAttribute('playsinline', '');
-            audio1.onended = function () {
-              if (guidedSpeechSession.stopped || guidedSpeechSession.mode !== 'elevenlabs') return;
-              p2.then(function (blob2) {
-                if (guidedSpeechSession.stopped || guidedSpeechSession.mode !== 'elevenlabs') return;
-                audio1.removeAttribute('src');
-                try { audio1.load(); } catch (_) {}
-                playElevenLabsBlob(blob2, function () {
-                  if (guidedSpeechSession.mode === 'elevenlabs') guidedStopLessonSpeech();
-                });
-              }).catch(function (e2) {
-                guidedSetPodcastError(
-                  'Second part of the podcast failed. ' +
-                    (e2 && e2.message ? String(e2.message).slice(0, 180) : '')
-                );
-                guidedStopLessonSpeech();
-              });
-            };
-            audio1.onerror = function () {
-              guidedStopLessonSpeech();
-            };
-            var playP1 = audio1.play();
-            if (playP1 && playP1.catch) {
-              playP1.catch(function () {
-                if (guidedSpeechSupported) {
-                  guidedSpeechSession.mode = 'browser';
-                  if (guidedSpeechSession.objectUrl) {
-                    try { URL.revokeObjectURL(guidedSpeechSession.objectUrl); } catch (_) {}
-                  }
-                  guidedSpeechSession.objectUrl = null;
-                  guidedSpeechSession.audioEl = null;
-                  startGuidedBrowserSpeechFromScript(script);
-                } else {
-                  guidedStopLessonSpeech();
-                }
-              });
-            }
-          } else {
-            var podcastBody = useDialogue
-              ? JSON.stringify({ dialogue: dialogueTurns, text: script })
-              : JSON.stringify({ text: script });
-            var r = await fetch(API_BASE_URL + '/guided-podcast-tts', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: podcastBody,
-              signal: sig,
-            });
-            if (!r.ok) {
-              var errJ = await r.json().catch(function () { return {}; });
-              throw new Error(errJ.error || ('HTTP ' + r.status));
-            }
-            if (guidedSpeechSession.stopped) return;
-            var blob = await r.blob();
-            if (guidedSpeechSession.stopped) return;
-            guidedSetPodcastError('');
-            playElevenLabsBlob(blob);
+          var r = await fetch(API_BASE_URL + '/guided-podcast-tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: podcastBody,
+            signal: sig,
+          });
+          if (!r.ok) {
+            var errJ = await r.json().catch(function () { return {}; });
+            throw new Error(errJ.error || ('HTTP ' + r.status));
           }
+          if (guidedSpeechSession.stopped) return;
+          var blob = await r.blob();
+          if (guidedSpeechSession.stopped) return;
+          guidedSetPodcastError('');
+          playElevenLabsBlob(blob);
         } catch (err) {
           if (err && err.name === 'AbortError') {
-            guidedSetPodcastError('Podcast request timed out or was cancelled. If synthesis is long, wait and try again, or use browser voice if available.');
+            guidedSetPodcastError(
+              guidedListenElevenLabsOnly
+                ? 'Podcast request timed out or was cancelled.'
+                : 'Podcast request timed out or was cancelled. If synthesis is long, wait and try again, or use browser voice if available.'
+            );
             guidedStopLessonSpeech();
             return;
           }
-          if (guidedSpeechSupported) {
+          if (!guidedListenElevenLabsOnly && guidedSpeechSupported) {
             guidedSetPodcastError('ElevenLabs failed; using browser voice instead. ' + (err && err.message ? String(err.message).slice(0, 200) : ''));
             guidedSpeechSession.mode = 'browser';
             if (guidedSpeechSession.objectUrl) {
@@ -2125,7 +2070,11 @@
             startGuidedBrowserSpeechFromScript(script);
             return;
           }
-          guidedSetPodcastError('Podcast failed: ' + (err && err.message ? err.message : String(err)));
+          guidedSetPodcastError(
+            (guidedListenElevenLabsOnly ? 'ElevenLabs only — ' : '') +
+              'Podcast failed: ' +
+              (err && err.message ? err.message : String(err))
+          );
           guidedStopLessonSpeech();
         } finally {
           try { clearTimeout(podcastFetchTimer); } catch (_) {}
@@ -2133,6 +2082,12 @@
         return;
       }
 
+      if (guidedListenElevenLabsOnly) {
+        guidedSetPodcastError('ElevenLabs is not available from this server (set ELEVENLABS_API_KEY).');
+        guidedSpeechSession.stopped = true;
+        guidedVoiceControlsSetMode('idle');
+        return;
+      }
       if (!guidedSpeechSupported) return;
       guidedSpeechSession.mode = 'browser';
       startGuidedBrowserSpeechFromScript(script);
@@ -2377,7 +2332,11 @@
         '<button type="button" class="guided-choice primary" data-guided-llm-expand="1">Load lesson</button>' +
         '<div class="guided-voice-controls">' +
         '<button type="button" class="guided-choice" data-guided-voice="1" disabled ' +
-        (guidedLessonVoiceUiAvailable() ? '' : 'title="Needs server ElevenLabs key or browser speech" ') +
+        (guidedLessonVoiceUiAvailable()
+          ? ''
+          : guidedListenElevenLabsOnly
+            ? 'title="ElevenLabs only — set ELEVENLABS_API_KEY on the server" '
+            : 'title="Needs server ElevenLabs key or browser speech" ') +
         'aria-label="Play lesson as podcast-style audio">Listen</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-pause="1" hidden disabled ' +
         'aria-label="Pause">Pause</button>' +
@@ -2968,11 +2927,7 @@
         void fetch(API_BASE_URL + '/guided-podcast-tts-status')
           .then(function (rs) { return rs.json(); })
           .then(function (d) {
-            if (d && d.enabled) guidedElevenLabsPodcastAvailable = true;
-            if (d && d.dialogue_enabled) guidedElevenLabsDialogueAvailable = true;
-            if (d && typeof d.dialogue_voice_collision === 'boolean') {
-              guidedDialogueVoiceCollision = d.dialogue_voice_collision;
-            }
+            guidedApplyPodcastStatusFromTts(d);
           })
           .catch(function () { /* ignore */ })
           .then(function () {
@@ -2981,7 +2936,9 @@
             if (!guidedLessonVoiceUiAvailable()) {
               var vb0 = panel.querySelector('[data-guided-voice]');
               if (vb0) {
-                vb0.title = 'Set ELEVENLABS_API_KEY on the server, or use a browser with speech synthesis';
+                vb0.title = guidedListenElevenLabsOnly
+                  ? 'ElevenLabs only: set ELEVENLABS_API_KEY on the server.'
+                  : 'Set ELEVENLABS_API_KEY on the server, or use a browser with speech synthesis';
               }
             }
           });
