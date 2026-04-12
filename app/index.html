@@ -1898,38 +1898,38 @@
       return chunks.join('\n\n');
     }
 
+    /** True when this block is already a question from the lesson (e.g. Quick check), not a canned prompt. */
+    function guidedSegmentIsLessonQuestion(p) {
+      var s = String(p || '').trim();
+      if (!s || s.length > 360) return false;
+      if (guidedSpeechChunkIsHeadingCue(s)) return false;
+      if (!/\?\s*$/.test(s)) return false;
+      if (s.length < 12) return false;
+      return true;
+    }
+
     /**
-     * Professor (ELEVENLABS_VOICE_ID) + student (ELEVENLABS_DIALOGUE_VOICE_ID) for stitched Listen.
-     * Headings → professor; each lesson paragraph → student question, then professor teaching that text.
+     * Male professor (ELEVENLABS_VOICE_ID) + female student (ELEVENLABS_DIALOGUE_VOICE_ID).
+     * Student speaks only lesson-derived questions (lines ending in ?). Professor speaks headings and all other teaching text.
      */
     function guidedBuildDialogueTurnsForApi(outEl) {
       if (!outEl) return null;
       var body = guidedLessonPlainTextForSpeech(outEl);
       if (!body || body.length < 30) return null;
       var turns = [];
-      var studentPrompts = [
-        'When would I actually use this at work in analytics — like, what kind of request lands on my desk?',
-        'How is this different from what we did in the last chapter? I do not want to mix the patterns up.',
-        'Could you tie this to a business problem — what would a stakeholder be trying to see in the data?',
-        'If I picture the database engine for a second, what is roughly happening under the hood when I run this kind of SQL?',
-        'Any Oracle-specific tip here — something I would trip over in SQL Developer or Autonomous Database?',
-        'Can you give me a real-world analogy so the idea sticks before we move on?',
-        'What is the practical gotcha people hit in production, even if the textbook version looks easy?',
-      ];
-      var promptI = 0;
       turns.push({
         speaker: 'professor',
         text: guidedPrepareTextForConversationalSpeech(
-          "Welcome. I am your professor for this segment — fifteen years teaching SQL and working with production data stacks. " +
-            'I will use real-world analogies, reference how the engine tends to think when it helps, and call out Oracle-specific details when they matter. ' +
-            'With me is a student focused on analytics — she will ask the job-level questions so we stay grounded.'
+          "Welcome. I'm your professor for this segment — fifteen years teaching SQL and working with production databases. " +
+            "I'll lean on real-world analogies, talk through how the engine tends to think when it helps, and call out Oracle-specific details where they matter. " +
+            "With me is a student focused on analytics — she'll ask the questions that actually show up in the lesson and on the job."
         ),
       });
       turns.push({
         speaker: 'student',
         text: guidedPrepareTextForConversationalSpeech(
-          'I am learning SQL for data analytics — reports, metrics, and explaining trends to the business. ' +
-            'I will push on when I would use an idea on the job, how it differs from earlier material, and what executives actually care about.'
+          "I'm studying SQL for data analytics — reports, metrics, and explaining trends to the business. " +
+            "I'll only chime in with real questions from this chapter when they come up — like the quick checks — not a script."
         ),
       });
       String(body)
@@ -1945,24 +1945,23 @@
             turns.push({ speaker: 'professor', text: p });
             return;
           }
-          turns.push({
-            speaker: 'student',
-            text: guidedPrepareTextForConversationalSpeech(studentPrompts[promptI % studentPrompts.length]),
-          });
-          promptI += 1;
+          if (guidedSegmentIsLessonQuestion(p)) {
+            turns.push({ speaker: 'student', text: p });
+            return;
+          }
           turns.push({ speaker: 'professor', text: p });
         });
       turns.push({
         speaker: 'student',
         text: guidedPrepareTextForConversationalSpeech(
-          'That helped. I will hit the practice chips and run this against the lab schema. How do I know I am ready to move on?'
+          "That helped — I'll hit the practice chips and the lab schema. How do I know I'm ready for the next part?"
         ),
       });
       turns.push({
         speaker: 'professor',
         text: guidedPrepareTextForConversationalSpeech(
-          'When you can explain the core idea aloud without the notes and reproduce the main SQL pattern, you are in good shape. ' +
-            'Use the guided practice and sample SQL in this lesson — I will see you in the next chapter.'
+          "When you can explain the core idea without the notes and reproduce the main SQL pattern from memory, you're in good shape. " +
+            "Work through the guided practice and sample SQL in this lesson — I'll see you in the next chapter."
         ),
       });
       return turns;

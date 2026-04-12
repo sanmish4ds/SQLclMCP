@@ -835,7 +835,7 @@ const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilin
 const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_turbo_v2_5').trim();
 const ELEVENLABS_OUTPUT_FORMAT = (process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_128').trim();
 const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
-/** Student voice for guided “Listen” (stitched TTS). Professor = ELEVENLABS_VOICE_ID. */
+/** Female student voice for guided “Listen” (stitched TTS). Male professor = ELEVENLABS_VOICE_ID. */
 const ELEVENLABS_DIALOGUE_VOICE_ID = (process.env.ELEVENLABS_DIALOGUE_VOICE_ID || '').trim();
 const ELEVENLABS_DIALOGUE_TURN_MAX = Math.min(
   4500,
