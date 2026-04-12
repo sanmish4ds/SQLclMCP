@@ -1636,7 +1636,7 @@
       return chunks;
     }
 
-    /** Prefer a male-presenting English voice (names vary by OS/browser). */
+    /** Prefer a female-presenting English voice (names vary by OS/browser). */
     function guidedPickEnglishVoice() {
       if (!guidedSpeechSupported) return null;
       var voices = window.speechSynthesis.getVoices();
@@ -1646,31 +1646,32 @@
       }
       function soundsFemale(v) {
         var s = voiceKey(v).toLowerCase();
-        return /\b(female|woman|girl|zira|samantha|karen|victoria|fiona|moira|tessa|serena|joanna|ivy|kimberly|kendra|nicole|freya|martha|salli|catherine|hazel|sonia|google uk english female)\b/.test(s) ||
+        return /\b(female|woman|girl|zira|samantha|karen|victoria|fiona|moira|tessa|serena|joanna|ivy|kimberly|kendra|nicole|freya|martha|salli|catherine|hazel|sonia|susan|allison|linda|sarah|emily|kelly|laura|olivia|emma|ava|jenny|google uk english female)\b/.test(s) ||
           (/\bgoogle us english\b/.test(s) && !/\bmale\b/.test(s));
       }
       function soundsMale(v) {
         var s = voiceKey(v).toLowerCase();
         if (soundsFemale(v)) return false;
-        return /\b(male|microsoft david|google us english male|google uk english male|daniel|fred\b|arthur|aaron|oliver|george|ryan|guy|philip|thomas|tony|brian|lee\b|william|james|tom\b|mark\s*-|nathan|elliott)\b/.test(s) ||
-          (/\bdavid\b/.test(s) && /\benglish\b/.test(s));
+        return /\b(male|microsoft david|google us english male|google uk english male|daniel|fred\b|arthur|aaron|oliver|george|ryan|guy|philip|thomas|tom\b|tony|brian|mark\s*-|nathan|elliott)\b/.test(s) ||
+          (/\bmicrosoft\s+david\b/.test(s));
       }
       function isEn(v) {
         return v.lang && /^en/i.test(v.lang);
       }
       var en = voices.filter(isEn);
       if (!en.length) return null;
-      var preferOrder = [
-        en.filter(function (v) { return /^en-US/i.test(v.lang) && soundsMale(v); }),
-        en.filter(function (v) { return /^en-GB/i.test(v.lang) && soundsMale(v); }),
-        en.filter(function (v) { return soundsMale(v); }),
-        en.filter(function (v) { return /^en-US/i.test(v.lang) && !soundsFemale(v); }),
-        en.filter(function (v) { return /^en-GB/i.test(v.lang) && !soundsFemale(v); }),
-        en.filter(function (v) { return !soundsFemale(v); }),
+      var pools = [
+        en.filter(function (v) { return /^en-US/i.test(v.lang) && soundsFemale(v); }),
+        en.filter(function (v) { return /^en-GB/i.test(v.lang) && soundsFemale(v); }),
+        en.filter(function (v) { return soundsFemale(v); }),
+        en.filter(function (v) { return /^en-US/i.test(v.lang) && !soundsMale(v); }),
+        en.filter(function (v) { return /^en-GB/i.test(v.lang) && !soundsMale(v); }),
+        en.filter(function (v) { return /^en-US/i.test(v.lang); }),
+        en.filter(function (v) { return /^en-GB/i.test(v.lang); }),
         en,
       ];
-      for (var i = 0; i < preferOrder.length; i++) {
-        if (preferOrder[i].length) return preferOrder[i][0];
+      for (var i = 0; i < pools.length; i++) {
+        if (pools[i].length) return pools[i][0];
       }
       return null;
     }
