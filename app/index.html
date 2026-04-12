@@ -1103,11 +1103,6 @@
       font-size: 0.82rem;
       line-height: 1.45;
     }
-    .guided-quickcheck-actions {
-      margin: 0.5rem 0 0.85rem;
-      padding: 0.65rem 0 0;
-      border-top: 1px dashed var(--border-strong);
-    }
     .guided-ai-actions {
       margin-bottom: 0.65rem;
     }
@@ -1245,7 +1240,7 @@
       <div class="brand-mark" aria-hidden="true">◇</div>
       <div class="brand-text">
         <h1>Easy NL2SQL</h1>
-        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts); each part loads a <strong>self-contained on-demand lesson</strong> (novice-friendly depth, Oracle + TPC-H lab SQL, five or more quick-check questions per part). <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
+        <p class="sub"><strong>Interactive path</strong> — a structured <strong>SQL syllabus</strong> (14 parts); each part loads a <strong>self-contained on-demand lesson</strong> (novice-friendly depth, Oracle + TPC-H lab SQL). <strong>Interview prep</strong> uses topic cards. <strong>Guided practice</strong> answers any question. Always verify SQL before you run it.</p>
       </div>
     </div>
   </header>
@@ -1365,7 +1360,7 @@
           ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
           '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.' +
           (data.guided_podcast_elevenlabs ? ' Podcast (ElevenLabs): on.' : '') +
-          (data.guided_podcast_dialogue ? ' Listen (professor + student): on.' : '');
+          (data.guided_podcast_dialogue ? ' Listen (two female voices): on.' : '');
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
@@ -1524,17 +1519,17 @@
           'aria-label',
           guidedListenElevenLabsOnly
             ? guidedElevenLabsDialogueAvailable
-              ? 'Play lesson as professor-and-student dialogue (ElevenLabs)'
+              ? 'Play lesson with two female voices — host and reader lines (ElevenLabs)'
               : 'Play lesson as a podcast (ElevenLabs)'
             : guidedElevenLabsDialogueAvailable
-              ? 'Play lesson as professor-and-student dialogue (ElevenLabs), or browser voice'
+              ? 'Play lesson with two female voices (ElevenLabs), or browser voice'
               : 'Play lesson as a short podcast (ElevenLabs on server, or browser voice)'
         );
         listen.removeAttribute('aria-pressed');
         if (hasLesson && guidedLessonVoiceUiAvailable()) {
           if (guidedDialogueVoiceCollision) {
             listen.title =
-              'Professor and student need different voice ids — set ELEVENLABS_DIALOGUE_VOICE_ID to the second (student) voice on the server.';
+              'Two-voice Listen needs two different female voice ids on the server — set ELEVENLABS_DIALOGUE_VOICE_ID to a second female voice (e.g. Bella).';
           } else {
             listen.removeAttribute('title');
           }
@@ -1601,7 +1596,7 @@
       var tr = container.querySelector('.tutor-response');
       if (!tr) return '';
       var clone = tr.cloneNode(true);
-      clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result, .guided-quickcheck-actions').forEach(function (el) {
+      clone.querySelectorAll('pre, .guided-sql-pre, button, .guided-sql-actions, .guided-sql-result').forEach(function (el) {
         el.remove();
       });
       var parts = [];
@@ -1801,7 +1796,7 @@
       return chunks;
     }
 
-    /** Prefer a female-presenting English voice (names vary by OS/browser). */
+    /** Female English voice only for guided Listen (no male fallback; names vary by OS/browser). */
     function guidedPickEnglishVoice() {
       if (!guidedSpeechSupported) return null;
       var voices = window.speechSynthesis.getVoices();
@@ -1814,12 +1809,6 @@
         return /\b(female|woman|girl|zira|samantha|karen|victoria|fiona|moira|tessa|serena|joanna|ivy|kimberly|kendra|nicole|freya|martha|salli|catherine|hazel|sonia|susan|allison|linda|sarah|emily|kelly|laura|olivia|emma|ava|jenny|google uk english female)\b/.test(s) ||
           (/\bgoogle us english\b/.test(s) && !/\bmale\b/.test(s));
       }
-      function soundsMale(v) {
-        var s = voiceKey(v).toLowerCase();
-        if (soundsFemale(v)) return false;
-        return /\b(male|microsoft david|google us english male|google uk english male|daniel|fred\b|arthur|aaron|oliver|george|ryan|guy|philip|thomas|tom\b|tony|brian|mark\s*-|nathan|elliott)\b/.test(s) ||
-          (/\bmicrosoft\s+david\b/.test(s));
-      }
       function isEn(v) {
         return v.lang && /^en/i.test(v.lang);
       }
@@ -1829,11 +1818,6 @@
         en.filter(function (v) { return /^en-US/i.test(v.lang) && soundsFemale(v); }),
         en.filter(function (v) { return /^en-GB/i.test(v.lang) && soundsFemale(v); }),
         en.filter(function (v) { return soundsFemale(v); }),
-        en.filter(function (v) { return /^en-US/i.test(v.lang) && !soundsMale(v); }),
-        en.filter(function (v) { return /^en-GB/i.test(v.lang) && !soundsMale(v); }),
-        en.filter(function (v) { return /^en-US/i.test(v.lang); }),
-        en.filter(function (v) { return /^en-GB/i.test(v.lang); }),
-        en,
       ];
       for (var i = 0; i < pools.length; i++) {
         if (pools[i].length) return pools[i][0];
@@ -1911,7 +1895,7 @@
       return chunks.join('\n\n');
     }
 
-    /** True when this block is already a question from the lesson (e.g. Quick check), not a canned prompt. */
+    /** True when this block is already a question from the lesson, not a canned prompt. */
     function guidedSegmentIsLessonQuestion(p) {
       var s = String(p || '').trim();
       if (!s || s.length > 360) return false;
@@ -1922,8 +1906,8 @@
     }
 
     /**
-     * Male professor + male student; starts at chapter content only (no scripted intro or outro).
-     * Student: lesson lines ending in ?. Professor: headings and other teaching text.
+     * Two female-presenting roles in API payload (professor | student): headings vs lines ending in ?.
+     * Both map to female ElevenLabs voices on the server. Starts at chapter content only.
      */
     function guidedBuildDialogueTurnsForApi(outEl) {
       if (!outEl) return null;
@@ -2321,7 +2305,7 @@
           : guidedListenElevenLabsOnly
             ? 'title="ElevenLabs only — set ELEVENLABS_API_KEY on the server" '
             : 'title="Needs server ElevenLabs key or browser speech" ') +
-        'aria-label="Play lesson as podcast-style audio">Listen</button>' +
+        'aria-label="Play lesson audio with a female voice">Listen</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-pause="1" hidden disabled ' +
         'aria-label="Pause">Pause</button>' +
         '<button type="button" class="guided-choice" data-guided-voice-stop="1" hidden disabled ' +
@@ -2802,64 +2786,6 @@
       return '<div class="explain-box explain-box--md">' + (inner || '<p class="tutor-p">(No explanation text.)</p>') + '</div>';
     }
 
-    /** After lesson HTML is set, add Guided practice chips under ## Quick check. */
-    function enhanceLessonQuickCheck(container) {
-      if (!container) return;
-      var headings = container.querySelectorAll('h2.tutor-h2, h3.tutor-h3, h4.tutor-h4');
-      for (var hi = 0; hi < headings.length; hi++) {
-        var h = headings[hi];
-        var ht = (h.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!/\bquick\s*check\b/i.test(ht)) continue;
-        var chips = [];
-        var insertAfter = h;
-        var el = h.nextElementSibling;
-        while (el) {
-          var tag = el.tagName;
-          var cls = el.className || '';
-          if ((tag === 'H2' || tag === 'H3' || tag === 'H4') && /\btutor-h\b/.test(cls)) break;
-          if (tag === 'UL' && /\btutor-ul\b/.test(cls)) {
-            el.querySelectorAll('li').forEach(function (li) {
-              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
-              if (q.length >= 8) chips.push(q);
-            });
-          } else if (tag === 'OL' && /\btutor-ol\b/.test(cls)) {
-            el.querySelectorAll('li').forEach(function (li) {
-              var q = (li.textContent || '').replace(/\s+/g, ' ').trim();
-              if (q.length >= 8) chips.push(q);
-            });
-          } else if (tag === 'P' && /\btutor-p\b/.test(cls)) {
-            var pq = (el.textContent || '').replace(/\s+/g, ' ').trim();
-            if (pq.length >= 20) chips.push(pq);
-          }
-          insertAfter = el;
-          el = el.nextElementSibling;
-        }
-        if (!chips.length) continue;
-        var wrap = document.createElement('div');
-        wrap.className = 'guided-quickcheck-actions';
-        var lbl = document.createElement('p');
-        lbl.className = 'guided-chip-label';
-        lbl.style.marginTop = '0';
-        lbl.style.marginBottom = '0.4rem';
-        lbl.textContent = 'Ask in Guided practice';
-        var row = document.createElement('div');
-        row.className = 'guided-chip-row';
-        chips.forEach(function (q) {
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'guided-chip';
-          b.setAttribute('data-guided-prompt', '1');
-          b.setAttribute('title', 'Open Guided practice with this question');
-          b.textContent = q;
-          row.appendChild(b);
-        });
-        wrap.appendChild(lbl);
-        wrap.appendChild(row);
-        insertAfter.insertAdjacentElement('afterend', wrap);
-        break;
-      }
-    }
-
     async function runGuidedChapterLlmExpand() {
       if (!guidedState.ids.length || guidedState.visit !== 'learning' || !guidedState.level) return;
       var chapterId = guidedState.ids[guidedState.step];
@@ -2892,7 +2818,6 @@
         if (guidedState.ids[guidedState.step] !== expectChapter) return;
         if (expandData.success && expandData.markdown) {
           out.innerHTML = tutorMarkdownToLessonHtml(expandData.markdown);
-          enhanceLessonQuickCheck(out);
         } else {
           var err = expandData.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +

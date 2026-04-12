@@ -675,13 +675,13 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     'You are an expert SQL educator. The page has **no static lesson text** — your Markdown **is** this part’s lesson, and it must be **self-contained**: a novice can learn this chapter **here** without opening other books or websites.',
     'Assume the reader is **new to SQL** unless the level is intermediate or advanced: **define terms on first use**, build intuition before jargon, and connect ideas to **data analytics** (reporting, metrics, joins, filters).',
     'Teach **practical SQL** for this topic: ANSI where it applies, **Oracle** specifics when relevant (FETCH FIRST, ROWNUM, NVL/COALESCE, dates, etc.).',
-    'Use clear Markdown: ## headings, optional ### inside Essentials, bullets, **bold** key terms. **Elaborate** — prioritize teaching depth over brevity; each section should explain **why** and **how**, not one-line summaries.',
+    'Use clear Markdown: ## headings, optional ### inside Essentials, bullets, **bold** key terms. **Elaborate** — full teaching depth (**why** and **how**); use **tight** prose (no filler or repeated setup) so the lesson stays focused.',
     '**Opening:** Before the first ## heading, write **one short paragraph with no heading**: a warm, inclusive welcome — start with phrasing like **Welcome, everyone** (small variations OK). Greet learners, name this part’s topic in plain language, and set a friendly tone (about 2–4 sentences).',
     '**At a glance:** Immediately under `## At a glance`, the first line of content must read **Here are the key points that we will discuss:** (bold that sentence or leave it plain — wording fixed). Then 4–6 bullets. The bullets must **mirror the main ideas you teach in Essentials** — a narrative snapshot of what this chapter **discusses** (key themes and threads), not distant “you will be able to…” boilerplate that could apply to any course.',
     '**Do not** add shallow, generic “pitfall” one-liners (e.g. “forgetting NULL causes unexpected results in filtering”) unless this chapter is **about** NULLs, predicates, or that exact behavior — and then **explain the mechanism**, not just the warning.',
     '**Exactly one** ```sql fence: a **complete, copy-paste runnable** Oracle **SELECT** or **WITH … SELECT** on TPC-H tables only. **No second fence.** INSERT/UPDATE/DDL/transaction topics: **prose only** — never DDL/DML inside ```sql.',
     'Touch the **depth hints** (if any) with enough explanation that a motivated novice could apply them on the lab schema.',
-    '## Quick check: **at least 5** distinct questions as a **markdown bullet list** (`-` lines), one full question per line (UI opens each in Guided practice). Cover recall, applying to TPC-H, Oracle nuance where relevant, compare/contrast, and short reasoning — all **answerable from this lesson**.',
+    '**Do not** include a ## Quick check section or end-of-lesson quiz list.',
     '## What’s next: **exactly 2 bullets** (next path part if given + one related skill).',
     'Use **real** TPC-H identifiers in SQL — **no** placeholders or pseudo-tables.',
   ].join(' ');
@@ -692,10 +692,10 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
     focusLine,
     '',
     '**Order:** (1) Opening paragraph with **no ## heading** — warm welcome first (e.g. “Welcome, everyone …”). (2) Then these ## sections in order:',
-    '## At a glance — Immediately under this heading, the **first** line of content must be: **Here are the key points that we will discuss:** Then 4–6 bullets: **key points this chapter actually covers**, written as clear takeaway themes (like a concise narration of the spine of the lesson). Each bullet should line up with a real thread in **Essentials**; avoid generic learning-outcome filler that does not appear in the teaching below.',
-    `## Essentials — **substantial** teaching: core concepts, how they show up in analytics queries, Oracle vs ANSI **with short prose examples** where useful. Use ### subheadings if it helps. Include: ${schemaTables}. Avoid a thin pitfalls list; if you warn about something, tie it to this chapter SQL and explain why.`,
+    '## At a glance — As in system: required lead-in line, 4–6 bullets aligned with **Essentials**.',
+    `## Essentials — **Substantial** teaching per system rules. Include: ${schemaTables}.`,
     '## Lab — **one** fenced SQL code block only (markdown sql): a single Oracle SELECT or WITH … SELECT that runs **unchanged** on the lab DB (no DDL/DML, no placeholders). One or two sentences above the fence explaining what the query demonstrates.',
-    '## Quick check — **at least 5** questions (5–7 is fine), each its own markdown list line starting with a hyphen and a space, full question text.',
+    '**No** ## Quick check section.',
     '## What’s next — 2 bullets only.',
     '',
     prevHint || nextHint ? `**Path:** ${[prevHint, nextHint].filter(Boolean).join(' ')}` : '',
@@ -715,7 +715,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   };
   const expandMaxTok = Math.min(
     4096,
-    Math.max(1024, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 3200),
+    Math.max(1024, Number(process.env.GUIDED_EXPAND_MAX_TOKENS) || 2800),
   );
   payload.max_tokens = expandMaxTok;
 
@@ -833,20 +833,21 @@ function formatElevenLabsErrorBody(errBody, httpStatus) {
 }
 
 const ELEVENLABS_API_KEY = sanitizeElevenLabsApiKey(process.env.ELEVENLABS_API_KEY || '');
+/** Default: Rachel (premade female). Override with any female voice id from your ElevenLabs library. */
 const ELEVENLABS_VOICE_ID = (process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM').trim();
-/** Default multilingual model works on more accounts; override with eleven_turbo_v2_5 if you prefer. */
-const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
-const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_turbo_v2_5').trim();
+/** Default **turbo** model for faster Listen; multilingual fallback if turbo errors on an account. */
+const ELEVENLABS_MODEL_ID = (process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5').trim();
+const ELEVENLABS_FALLBACK_MODEL_ID = (process.env.ELEVENLABS_FALLBACK_MODEL_ID || 'eleven_multilingual_v2').trim();
 const ELEVENLABS_OUTPUT_FORMAT = (process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3_44100_128').trim();
 const ELEVENLABS_TIMEOUT_MS = Number(process.env.ELEVENLABS_TIMEOUT_MS || 120000) || 120000;
-/** Second male voice (student) for guided “Listen” (stitched TTS). Male professor = ELEVENLABS_VOICE_ID. */
+/** Optional second voice for two-speaker Listen (must differ from ELEVENLABS_VOICE_ID). Use another female id (e.g. Bella EXAVITQu4vr4xnSDxMaL). */
 const ELEVENLABS_DIALOGUE_VOICE_ID = (process.env.ELEVENLABS_DIALOGUE_VOICE_ID || '').trim();
 const ELEVENLABS_DIALOGUE_TURN_MAX = Math.min(
   4500,
   Math.max(400, Number(process.env.ELEVENLABS_DIALOGUE_TURN_MAX || 2000) || 2000)
 );
-/** Parallel ElevenLabs text-to-speech calls when stitching host/guest lines (2–12). */
-const ELEVENLABS_TTS_PARALLEL = Math.min(12, Math.max(2, Number(process.env.ELEVENLABS_TTS_PARALLEL || 6) || 6));
+/** Parallel ElevenLabs text-to-speech calls when stitching segments or host/guest lines (2–12). */
+const ELEVENLABS_TTS_PARALLEL = Math.min(12, Math.max(2, Number(process.env.ELEVENLABS_TTS_PARALLEL || 8) || 8));
 /** When true, the learning UI must not fall back to the browser speech API for Listen (ElevenLabs only). */
 const ELEVENLABS_GUIDED_LISTEN_ONLY = /^true$/i.test(
   String(process.env.ELEVENLABS_GUIDED_LISTEN_ONLY || '').trim()
@@ -936,16 +937,13 @@ async function synthesizeElevenLabsPodcastMp3(fullText) {
   if (!segments.length) {
     throw new Error('Empty text');
   }
-  const buffers = [];
-  for (let i = 0; i < segments.length; i += 1) {
+  const buffers = await mapPool(segments, ELEVENLABS_TTS_PARALLEL, async (seg, i) => {
     const prev = i > 0 ? segments[i - 1] : null;
     const next = i < segments.length - 1 ? segments[i + 1] : null;
     const prevSlice = prev ? (prev.length > 800 ? prev.slice(prev.length - 800) : prev) : null;
     const nextSlice = next ? (next.length > 800 ? next.slice(0, 800) : next) : null;
-    buffers.push(
-      await elevenLabsTtsWithModelFallback(segments[i], ELEVENLABS_VOICE_ID, prevSlice, nextSlice)
-    );
-  }
+    return elevenLabsTtsWithModelFallback(seg, ELEVENLABS_VOICE_ID, prevSlice, nextSlice);
+  });
   return Buffer.concat(buffers);
 }
 
@@ -979,6 +977,30 @@ function dialogueInputsFromClientTurns(turns, voiceHost, voiceGuest) {
   return inputs;
 }
 
+/** Fewer HTTP round-trips: merge consecutive lines for the same voice when under max length. */
+function coalesceAdjacentTtsInputsByVoice(inputs, maxLen) {
+  const max = Math.min(4500, Math.max(400, maxLen));
+  if (!Array.isArray(inputs) || !inputs.length) return [];
+  const out = [];
+  let accText = String(inputs[0].text || '').trim();
+  let accVid = String(inputs[0].voice_id || '').trim();
+  for (let k = 1; k < inputs.length; k += 1) {
+    const cur = inputs[k];
+    const ct = String((cur && cur.text) || '').trim();
+    const cv = String((cur && cur.voice_id) || '').trim();
+    const mergedLen = accText.length + 2 + ct.length;
+    if (cv === accVid && mergedLen <= max) {
+      accText = `${accText}\n\n${ct}`;
+    } else {
+      out.push({ text: accText, voice_id: accVid });
+      accText = ct;
+      accVid = cv;
+    }
+  }
+  out.push({ text: accText, voice_id: accVid });
+  return out;
+}
+
 async function mapPool(items, limit, fn) {
   const n = items.length;
   const ret = new Array(n);
@@ -1006,9 +1028,10 @@ async function synthesizeElevenLabsStitchedDialogueMp3(turns) {
   const voiceHost = ELEVENLABS_VOICE_ID;
   const voiceGuest = ELEVENLABS_DIALOGUE_VOICE_ID;
   if (voiceHost === voiceGuest) {
-    throw new Error('Professor and student ElevenLabs voice IDs must differ for two-voice Listen.');
+    throw new Error('Host and guest ElevenLabs voice IDs must differ for two-voice Listen.');
   }
-  const inputs = dialogueInputsFromClientTurns(turns, voiceHost, voiceGuest);
+  let inputs = dialogueInputsFromClientTurns(turns, voiceHost, voiceGuest);
+  inputs = coalesceAdjacentTtsInputsByVoice(inputs, ELEVENLABS_DIALOGUE_TURN_MAX);
   if (!inputs.length) {
     throw new Error('Empty dialogue');
   }
@@ -1107,11 +1130,11 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 3200, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 2800, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
         guided_podcast_tts_status:
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:
-          'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (professor=ELEVENLABS_VOICE_ID, student=ELEVENLABS_DIALOGUE_VOICE_ID)',
+          'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (host=ELEVENLABS_VOICE_ID, guest=ELEVENLABS_DIALOGUE_VOICE_ID; use female voice ids)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
