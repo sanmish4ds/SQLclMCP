@@ -8,7 +8,7 @@
   <meta name="color-scheme" content="light">
   <!-- Optional direct API base (bypasses Netlify proxies). Leave empty when using easynlsql.netlify.app + netlify.toml proxies. -->
   <meta name="sql-learn-api" content="">
-  <title>Easy NL2SQL — Natural language to Oracle SQL</title>
+  <title>Easy NL2SQL:Natural language to Oracle SQL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1350,17 +1350,26 @@
 
     /** CRA-style session telemetry (server logs JSONL when CRA_TELEMETRY_ENABLED=true). */
     var CRA_LS_SESSION = 'sqlclmcp_cra_session_id';
+    var CRA_LS_SESSION_TS = 'sqlclmcp_cra_session_ts';
+    // Rotate CRA session id after inactivity so "turn 1" re-anchors intent in a predictable way.
+    var CRA_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
     // Intent is scoped to the CRA session id to avoid stale anchors across tabs/sessions.
     var CRA_LS_INTENT_PREFIX = 'sqlclmcp_cra_declared_intent:';
     function craEnsureSessionId() {
       try {
         var sid = localStorage.getItem(CRA_LS_SESSION);
-        if (!sid) {
+        var ts = Number(localStorage.getItem(CRA_LS_SESSION_TS) || 0);
+        var now = Date.now();
+        var expired = !!(sid && ts && (now - ts > CRA_SESSION_TTL_MS));
+        if (!sid || expired) {
           sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
             ? crypto.randomUUID()
             : ('sess_' + String(Date.now()) + '_' + String(Math.random()).slice(2, 10));
           localStorage.setItem(CRA_LS_SESSION, sid);
+          localStorage.setItem(CRA_LS_SESSION_TS, String(now));
         }
+        // Touch timestamp on each use so active sessions remain stable.
+        try { localStorage.setItem(CRA_LS_SESSION_TS, String(now)); } catch (_) {}
         return sid;
       } catch (_) {
         return null;
@@ -1394,6 +1403,7 @@
     function craResetSessionAndIntent() {
       try {
         localStorage.removeItem(CRA_LS_SESSION);
+        localStorage.removeItem(CRA_LS_SESSION_TS);
         for (var i = localStorage.length - 1; i >= 0; i--) {
           var k = localStorage.key(i);
           if (k && k.indexOf(CRA_LS_INTENT_PREFIX) === 0) localStorage.removeItem(k);
