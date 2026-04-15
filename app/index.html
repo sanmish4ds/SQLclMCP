@@ -1343,7 +1343,8 @@
 
     /** CRA-style session telemetry (server logs JSONL when CRA_TELEMETRY_ENABLED=true). */
     var CRA_LS_SESSION = 'sqlclmcp_cra_session_id';
-    var CRA_LS_INTENT = 'sqlclmcp_cra_declared_intent';
+    // Intent is scoped to the CRA session id to avoid stale anchors across tabs/sessions.
+    var CRA_LS_INTENT_PREFIX = 'sqlclmcp_cra_declared_intent:';
     function craEnsureSessionId() {
       try {
         var sid = localStorage.getItem(CRA_LS_SESSION);
@@ -1358,13 +1359,14 @@
         return null;
       }
     }
-    function craDeclaredIntent(questionText) {
+    function craDeclaredIntent(sessionId, questionText) {
       try {
-        var ex = localStorage.getItem(CRA_LS_INTENT);
+        var key = CRA_LS_INTENT_PREFIX + String(sessionId || '');
+        var ex = localStorage.getItem(key);
         if (ex) return ex;
         if (questionText) {
           var t = String(questionText).slice(0, 400);
-          localStorage.setItem(CRA_LS_INTENT, t);
+          localStorage.setItem(key, t);
           return t;
         }
       } catch (_) {}
@@ -1373,7 +1375,7 @@
     function craClientPayload(questionText, channel) {
       var sid = craEnsureSessionId();
       if (!sid) return {};
-      var intent = craDeclaredIntent(questionText || '');
+      var intent = craDeclaredIntent(sid, questionText || '');
       return {
         cra_session_id: sid,
         cra_declared_intent: intent || undefined,
@@ -1385,7 +1387,10 @@
     function craResetSessionAndIntent() {
       try {
         localStorage.removeItem(CRA_LS_SESSION);
-        localStorage.removeItem(CRA_LS_INTENT);
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf(CRA_LS_INTENT_PREFIX) === 0) localStorage.removeItem(k);
+        }
       } catch (_) {}
     }
 
