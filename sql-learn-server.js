@@ -58,6 +58,7 @@ const {
   selectChunksForContext,
   formatContextForPrompt,
 } = require('./book-index');
+const { createCraTelemetryFromEnv } = require('./cra-telemetry');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
@@ -140,6 +141,19 @@ const config = {
 };
 
 let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
+
+const craTelemetry = createCraTelemetryFromEnv(__dirname);
+
+function craClientMetaFromBody(data) {
+  const sessionId = data.cra_session_id || data.craSessionId;
+  const declaredIntent = data.cra_declared_intent != null ? data.cra_declared_intent : data.craDeclaredIntent;
+  const channel = data.cra_channel != null ? data.cra_channel : data.craChannel;
+  return {
+    sessionId: sessionId ? String(sessionId).trim() : '',
+    declaredIntent: declaredIntent != null ? String(declaredIntent) : '',
+    channel: channel ? String(channel).trim() : 'api',
+  };
+}
 
 const MAX_BOOK_EPUB_FETCH_BYTES = 50 * 1024 * 1024;
 
@@ -1135,6 +1149,8 @@ const requestHandler = (request, response) => {
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:
           'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (host=ELEVENLABS_VOICE_ID, guest=ELEVENLABS_DIALOGUE_VOICE_ID; use female voice ids)',
+        cra_telemetry_status:
+          'GET /cra-telemetry-status — JSON { enabled, log_file, … }; optional CRA session telemetry (CRA_TELEMETRY_ENABLED=true)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -1421,6 +1437,7 @@ const requestHandler = (request, response) => {
         ELEVENLABS_VOICE_ID === ELEVENLABS_DIALOGUE_VOICE_ID
       ),
       guided_listen_elevenlabs_only: ELEVENLABS_GUIDED_LISTEN_ONLY,
+      cra_telemetry_enabled: craTelemetry.enabled,
       book: bookIndex.loaded
         ? {
             loaded: true,
@@ -1431,6 +1448,31 @@ const requestHandler = (request, response) => {
         : { loaded: false, error: bookIndex.error || null },
       timestamp: new Date().toISOString(),
     }));
+    return;
+  }
+
+  // GET /cra-telemetry-status — multi-turn CRA-style session logging (opt-in)
+  if (pathname === '/cra-telemetry-status' && request.method === 'GET') {
+    let bytes = null;
+    let mtime = null;
+    try {
+      const st = fs.statSync(craTelemetry.logFile);
+      bytes = st.size;
+      mtime = st.mtime.toISOString();
+    } catch (_) {
+      /* file may not exist yet */
+    }
+    response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    response.end(
+      JSON.stringify({
+        enabled: craTelemetry.enabled,
+        log_file: craTelemetry.logFile,
+        log_bytes: bytes,
+        log_mtime: mtime,
+        window_w: craTelemetry.windowW,
+        weights: { alpha: craTelemetry.alpha, beta: craTelemetry.beta, gamma: craTelemetry.gamma },
+      }),
+    );
     return;
   }
 
@@ -1540,6 +1582,7 @@ const requestHandler = (request, response) => {
         const data = JSON.parse(body);
         const question = data.question || '';
         const mode = resolveSqlModeFromRequest(data.mode);
+        const craMeta = craClientMetaFromBody(data);
 
         if (!question) {
           response.writeHead(400);
@@ -1548,6 +1591,21 @@ const requestHandler = (request, response) => {
         }
 
         const result = await generateSql(question, mode);
+
+        if (craMeta.sessionId) {
+          craTelemetry.recordTurn({
+            sessionId: craMeta.sessionId,
+            declaredIntent: craMeta.declaredIntent,
+            channel: craMeta.channel || 'api',
+            question,
+            tutorResponse: result.tutor_response || '',
+            sql: result.sql || '',
+            mode,
+            source: result.source,
+            success: !!(result.sql || result.tutor_response),
+            eventType: 'generate_sql',
+          });
+        }
 
         if (!result.sql && !result.tutor_response) {
           response.writeHead(404);
@@ -1589,7 +1647,22 @@ const requestHandler = (request, response) => {
         const sql = String(data.sql || '');
         const question = String(data.question || '');
         const useBookContext = data.use_book_context !== false;
+        const craMeta = craClientMetaFromBody(data);
         const r = await explainSqlWithLLM(sql, question, { useBookContext });
+        if (craMeta.sessionId) {
+          craTelemetry.recordTurn({
+            sessionId: craMeta.sessionId,
+            declaredIntent: craMeta.declaredIntent,
+            channel: craMeta.channel || 'explain_sql',
+            question: question || sql.slice(0, 400),
+            tutorResponse: r.explanation || '',
+            sql,
+            mode: 'explain',
+            source: r.source,
+            success: !!r.explanation,
+            eventType: 'explain_sql',
+          });
+        }
         if (!r.explanation) {
           response.writeHead(400);
           response.end(JSON.stringify({
@@ -2039,8 +2112,12 @@ async function startServer() {
     console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
     console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
     console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
+    if (craTelemetry.enabled) {
+      console.log(`[${APP_DISPLAY_NAME}] CRA telemetry ON → ${craTelemetry.logFile}`);
+    }
     console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
     console.log(`  GET  /health          - Server health check`);
+    console.log(`  GET  /cra-telemetry-status - CRA session telemetry status (opt-in)`);
     console.log(`  POST /reload-rules    - Reload SQL rules from experiments/sql-practice-rules.json`);
     console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
     console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
