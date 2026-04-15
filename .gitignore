@@ -1,5 +1,6 @@
 # Environment and Configuration
 .env
+.env.example
 .env.local
 .env.*.local
 config.local.*
@@ -115,6 +116,7 @@ yarn.lock
 data/*.epub
 !data/latest_book.epub
 data/.fetched_book.epub
+data/cra-sessions.jsonl
 
 # Miscellaneous
 .cache/
@@ -139,6 +141,9 @@ build/
 research_paper_mcp.pdf
 research.zip
 research/
+
+# CRA / publication paper tree (LaTeX snippets, CSV/figures, scripts — keep local)
+papers/
 
 # DO NOT COMMIT
 # Add sensitive files here

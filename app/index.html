@@ -1338,6 +1338,47 @@
       }
       return '';
     })();
+
+    /** CRA-style session telemetry (server logs JSONL when CRA_TELEMETRY_ENABLED=true). */
+    var CRA_LS_SESSION = 'sqlclmcp_cra_session_id';
+    var CRA_LS_INTENT = 'sqlclmcp_cra_declared_intent';
+    function craEnsureSessionId() {
+      try {
+        var sid = localStorage.getItem(CRA_LS_SESSION);
+        if (!sid) {
+          sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : ('sess_' + String(Date.now()) + '_' + String(Math.random()).slice(2, 10));
+          localStorage.setItem(CRA_LS_SESSION, sid);
+        }
+        return sid;
+      } catch (_) {
+        return null;
+      }
+    }
+    function craDeclaredIntent(questionText) {
+      try {
+        var ex = localStorage.getItem(CRA_LS_INTENT);
+        if (ex) return ex;
+        if (questionText) {
+          var t = String(questionText).slice(0, 400);
+          localStorage.setItem(CRA_LS_INTENT, t);
+          return t;
+        }
+      } catch (_) {}
+      return '';
+    }
+    function craClientPayload(questionText, channel) {
+      var sid = craEnsureSessionId();
+      if (!sid) return {};
+      var intent = craDeclaredIntent(questionText || '');
+      return {
+        cra_session_id: sid,
+        cra_declared_intent: intent || undefined,
+        cra_channel: channel || 'main_ui',
+      };
+    }
+
     const questionEl = document.getElementById('question');
     const btnGenerate = document.getElementById('btnGenerate');
     const btnCopy = document.getElementById('btnCopy');
@@ -1365,7 +1406,8 @@
           ' Tutor: ' + (data.llm_enabled ? 'on' : 'off') +
           '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.' +
           (data.guided_podcast_elevenlabs ? ' Podcast (ElevenLabs): on.' : '') +
-          (data.guided_podcast_dialogue ? ' Listen (two female voices): on.' : '');
+          (data.guided_podcast_dialogue ? ' Listen (two female voices): on.' : '') +
+          (data.cra_telemetry_enabled ? ' CRA log: on.' : '');
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;
@@ -2931,7 +2973,10 @@
         const r = await fetch(API_BASE_URL + '/generate-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question, mode: 'hybrid' }),
+          body: JSON.stringify(Object.assign(
+            { question, mode: 'hybrid' },
+            craClientPayload(question, 'main_ui')
+          )),
         });
         const data = await r.json();
         lastSql = (data.generated_sql || '').trim();
@@ -2976,7 +3021,10 @@
         const r = await fetch(API_BASE_URL + '/explain-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sql: lastSql, question: questionEl.value || '' }),
+          body: JSON.stringify(Object.assign(
+            { sql: lastSql, question: questionEl.value || '' },
+            craClientPayload(questionEl.value || '', 'main_ui_explain')
+          )),
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Explain failed');
@@ -3318,7 +3366,10 @@
               const genR = await fetch(API_BASE_URL + '/generate-sql', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: fixQuestion, mode: 'llm' }),
+                body: JSON.stringify(Object.assign(
+                  { question: fixQuestion, mode: 'llm' },
+                  craClientPayload(fixQuestion, 'lab_chat_autofix')
+                )),
               });
               const genData = await genR.json();
               if (!genData.success || !genData.generated_sql) {
@@ -3433,7 +3484,10 @@
           setBotContent(botDiv, thinkingHtml() + ' <span class="chat-thinking-label">' + stepLabel + '</span>');
           const genR = await fetch(API_BASE_URL + '/generate-sql', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: text, mode: 'hybrid' }),
+            body: JSON.stringify(Object.assign(
+              { question: text, mode: 'hybrid' },
+              craClientPayload(text, 'lab_chat')
+            )),
           });
           const genData = await genR.json();
           const sql = (genData.generated_sql || '').trim();

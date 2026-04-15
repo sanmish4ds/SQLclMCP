@@ -58,6 +58,12 @@
   force = true
 
 [[redirects]]
+  from = "/cra-telemetry-status"
+  to = "https://sqlclmcp-1.onrender.com/cra-telemetry-status"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/execute-sql"
   to = "https://sqlclmcp-1.onrender.com/execute-sql"
   status = 200
