@@ -1150,7 +1150,7 @@ const requestHandler = (request, response) => {
         guided_podcast_tts:
           'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (host=ELEVENLABS_VOICE_ID, guest=ELEVENLABS_DIALOGUE_VOICE_ID; use female voice ids)',
         cra_telemetry_status:
-          'GET /cra-telemetry-status — JSON { enabled, log_file, … }; optional CRA session telemetry (CRA_TELEMETRY_ENABLED=true)',
+          'GET /cra-telemetry-status — JSON { enabled, log_file, log_stdout, … }; optional CRA session telemetry (CRA_TELEMETRY_ENABLED=true; CRA_TELEMETRY_STDOUT=true mirrors events to host logs)',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -1438,6 +1438,7 @@ const requestHandler = (request, response) => {
       ),
       guided_listen_elevenlabs_only: ELEVENLABS_GUIDED_LISTEN_ONLY,
       cra_telemetry_enabled: craTelemetry.enabled,
+      cra_telemetry_stdout: !!craTelemetry.logStdout,
       book: bookIndex.loaded
         ? {
             loaded: true,
@@ -1467,6 +1468,7 @@ const requestHandler = (request, response) => {
       JSON.stringify({
         enabled: craTelemetry.enabled,
         log_file: craTelemetry.logFile,
+        log_stdout: !!craTelemetry.logStdout,
         log_bytes: bytes,
         log_mtime: mtime,
         window_w: craTelemetry.windowW,
@@ -2113,7 +2115,8 @@ async function startServer() {
     console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
     console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
     if (craTelemetry.enabled) {
-      console.log(`[${APP_DISPLAY_NAME}] CRA telemetry ON → ${craTelemetry.logFile}`);
+      const so = craTelemetry.logStdout ? ' + stdout ([CRA_TELEMETRY] in process logs)' : '';
+      console.log(`[${APP_DISPLAY_NAME}] CRA telemetry ON → ${craTelemetry.logFile}${so}`);
     }
     console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
     console.log(`  GET  /health          - Server health check`);
