@@ -5,6 +5,7 @@
  * Logs append-only JSON lines (no raw PII): hashes, lengths, and heuristic scores.
  *
  * Enable with CRA_TELEMETRY_ENABLED=true and CRA_TELEMETRY_FILE (default data/cra-sessions.jsonl).
+ * For Render/hosted Logs (stdout): set CRA_TELEMETRY_STDOUT=true — each event is one line prefixed with [CRA_TELEMETRY].
  */
 
 const fs = require('fs');
@@ -86,6 +87,8 @@ class CraTelemetry {
   constructor(options) {
     this.enabled = !!options.enabled;
     this.logFile = options.logFile;
+    /** When true, echo each JSON event to stdout (e.g. Render → Logs). */
+    this.logStdout = !!options.logStdout;
     this.windowW = Math.min(32, Math.max(2, Number(options.windowW) || 6));
     this.alpha = Number(options.alpha);
     this.beta = Number(options.beta);
@@ -112,11 +115,15 @@ class CraTelemetry {
 
   appendLine(obj) {
     if (!this.enabled) return;
-    const line = `${JSON.stringify(obj)}\n`;
+    const payload = JSON.stringify(obj);
+    const line = `${payload}\n`;
     try {
       fs.appendFileSync(this.logFile, line, 'utf8');
     } catch (e) {
       console.warn(`[CRA] append failed: ${e.message}`);
+    }
+    if (this.logStdout) {
+      console.log(`[CRA_TELEMETRY] ${payload}`);
     }
   }
 
@@ -230,9 +237,11 @@ function createCraTelemetryFromEnv(rootDir) {
   const enabled = /^true$/i.test(String(process.env.CRA_TELEMETRY_ENABLED || '').trim());
   const rel = String(process.env.CRA_TELEMETRY_FILE || 'data/cra-sessions.jsonl').trim();
   const logFile = path.isAbsolute(rel) ? rel : path.join(rootDir, rel);
+  const logStdout = /^true$/i.test(String(process.env.CRA_TELEMETRY_STDOUT || '').trim());
   return new CraTelemetry({
     enabled,
     logFile,
+    logStdout,
     windowW: process.env.CRA_TELEMETRY_WINDOW,
     alpha: process.env.CRA_WEIGHT_ALPHA,
     beta: process.env.CRA_WEIGHT_BETA,

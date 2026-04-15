@@ -1407,7 +1407,8 @@
           '. Run SQL on database: ' + (executeAvailable ? 'on' : 'off') + '.' +
           (data.guided_podcast_elevenlabs ? ' Podcast (ElevenLabs): on.' : '') +
           (data.guided_podcast_dialogue ? ' Listen (two female voices): on.' : '') +
-          (data.cra_telemetry_enabled ? ' CRA log: on.' : '');
+          (data.cra_telemetry_enabled ? ' CRA log: on.' : '') +
+          (data.cra_telemetry_stdout ? ' CRA→host logs.' : '');
         statusEl.title = 'Rules loaded: ' + String(data.loaded_rules || 'unknown');
         statusEl.className = 'status ' + (data.status === 'ok' ? 'ok' : 'fail');
         if (btnExecute) btnExecute.disabled = !executeAvailable ? true : !lastSql;

@@ -117,6 +117,7 @@ data/*.epub
 !data/latest_book.epub
 data/.fetched_book.epub
 data/cra-sessions.jsonl
+data/cra-sessions.*.jsonl
 
 # Miscellaneous
 .cache/
