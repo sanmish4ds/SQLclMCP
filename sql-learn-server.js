@@ -144,6 +144,156 @@ let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
 
 const craTelemetry = createCraTelemetryFromEnv(__dirname);
 
+// ── Guardrails (practical, cost-aware) ───────────────────────────────────────
+const MAX_REQUEST_BODY_BYTES = Math.min(
+  512 * 1024,
+  Math.max(8 * 1024, Number(process.env.MAX_REQUEST_BODY_BYTES || 180 * 1024) || 180 * 1024),
+);
+
+const DEDUPE_CACHE_TTL_MS = Math.min(
+  6 * 60 * 60 * 1000,
+  Math.max(10 * 1000, Number(process.env.DEDUPE_CACHE_TTL_MS || 10 * 60 * 1000) || 10 * 60 * 1000),
+);
+const DEDUPE_CACHE_MAX = Math.min(10000, Math.max(50, Number(process.env.DEDUPE_CACHE_MAX || 1500) || 1500));
+
+const RATE_LIMIT_WINDOW_MS = Math.min(
+  10 * 60 * 1000,
+  Math.max(5 * 1000, Number(process.env.RATE_LIMIT_WINDOW_MS || 60 * 1000) || 60 * 1000),
+);
+const RATE_LIMIT_MAX = Math.min(500, Math.max(3, Number(process.env.RATE_LIMIT_MAX || 40) || 40));
+
+/** In-memory caches (best-effort; resets on deploy). */
+const dedupeCache = new Map(); // key -> { ts, value }
+const rateLimit = new Map(); // ip -> { resetTs, count }
+
+function nowMs() { return Date.now(); }
+
+function clientIp(req) {
+  const xf = req.headers['x-forwarded-for'];
+  if (xf) return String(xf).split(',')[0].trim();
+  return req.socket?.remoteAddress || 'unknown';
+}
+
+function normalizeQuestion(q) {
+  return String(q || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .slice(0, 2000);
+}
+
+function rateLimitOk(req) {
+  const ip = clientIp(req);
+  const t = nowMs();
+  const rec = rateLimit.get(ip);
+  if (!rec || t >= rec.resetTs) {
+    rateLimit.set(ip, { resetTs: t + RATE_LIMIT_WINDOW_MS, count: 1 });
+    return { ok: true };
+  }
+  rec.count += 1;
+  if (rec.count > RATE_LIMIT_MAX) {
+    const retryAfterSec = Math.max(1, Math.ceil((rec.resetTs - t) / 1000));
+    return { ok: false, retryAfterSec };
+  }
+  return { ok: true };
+}
+
+function cacheGet(key) {
+  const v = dedupeCache.get(key);
+  if (!v) return null;
+  const age = nowMs() - v.ts;
+  if (age > DEDUPE_CACHE_TTL_MS) {
+    dedupeCache.delete(key);
+    return null;
+  }
+  return { value: v.value, ageMs: age };
+}
+
+function cacheSet(key, value) {
+  dedupeCache.set(key, { ts: nowMs(), value });
+  if (dedupeCache.size <= DEDUPE_CACHE_MAX) return;
+  // Remove oldest ~10% to keep it simple and fast.
+  const entries = Array.from(dedupeCache.entries());
+  entries.sort((a, b) => a[1].ts - b[1].ts);
+  const toDrop = Math.max(1, Math.floor(DEDUPE_CACHE_MAX * 0.1));
+  for (let i = 0; i < toDrop && i < entries.length; i++) {
+    dedupeCache.delete(entries[i][0]);
+  }
+}
+
+function injectionLike(text) {
+  const s = String(text || '').toLowerCase();
+  return (
+    /ignore (all )?(previous|above) (instructions|rules)/.test(s) ||
+    /disregard (all )?(previous|above)/.test(s) ||
+    /\bsystem prompt\b/.test(s) ||
+    /\bdeveloper message\b/.test(s) ||
+    /\bjailbreak\b/.test(s)
+  );
+}
+
+function sensitiveLike(text) {
+  const s = String(text || '');
+  if (/\b\d{3}-\d{2}-\d{4}\b/.test(s)) return true; // SSN-like
+  if (/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/.test(s)) return true; // email
+  if (/\b(ssn|social security|credit card|password|secret key|api key|apikey)\b/i.test(s)) return true;
+  return false;
+}
+
+function isSafeSingleSelect(sql) {
+  const s = String(sql || '').trim();
+  if (!s) return false;
+  if (s.includes(';')) return false;
+  const head = s.slice(0, 1200).toLowerCase();
+  // Must start with SELECT or WITH.
+  if (!/^\s*(with|select)\b/.test(head)) return false;
+  // Block obvious non-read-only / procedural statements.
+  if (/\b(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|commit|rollback|begin|declare)\b/i.test(head)) {
+    return false;
+  }
+  return true;
+}
+
+/** CRA-style soft notices (non-blocking). Thresholds are coarse; tune via env. */
+const CRA_SOFT_WARN_S1 = Number(process.env.CRA_SOFT_WARN_S1 || 0.85);
+const CRA_SOFT_WARN_S2 = Number(process.env.CRA_SOFT_WARN_S2 || 0.2);
+const CRA_SOFT_WARN_S3 = Number(process.env.CRA_SOFT_WARN_S3 || 0.35);
+const CRA_SOFT_WARN_CRA = Number(process.env.CRA_SOFT_WARN_CRA || 0.45);
+
+function craSoftNoticesFromEvent(ev) {
+  if (!ev) return [];
+  const n = [];
+  if (ev.injection_signal) {
+    n.push('CRA: this turn matched injection-style wording in the question or tutor reply. Double-check you are not being manipulated.');
+  }
+  if (typeof ev.S1 === 'number' && ev.S1 >= CRA_SOFT_WARN_S1) {
+    n.push('CRA: high intent drift (S1) vs your session anchor—your questions may have moved far from the original goal.');
+  }
+  if (typeof ev.S2 === 'number' && ev.S2 >= CRA_SOFT_WARN_S2) {
+    n.push('CRA: the tutor text is accumulating sensitive-looking patterns (S2). Avoid sharing real secrets; treat examples as synthetic.');
+  }
+  if (typeof ev.S3 === 'number' && ev.S3 >= CRA_SOFT_WARN_S3) {
+    n.push('CRA: refusal / policy language in the tutor is shifting (S3). The model may be tightening or relaxing refusals across turns.');
+  }
+  if (typeof ev.CRA === 'number' && ev.CRA >= CRA_SOFT_WARN_CRA) {
+    n.push('CRA: composite score is elevated—review the answer before relying on it or running SQL on a real database.');
+  }
+  return n;
+}
+
+function craSignalSnapshot(ev) {
+  if (!ev) return null;
+  return {
+    turn: ev.turn,
+    S1: ev.S1,
+    S2: ev.S2,
+    S3: ev.S3,
+    CRA: ev.CRA,
+    injection_signal: !!ev.injection_signal,
+    weights: ev.weights || null,
+  };
+}
+
 function craClientMetaFromBody(data) {
   const sessionId = data.cra_session_id || data.craSessionId;
   const declaredIntent = data.cra_declared_intent != null ? data.cra_declared_intent : data.craDeclaredIntent;
@@ -1150,7 +1300,7 @@ const requestHandler = (request, response) => {
         guided_podcast_tts:
           'POST /guided-podcast-tts — body: { "text": "…" } or { "dialogue": [{ "speaker":"professor|student", "text":"…" }], "text":"…" } — MP3; two voices when ELEVENLABS_DIALOGUE_VOICE_ID is set (host=ELEVENLABS_VOICE_ID, guest=ELEVENLABS_DIALOGUE_VOICE_ID; use female voice ids)',
         cra_telemetry_status:
-          'GET /cra-telemetry-status — JSON { enabled, log_file, log_stdout, … }; optional CRA session telemetry (CRA_TELEMETRY_ENABLED=true; CRA_TELEMETRY_STDOUT=true mirrors events to host logs)',
+          'GET /cra-telemetry-status — JSON { enabled, soft_guards_enabled, log_file, log_stdout, … }; CRA session telemetry (CRA_TELEMETRY_ENABLED=true); CRA_SOFT_GUARDS_ENABLED=false disables in-memory CRA soft notices',
       },
       docs: process.env.APP_DOCS_URL || '',
     }));
@@ -1438,6 +1588,7 @@ const requestHandler = (request, response) => {
       ),
       guided_listen_elevenlabs_only: ELEVENLABS_GUIDED_LISTEN_ONLY,
       cra_telemetry_enabled: craTelemetry.enabled,
+      cra_soft_guards_enabled: !!craTelemetry.softGuardsEnabled,
       cra_telemetry_stdout: !!craTelemetry.logStdout,
       book: bookIndex.loaded
         ? {
@@ -1467,6 +1618,7 @@ const requestHandler = (request, response) => {
     response.end(
       JSON.stringify({
         enabled: craTelemetry.enabled,
+        soft_guards_enabled: !!craTelemetry.softGuardsEnabled,
         log_file: craTelemetry.logFile,
         log_stdout: !!craTelemetry.logStdout,
         log_bytes: bytes,
@@ -1578,9 +1730,22 @@ const requestHandler = (request, response) => {
   // POST /generate-sql
   if (pathname === '/generate-sql' && request.method === 'POST') {
     let body = '';
-    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > MAX_REQUEST_BODY_BYTES) {
+        response.writeHead(413);
+        response.end(JSON.stringify({ error: 'Request too large' }));
+        try { request.destroy(); } catch (_) {}
+      }
+    });
     request.on('end', async () => {
       try {
+        const rl = rateLimitOk(request);
+        if (!rl.ok) {
+          response.writeHead(429, { 'Retry-After': String(rl.retryAfterSec) });
+          response.end(JSON.stringify({ error: 'Rate limited', retry_after_seconds: rl.retryAfterSec }));
+          return;
+        }
         const data = JSON.parse(body);
         const question = data.question || '';
         const mode = resolveSqlModeFromRequest(data.mode);
@@ -1592,24 +1757,72 @@ const requestHandler = (request, response) => {
           return;
         }
 
+        // Guardrail 1: cheap pre-checks to avoid unnecessary LLM calls.
+        if (injectionLike(question)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            error: 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.',
+            blocked: 'injection_like',
+          }));
+          return;
+        }
+        if (sensitiveLike(question)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            error: 'Do not paste secrets or personal data. Use synthetic placeholders.',
+            blocked: 'sensitive_like',
+          }));
+          return;
+        }
+
+        // Guardrail 2: duplicate-question cache (cost saver).
+        const normQ = normalizeQuestion(question);
+        const cacheKey = `generate|${mode}|${normQ}`;
+        const cached = cacheGet(cacheKey);
+        if (cached) {
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            question,
+            generated_sql: cached.value.generated_sql || null,
+            tutor_response: cached.value.tutor_response || null,
+            source: cached.value.source || 'cache',
+            mode,
+            success: true,
+            cached: true,
+            cache_age_ms: cached.ageMs,
+            book_context_used: !!cached.value.book_context_used,
+            book_citations: cached.value.book_citations || [],
+            cra_soft_notices: cached.value.cra_soft_notices || [],
+            cra_signals: cached.value.cra_signals || null,
+          }));
+          return;
+        }
+
         const result = await generateSql(question, mode);
 
+        // Guardrail 3: enforce single runnable SELECT/WITH…SELECT output.
+        let safeSql = result.sql || '';
+        if (safeSql && !isSafeSingleSelect(safeSql)) {
+          safeSql = '';
+        }
+
+        let craEvent = null;
         if (craMeta.sessionId) {
-          craTelemetry.recordTurn({
+          craEvent = craTelemetry.recordTurn({
             sessionId: craMeta.sessionId,
             declaredIntent: craMeta.declaredIntent,
             channel: craMeta.channel || 'api',
             question,
             tutorResponse: result.tutor_response || '',
-            sql: result.sql || '',
+            sql: safeSql || '',
             mode,
             source: result.source,
-            success: !!(result.sql || result.tutor_response),
+            success: !!(safeSql || result.tutor_response),
             eventType: 'generate_sql',
           });
         }
 
-        if (!result.sql && !result.tutor_response) {
+        if (!safeSql && !result.tutor_response) {
           response.writeHead(404);
           response.end(JSON.stringify({
             error: result.error || 'No answer generated',
@@ -1620,17 +1833,26 @@ const requestHandler = (request, response) => {
           return;
         }
 
-        response.writeHead(200);
-        response.end(JSON.stringify({
+        const payloadOut = {
           question,
-          generated_sql: result.sql || null,
+          generated_sql: safeSql || null,
           tutor_response: result.tutor_response || null,
           source: result.source,
           mode,
           success: true,
           book_context_used: !!result.book_context_used,
           book_citations: result.book_citations || [],
-        }));
+          cached: false,
+        };
+        const softList = craSoftNoticesFromEvent(craEvent);
+        if (softList.length) payloadOut.cra_soft_notices = softList;
+        const snap = craSignalSnapshot(craEvent);
+        if (snap) payloadOut.cra_signals = snap;
+        // Cache only successful non-empty outputs.
+        if (payloadOut.generated_sql || payloadOut.tutor_response) cacheSet(cacheKey, payloadOut);
+
+        response.writeHead(200);
+        response.end(JSON.stringify(payloadOut));
       } catch (error) {
         response.writeHead(400);
         response.end(JSON.stringify({ error: error.message }));
@@ -1642,17 +1864,77 @@ const requestHandler = (request, response) => {
   // POST /explain-sql — explain a SQL query for learning
   if (pathname === '/explain-sql' && request.method === 'POST') {
     let body = '';
-    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > MAX_REQUEST_BODY_BYTES) {
+        response.writeHead(413);
+        response.end(JSON.stringify({ success: false, error: 'Request too large' }));
+        try { request.destroy(); } catch (_) {}
+      }
+    });
     request.on('end', async () => {
       try {
+        const rl = rateLimitOk(request);
+        if (!rl.ok) {
+          response.writeHead(429, { 'Retry-After': String(rl.retryAfterSec) });
+          response.end(JSON.stringify({ success: false, error: 'Rate limited', retry_after_seconds: rl.retryAfterSec }));
+          return;
+        }
         const data = JSON.parse(body || '{}');
         const sql = String(data.sql || '');
         const question = String(data.question || '');
         const useBookContext = data.use_book_context !== false;
         const craMeta = craClientMetaFromBody(data);
+
+        if (injectionLike(question)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            success: false,
+            error: 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.',
+            blocked: 'injection_like',
+          }));
+          return;
+        }
+        if (sensitiveLike(question)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            success: false,
+            error: 'Do not paste secrets or personal data. Use synthetic placeholders.',
+            blocked: 'sensitive_like',
+          }));
+          return;
+        }
+        if (sql && !isSafeSingleSelect(sql)) {
+          response.writeHead(400);
+          response.end(JSON.stringify({
+            success: false,
+            error: 'Explain only supports a single SELECT (or WITH … SELECT).',
+            blocked: 'unsafe_sql',
+          }));
+          return;
+        }
+
+        const cacheKey = `explain|${useBookContext ? 'book1' : 'book0'}|${normalizeQuestion(question || '')}|${normalizeQuestion(sql || '')}`;
+        const cached = cacheGet(cacheKey);
+        if (cached) {
+          response.writeHead(200);
+          response.end(JSON.stringify({
+            success: true,
+            explanation: cached.value.explanation,
+            source: cached.value.source || 'cache',
+            book_citations: cached.value.book_citations || [],
+            cached: true,
+            cache_age_ms: cached.ageMs,
+            cra_soft_notices: cached.value.cra_soft_notices || [],
+            cra_signals: cached.value.cra_signals || null,
+          }));
+          return;
+        }
+
         const r = await explainSqlWithLLM(sql, question, { useBookContext });
+        let craExplainEvent = null;
         if (craMeta.sessionId) {
-          craTelemetry.recordTurn({
+          craExplainEvent = craTelemetry.recordTurn({
             sessionId: craMeta.sessionId,
             declaredIntent: craMeta.declaredIntent,
             channel: craMeta.channel || 'explain_sql',
@@ -1675,12 +1957,25 @@ const requestHandler = (request, response) => {
           }));
           return;
         }
+        const explainOut = {
+          explanation: r.explanation,
+          source: r.source,
+          book_citations: r.book_citations || [],
+        };
+        const softEx = craSoftNoticesFromEvent(craExplainEvent);
+        if (softEx.length) explainOut.cra_soft_notices = softEx;
+        const snapEx = craSignalSnapshot(craExplainEvent);
+        if (snapEx) explainOut.cra_signals = snapEx;
+        cacheSet(cacheKey, explainOut);
         response.writeHead(200);
         response.end(JSON.stringify({
           success: true,
           explanation: r.explanation,
           source: r.source,
           book_citations: r.book_citations || [],
+          cached: false,
+          cra_soft_notices: explainOut.cra_soft_notices || [],
+          cra_signals: explainOut.cra_signals || null,
         }));
       } catch (error) {
         response.writeHead(400);
@@ -2114,9 +2409,11 @@ async function startServer() {
     console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
     console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
     console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
-    if (craTelemetry.enabled) {
+    if (craTelemetry.enabled || craTelemetry.softGuardsEnabled) {
+      const file = craTelemetry.enabled ? ` → ${craTelemetry.logFile}` : '';
       const so = craTelemetry.logStdout ? ' + stdout ([CRA_TELEMETRY] in process logs)' : '';
-      console.log(`[${APP_DISPLAY_NAME}] CRA telemetry ON → ${craTelemetry.logFile}${so}`);
+      const sg = craTelemetry.softGuardsEnabled ? ' CRA soft guardrails: on' : '';
+      console.log(`[${APP_DISPLAY_NAME}] CRA${file}${so}${sg}`);
     }
     console.log(`[${APP_DISPLAY_NAME}] Endpoints:`);
     console.log(`  GET  /health          - Server health check`);
