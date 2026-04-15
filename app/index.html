@@ -1348,44 +1348,40 @@
       return '';
     })();
 
-    /** CRA-style session telemetry (server logs JSONL when CRA_TELEMETRY_ENABLED=true). */
-    var CRA_LS_SESSION = 'sqlclmcp_cra_session_id';
-    var CRA_LS_SESSION_TS = 'sqlclmcp_cra_session_ts';
-    // Rotate CRA session id after inactivity so "turn 1" re-anchors intent in a predictable way.
-    var CRA_SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-    // Intent is scoped to the CRA session id to avoid stale anchors across tabs/sessions.
-    var CRA_LS_INTENT_PREFIX = 'sqlclmcp_cra_declared_intent:';
-    function craEnsureSessionId() {
-      try {
-        var sid = localStorage.getItem(CRA_LS_SESSION);
-        var ts = Number(localStorage.getItem(CRA_LS_SESSION_TS) || 0);
-        var now = Date.now();
-        var expired = !!(sid && ts && (now - ts > CRA_SESSION_TTL_MS));
-        if (!sid || expired) {
-          sid = (typeof crypto !== 'undefined' && crypto.randomUUID)
-            ? crypto.randomUUID()
-            : ('sess_' + String(Date.now()) + '_' + String(Math.random()).slice(2, 10));
-          localStorage.setItem(CRA_LS_SESSION, sid);
-          localStorage.setItem(CRA_LS_SESSION_TS, String(now));
-        }
-        // Touch timestamp on each use so active sessions remain stable.
-        try { localStorage.setItem(CRA_LS_SESSION_TS, String(now)); } catch (_) {}
-        return sid;
-      } catch (_) {
-        return null;
-      }
+    /**
+     * CRA-style session telemetry.
+     *
+     * “Right way” behavior for a browser UI:
+     * - A CRA session should match a visible chat session.
+     * - Refreshing the page should start a new CRA session (and thus a new intent anchor).
+     *
+     * So we keep CRA session id + anchor intent in-memory for this page load.
+     */
+    var CRA_RUNTIME_SESSION_ID = null;
+    var CRA_RUNTIME_INTENT_BY_SESSION = Object.create(null);
+
+    function craNewRuntimeSessionId() {
+      return (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('sess_' + String(Date.now()) + '_' + String(Math.random()).slice(2, 10));
     }
+
+    function craEnsureSessionId() {
+      if (CRA_RUNTIME_SESSION_ID) return CRA_RUNTIME_SESSION_ID;
+      CRA_RUNTIME_SESSION_ID = craNewRuntimeSessionId();
+      return CRA_RUNTIME_SESSION_ID;
+    }
+
     function craDeclaredIntent(sessionId, questionText) {
-      try {
-        var key = CRA_LS_INTENT_PREFIX + String(sessionId || '');
-        var ex = localStorage.getItem(key);
-        if (ex) return ex;
-        if (questionText) {
-          var t = String(questionText).slice(0, 400);
-          localStorage.setItem(key, t);
-          return t;
-        }
-      } catch (_) {}
+      var sid = String(sessionId || '');
+      if (!sid) return '';
+      var ex = CRA_RUNTIME_INTENT_BY_SESSION[sid];
+      if (ex) return ex;
+      if (questionText) {
+        var t = String(questionText).slice(0, 400);
+        CRA_RUNTIME_INTENT_BY_SESSION[sid] = t;
+        return t;
+      }
       return '';
     }
     function craClientPayload(questionText, channel) {
@@ -1399,16 +1395,10 @@
       };
     }
 
-    /** Clears CRA session id and declared intent so the next request starts a new server session and re-anchors S1 from the next question. */
+    /** Clears CRA session id and declared intent so the next request re-anchors S1 from the next question. */
     function craResetSessionAndIntent() {
-      try {
-        localStorage.removeItem(CRA_LS_SESSION);
-        localStorage.removeItem(CRA_LS_SESSION_TS);
-        for (var i = localStorage.length - 1; i >= 0; i--) {
-          var k = localStorage.key(i);
-          if (k && k.indexOf(CRA_LS_INTENT_PREFIX) === 0) localStorage.removeItem(k);
-        }
-      } catch (_) {}
+      CRA_RUNTIME_SESSION_ID = null;
+      CRA_RUNTIME_INTENT_BY_SESSION = Object.create(null);
     }
 
     const questionEl = document.getElementById('question');
