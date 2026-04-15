@@ -1251,13 +1251,13 @@
   </header>
 
   <div class="tabs" role="tablist" aria-label="Main views">
-    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-path" id="tab-btn-path" data-tab="path">Interactive path</button>
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-lab" id="tab-btn-lab" data-tab="lab">SQL lab</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-path" id="tab-btn-path" data-tab="path">Interactive path</button>
     <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-practice" id="tab-btn-practice" data-tab="practice" title="Ask any question in natural language">Guided practice</button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-lab" id="tab-btn-lab" data-tab="lab">SQL lab</button>
   </div>
 
   <main id="main-content" tabindex="-1">
-  <div id="tab-path" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-path">
+  <div id="tab-path" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-path">
     <div class="card guided-wrap">
       <div class="card-title">Interactive path</div>
       <p class="guided-progress" id="guidedProgress"></p>
@@ -1293,7 +1293,7 @@
   <div id="executeResult"></div>
   </div><!-- /tab-practice -->
 
-  <div id="tab-lab" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-lab">
+  <div id="tab-lab" class="tab-panel active" role="tabpanel" aria-labelledby="tab-btn-lab">
     <p class="status" id="labStatus">Checking database connection…</p>
     <div class="chat-wrap card" style="padding:0;overflow:hidden;box-shadow:var(--shadow)">
       <div class="chat-history" id="chatHistory" style="padding:0.75rem 1rem 0">
