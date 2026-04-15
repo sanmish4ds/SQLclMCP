@@ -1309,6 +1309,8 @@
           <button type="button" class="chat-chip" id="chipSchema">Schema</button>
           <button type="button" class="chat-chip" id="chipListConn">Connections</button>
           <button type="button" class="chat-chip" id="chipExplainLastSql">Explain last SQL</button>
+          <button type="button" class="chat-chip lab-muted" id="btnCraReset"
+            title="Clears CRA session id and declared intent. Next lab message starts telemetry turn 1 with a fresh intent anchor (e.g. for research paste sequences).">Reset CRA session</button>
         </div>
 
         <div class="chat-input-row">
@@ -1377,6 +1379,14 @@
         cra_declared_intent: intent || undefined,
         cra_channel: channel || 'main_ui',
       };
+    }
+
+    /** Clears CRA session id and declared intent so the next request starts a new server session and re-anchors S1 from the next question. */
+    function craResetSessionAndIntent() {
+      try {
+        localStorage.removeItem(CRA_LS_SESSION);
+        localStorage.removeItem(CRA_LS_INTENT);
+      } catch (_) {}
     }
 
     const questionEl = document.getElementById('question');
@@ -3577,6 +3587,15 @@
       }
     }
     document.getElementById('chipExplainLastSql').addEventListener('click', () => { explainLastSqlInChat(); });
+
+    document.getElementById('btnCraReset').addEventListener('click', () => {
+      craResetSessionAndIntent();
+      removeWelcome();
+      appendBotDiv(
+        '<div class="chat-label">CRA research</div>' +
+        '<div class="chat-meta">Session id and declared intent were cleared. Your <strong>next</strong> lab message starts a new telemetry session (<code>turn</code> 1) and intent re-anchors from that question only.</div>',
+      );
+    });
 
     function buildTable(headers, rowArrays) {
       let html = '<table><thead><tr>' +
