@@ -686,6 +686,15 @@
     }
 
     .chat-error { color: var(--danger); font-size: 0.88rem; padding: 0.35rem 0; }
+    .cra-soft {
+      border-left: 3px solid #c9a227;
+      background: rgba(201, 162, 39, 0.1);
+      padding: 0.45rem 0.65rem;
+      margin: 0.45rem 0 0.6rem;
+      font-size: 0.86rem;
+      color: var(--text);
+    }
+    .cra-soft p { margin: 0.2rem 0; }
     .chat-no-rows { color: var(--text-dim); font-size: 0.82rem; }
     .chat-no-db-hint { color: var(--text-dim); font-size: 0.78rem; margin: 0.45rem 0 0; }
     .chat-row-count { color: var(--text-dim); font-size: 0.72rem; margin: 0.3rem 0; }
@@ -2997,7 +3006,7 @@
         const tutor = (data.tutor_response || '').trim();
         const ok = data.success && (lastSql || tutor);
         if (ok) {
-          var parts = '';
+          var parts = craSoftBanner(data);
           if (tutor) parts += tutorMarkdownToHtml(tutor);
           if (lastSql) {
             parts += '<div class="result success" style="margin-top:0.75rem">' + escapeHtml(lastSql) + '</div>';
@@ -3042,7 +3051,7 @@
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Explain failed');
-        explainResultEl.innerHTML = explainMarkdownToBox(String(d.explanation || ''));
+        explainResultEl.innerHTML = craSoftBanner(d) + explainMarkdownToBox(String(d.explanation || ''));
       } catch (e) {
         explainResultEl.innerHTML = '<div class="explain-box is-error">Explain failed: ' + escapeHtml(e.message || String(e)) + '</div>';
       } finally {
@@ -3099,6 +3108,13 @@
       const div = document.createElement('div');
       div.textContent = s;
       return div.innerHTML;
+    }
+
+    function craSoftBanner(obj) {
+      const list = obj && obj.cra_soft_notices;
+      if (!list || !list.length) return '';
+      const inner = list.map((t) => '<p>' + escapeHtml(String(t)) + '</p>').join('');
+      return '<div class="cra-soft" role="status">' + inner + '</div>';
     }
 
     // Keep loader visible while /health is loading
@@ -3514,7 +3530,7 @@
             return;
           }
           const bookNote = bookConsultSuffix(genData, false);
-          const tutorHtml = (tutor ? tutorMarkdownToHtml(tutor) : '') + bookNote;
+          const tutorHtml = craSoftBanner(genData) + (tutor ? tutorMarkdownToHtml(tutor) : '') + bookNote;
           const sb = sql ? sqlBlock(sql, genData.source) : '';
 
           if (!sql) {
@@ -3576,12 +3592,16 @@
         const r = await fetch(API_BASE_URL + '/explain-sql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sql, question: '' }),
+          body: JSON.stringify(Object.assign(
+            { sql, question: '' },
+            craClientPayload('', 'lab_explain_last')
+          )),
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.error || 'Explain failed');
         const text = String(d.explanation || '').trim();
         setBotContent(botDiv,
+          craSoftBanner(d) +
           '<div class="chat-label">Explain SQL</div>' +
           '<div class="explain-box explain-box--md" style="margin-top:0.5rem">' +
           (tutorMarkdownToInnerHtml(text) || '<p class="tutor-p">(No explanation.)</p>') + '</div>');

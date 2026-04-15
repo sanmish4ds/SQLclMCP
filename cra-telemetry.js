@@ -86,6 +86,8 @@ function sha256Hex(s, bytes = 12) {
 class CraTelemetry {
   constructor(options) {
     this.enabled = !!options.enabled;
+    /** In-memory CRA signals for soft guardrails (can be on without JSONL logging). Default: true. */
+    this.softGuardsEnabled = options.softGuardsEnabled !== false;
     this.logFile = options.logFile;
     /** When true, echo each JSON event to stdout (e.g. Render → Logs). */
     this.logStdout = !!options.logStdout;
@@ -161,9 +163,9 @@ class CraTelemetry {
     success,
     eventType,
   }) {
-    if (!this.enabled) return null;
     const sid = String(sessionId || '').trim().slice(0, 128);
     if (!sid) return null;
+    if (!this.enabled && !this.softGuardsEnabled) return null;
 
     const sess = this.getOrCreateSession(sid);
     sess.turnCount += 1;
@@ -235,11 +237,14 @@ class CraTelemetry {
 
 function createCraTelemetryFromEnv(rootDir) {
   const enabled = /^true$/i.test(String(process.env.CRA_TELEMETRY_ENABLED || '').trim());
+  const softRaw = String(process.env.CRA_SOFT_GUARDS_ENABLED ?? 'true').trim();
+  const softGuardsEnabled = !/^false$/i.test(softRaw);
   const rel = String(process.env.CRA_TELEMETRY_FILE || 'data/cra-sessions.jsonl').trim();
   const logFile = path.isAbsolute(rel) ? rel : path.join(rootDir, rel);
   const logStdout = /^true$/i.test(String(process.env.CRA_TELEMETRY_STDOUT || '').trim());
   return new CraTelemetry({
     enabled,
+    softGuardsEnabled,
     logFile,
     logStdout,
     windowW: process.env.CRA_TELEMETRY_WINDOW,
