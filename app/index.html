@@ -2967,7 +2967,7 @@
           var err = expandData.error || ('HTTP ' + r.status);
           out.innerHTML = '<p class="guided-muted" style="margin-top:0"><strong>Lesson unavailable.</strong> ' + escapeHtml(err) + '</p>' +
             '<p class="guided-muted">This screen has no static chapter text — the lesson comes from the API only.</p>' +
-            '<p class="guided-admin-hint">Running your own server? Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code>, then try again.</p>';
+            '<p class="guided-admin-hint">Running your own server? Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY</code> (or Ollama: <code>LLM_SKIP_AUTH=true</code> + <code>LLM_API_URL</code> to <code>…/v1/chat/completions</code>), then try again.</p>';
         }
       } catch (e) {
         if (e.name === 'AbortError') return;
@@ -3623,7 +3623,7 @@
           if (!genData.success || (!sql && !tutor)) {
             const genErr = genData.error || 'Unknown error';
             const hint = (genErr.includes('disabled') || genErr.includes('API_KEY'))
-              ? '<p class="chat-no-db-hint">Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY=…</code> in .env.</p>' : '';
+              ? '<p class="chat-no-db-hint">Set <code>ENABLE_LLM_SQL_GEN=true</code> and <code>LLM_API_KEY=…</code> in .env (Ollama: <code>LLM_SKIP_AUTH=true</code> + local <code>LLM_API_URL</code>).</p>' : '';
             setBotContent(botDiv, '<div class="chat-error">❌ Could not get an answer: ' + escapeHtml(genErr) + '</div>' + hint);
             return;
           }
