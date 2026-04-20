@@ -60,6 +60,108 @@ The project answers four research questions (RQ1–RQ4) and produces both **eval
 
 ---
 
+## Execution-Grounded Hallucination Detection (RAG + Feedback Loop)
+
+This section is the **target systems architecture** for papers and presentations: natural-language SQL generation where **ground truth comes from execution and comparison**, retrieval grounds the model in **schema and past queries**, and a **feedback loop** improves prompts, rules, or retrieval over time.
+
+### High-level flow (modular)
+
+```
+User (Natural Language)
+        ↓
+Frontend UI (SQL learning / chat app)
+        ↓
+API Gateway / Orchestrator
+        ↓
+--------------------------------------------------
+|           AI + Validation Layer                |
+|                                                |
+|  1. Prompt Builder (schema-aware)             |
+|  2. LLM Engine (SQL generator)                |
+|  3. RAG Retriever (metadata + query logs)     |
+|  4. Hallucination detector                    |
+--------------------------------------------------
+        ↓
+--------------------------------------------------
+|        Execution & Verification Layer         |
+|                                                |
+|  5. SQL Executor (Oracle DB)                  |
+|  6. Result Validator                          |
+|  7. Performance Analyzer                      |
+--------------------------------------------------
+        ↓
+--------------------------------------------------
+|           Feedback Learning Layer             |
+|                                                |
+|  8. Feedback Collector (user / system)        |
+|  9. Learning Engine (RL / rule update)        |
+--------------------------------------------------
+        ↓
+Final Output (validated SQL + explanation)
+```
+
+The **hallucination detector** is *execution-grounded* when it uses Oracle outcomes (parse/execute errors, empty or implausible results, divergence from a gold or semantic baseline) rather than only static linting. The **feedback loop** closes when user corrections, telemetry, or batch evaluation updates prompts, RAG corpora, or guardrails.
+
+### Diagram (Mermaid — GitHub, VS Code, export to SVG/PNG)
+
+```mermaid
+flowchart TB
+  U[User — natural language]
+  FE[Frontend UI]
+  GW[API Gateway / Orchestrator]
+
+  subgraph AIV["AI + validation layer"]
+    PB["1. Prompt builder — schema-aware"]
+    LLM["2. LLM engine — SQL generator"]
+    RAG["3. RAG retriever — metadata + query logs"]
+    HD["4. Hallucination detector"]
+  end
+
+  subgraph EXV["Execution + verification layer"]
+    EX["5. SQL executor — Oracle"]
+    RV["6. Result validator"]
+    PA["7. Performance analyzer — EXPLAIN / latency"]
+  end
+
+  subgraph FBL["Feedback learning layer"]
+    FC["8. Feedback collector — user + system"]
+    LE["9. Learning engine — rules / retrieval update"]
+  end
+
+  OUT["Output — validated SQL + explanation"]
+
+  U --> FE --> GW --> PB
+  PB --> LLM
+  RAG --> LLM
+  LLM --> HD
+  HD --> EX
+  EX --> RV
+  EX --> PA
+  RV --> FC
+  PA --> FC
+  FC --> LE
+  LE -.->|"refine prompts, RAG, rules"| PB
+  LE -.-> RAG
+  RV --> OUT
+  PA --> OUT
+```
+
+### Mapping to this repository (today vs extension)
+
+| Layer | Component | Role in PhraseSQL today | Typical extension for full loop |
+|-------|-----------|-------------------------|--------------------------------|
+| AI + validation | 1. Prompt builder | `sql-learn-server.js` system prompts, `schema-reference.json`, TPC-H hints in evaluation | Dynamic schema snippets, per-session context windows |
+| | 2. LLM engine | `POST /generate-sql`, OpenAI-compatible API | Multi-turn repair, structured output |
+| | 3. RAG retriever | Book search (`book-index.js`, `BOOK_CONTEXT_IN_GENERATE`), schema JSON | Embedding index over **query logs** + lineage metadata |
+| | 4. Hallucination detector | Implicit: Oracle errors on run; evaluation compares result sets | Explicit pre-exec checks + post-exec semantic vs baseline |
+| Execution + verification | 5. SQL executor | `POST /api/invoke` → `run-sql`, `run_sql_evaluation.py` → `Database.execute` | Same; optional read-only role |
+| | 6. Result validator | `semantic_match`, `exact_order_match`, `extract_string_match` in `run_sql_evaluation.py` | Online validator without gold SQL (consistency, bounds) |
+| | 7. Performance analyzer | `Database.explain_plan`, latency in evaluation JSON | Surface cost deltas in UI |
+| Feedback | 8. Feedback collector | User chat, optional `cra-telemetry.js` signals | Thumbs-up/down, corrected SQL logging |
+| | 9. Learning engine | Batch runs → `export_failure_cases.py`, paper-oriented analysis | Rule/prompt updates from failure clusters |
+
+---
+
 ## Component Overview
 
 | Component | Role |

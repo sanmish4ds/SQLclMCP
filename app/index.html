@@ -889,6 +889,22 @@
     }
     .chat-success-note { color: var(--success); font-size: 0.78rem; font-weight: 600; }
 
+    .verify-banner { font-size: 0.82rem; margin: 0.6rem 0; padding: 0.55rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); }
+    .verify-banner--ok { background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.35); }
+    .verify-banner--warn { background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.4); }
+    .verify-banner--bad { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.35); }
+    .verify-banner-title { font-weight: 700; margin-bottom: 0.25rem; }
+    .verify-list { margin: 0.35rem 0 0 1rem; padding: 0; }
+    .verify-meta { margin-top: 0.35rem; opacity: 0.9; font-size: 0.78rem; }
+    .verify-meta--err { color: var(--danger); }
+    .sql-feedback-row { margin-top: 0.65rem; font-size: 0.82rem; }
+    .sql-feedback-btn {
+      margin-left: 0.35rem; padding: 0.15rem 0.45rem; cursor: pointer;
+      border: 1px solid var(--border); border-radius: 4px; background: var(--panel);
+    }
+    .sql-feedback-btn:hover:not(:disabled) { filter: brightness(1.06); }
+    .sql-feedback-btn:disabled { opacity: 0.55; cursor: default; }
+
     .chat-code-muted { color: var(--text-dim); font-size: 0.78rem; }
     .lab-muted { color: var(--text-dim); font-size: 0.78rem; }
 
@@ -3163,6 +3179,80 @@
     const chatInputEl = document.getElementById('chatInput');
     const btnChatSend = document.getElementById('btnChatSend');
     const sqlStore = [];
+    const feedbackCtxMap = {};
+    let feedbackCtxSeq = 0;
+    function registerFeedbackCtx(question, sql) {
+      const id = String(++feedbackCtxSeq);
+      feedbackCtxMap[id] = { question: question || '', sql: sql || '' };
+      return id;
+    }
+
+    function verificationBanner(verification) {
+      if (!verification || !verification.verdict) return '';
+      const risk = verification.verdict.risk || 'low';
+      const cls = risk === 'high' ? 'verify-banner verify-banner--bad'
+        : risk === 'medium' ? 'verify-banner verify-banner--warn'
+        : 'verify-banner verify-banner--ok';
+      let html = '<div class="' + cls + '"><div class="verify-banner-title">Execution-grounded check · ' +
+        escapeHtml(risk) + ' risk</div>';
+      html += '<div class="verify-meta">' + escapeHtml(verification.verdict.summary || '') + '</div>';
+      const issues = verification.static && verification.static.issues;
+      if (issues && issues.length) {
+        html += '<ul class="verify-list">';
+        for (let i = 0; i < issues.length; i++) {
+          html += '<li>' + escapeHtml(issues[i].message || issues[i].code || '') + '</li>';
+        }
+        html += '</ul>';
+      }
+      const ex = verification.execution;
+      if (ex && ex.attempted) {
+        if (ex.success) {
+          html += '<div class="verify-meta">Oracle: OK · rows (preview max 500): ' + escapeHtml(String(ex.row_count)) +
+            (ex.latency_ms != null ? ' · ' + escapeHtml(String(ex.latency_ms)) + ' ms' : '') + '</div>';
+        } else {
+          html += '<div class="verify-meta verify-meta--err">Oracle: ' + escapeHtml(ex.error || 'failed') + '</div>';
+        }
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function sqlFeedbackRow(question, sql) {
+      if (!sql) return '';
+      const fid = registerFeedbackCtx(question, sql);
+      return '<div class="sql-feedback-row" data-fid="' + escapeHtml(fid) + '">' +
+        '<span class="sql-feedback-label">Was this helpful?</span>' +
+        '<button type="button" class="sql-feedback-btn" data-helpful="1" aria-label="Helpful">👍</button>' +
+        '<button type="button" class="sql-feedback-btn" data-helpful="0" aria-label="Not helpful">👎</button>' +
+        '</div>';
+    }
+
+    chatHistoryEl.addEventListener('click', function (ev) {
+      const btn = ev.target.closest('.sql-feedback-btn');
+      if (!btn || btn.disabled) return;
+      const row = btn.closest('.sql-feedback-row');
+      if (!row) return;
+      const id = row.getAttribute('data-fid');
+      const ctx = feedbackCtxMap[id];
+      if (!ctx) return;
+      const helpful = btn.getAttribute('data-helpful') === '1';
+      row.querySelectorAll('.sql-feedback-btn').forEach(function (b) { b.disabled = true; });
+      const note = document.createElement('span');
+      note.className = 'chat-meta';
+      note.style.marginLeft = '0.5rem';
+      note.textContent = helpful ? 'Thanks!' : 'Thanks — logged for review.';
+      row.appendChild(note);
+      fetch(API_BASE_URL + '/sql-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({
+          helpful: helpful,
+          question: ctx.question,
+          generated_sql: ctx.sql,
+          channel: 'lab_chat',
+        }, craClientPayload(ctx.question, 'lab_chat_feedback'))),
+      }).catch(function () {});
+    });
 
     async function loadLabTools() {
       try {
@@ -3509,13 +3599,21 @@
           );
 
         } else {
-          // Natural language → LLM generates SQL → run-sql executes it
-          const stepLabel = chatConnectedTo ? 'Step 1/2: Generating SQL via OpenAI…' : 'Generating SQL via OpenAI…';
+          // Natural language → LLM + optional execution-grounded verification (RAG + Oracle)
+          const wantVerify = dbExecuteReady && !!chatConnectedTo;
+          const stepLabel = wantVerify
+            ? 'Step 1/2: Generating SQL (with schema + query-log context)…'
+            : 'Generating SQL via OpenAI…';
           setBotContent(botDiv, thinkingHtml() + ' <span class="chat-thinking-label">' + stepLabel + '</span>');
           const genR = await fetch(API_BASE_URL + '/generate-sql', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(Object.assign(
-              { question: text, mode: 'hybrid' },
+              {
+                question: text,
+                mode: 'hybrid',
+                verify_with_oracle: wantVerify,
+                verify_include_results: wantVerify,
+              },
               craClientPayload(text, 'lab_chat')
             )),
           });
@@ -3530,24 +3628,46 @@
             return;
           }
           const bookNote = bookConsultSuffix(genData, false);
+          const vBanner = verificationBanner(genData.verification);
           const tutorHtml = craSoftBanner(genData) + (tutor ? tutorMarkdownToHtml(tutor) : '') + bookNote;
           const sb = sql ? sqlBlock(sql, genData.source) : '';
 
           if (!sql) {
-            setBotContent(botDiv, tutorHtml + '<p class="chat-meta">Conceptual answer — no SQL to run on the lab database.</p>');
+            setBotContent(botDiv, tutorHtml + vBanner + '<p class="chat-meta">Conceptual answer — no SQL to run on the lab database.</p>');
             return;
           }
 
           if (!chatConnectedTo) {
-            setBotContent(botDiv, tutorHtml + sb + '<p class="chat-no-db-hint">Not connected — type “list connections” to pick a connection, then retry.</p>');
+            setBotContent(botDiv, tutorHtml + vBanner + sb + '<p class="chat-no-db-hint">Not connected — type “list connections” to pick a connection, then retry.</p>');
             return;
           }
-          setBotContent(botDiv, tutorHtml + sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running SQL on Oracle…</span>');
-          const d = await apiInvoke('run-sql', { sql });
-          setBotContent(botDiv, d.success
-            ? tutorHtml + sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d.result)
-            : tutorHtml + sb + '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>'
-          );
+
+          const ex = genData.verification && genData.verification.execution;
+          const usedVerifyRows = wantVerify && ex && ex.success && ex.results_included && ex.columns && ex.rows;
+
+          if (usedVerifyRows) {
+            setBotContent(
+              botDiv,
+              tutorHtml + vBanner + sb +
+                '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (verified)</span></div>' +
+                resultsHtml({ columns: ex.columns, rows: ex.rows }) +
+                sqlFeedbackRow(text, sql)
+            );
+          } else if (wantVerify && ex && ex.attempted && !ex.success) {
+            setBotContent(
+              botDiv,
+              tutorHtml + vBanner + sb +
+                '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(ex.error || 'Unknown') + '</div>' +
+                sqlFeedbackRow(text, sql)
+            );
+          } else {
+            setBotContent(botDiv, tutorHtml + vBanner + sb + ' ' + thinkingHtml() + ' <span class="chat-thinking-label">Step 2/2: Running SQL on Oracle…</span>');
+            const d = await apiInvoke('run-sql', { sql });
+            setBotContent(botDiv, d.success
+              ? tutorHtml + vBanner + sb + '<div class="chat-label" style="margin-top:0.75rem">Results <span class="chat-source">via Oracle (Node)</span></div>' + resultsHtml(d.result) + sqlFeedbackRow(text, sql)
+              : tutorHtml + vBanner + sb + '<div class="chat-error" style="margin-top:0.5rem">❌ Execution error: ' + escapeHtml(d.error || 'Unknown') + '</div>' + sqlFeedbackRow(text, sql)
+            );
+          }
         }
       } catch (e) {
         setBotContent(botDiv, '<div class="chat-error">❌ Request failed: ' + escapeHtml(e.message) + '</div>');
