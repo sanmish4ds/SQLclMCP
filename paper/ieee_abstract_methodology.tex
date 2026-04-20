@@ -1,0 +1,47 @@
+% IEEE-style fragments (Abstract + Methodology) for: Execution-grounded
+% hallucination mitigation in NL-to-SQL over Oracle.
+% No fabricated numeric results — cite measured outcomes only from your own
+% sql_evaluation_*.json runs when writing the final Results section.
+%
+% Usage: \input{paper/ieee_abstract_methodology.tex}
+
+\begin{abstract}
+Natural-language interfaces to relational databases remain vulnerable to \emph{speculative} SQL: statements that appear plausible yet reference non-existent relations or columns, or that execute but answer the wrong question.
+We describe an \emph{execution-grounded} pipeline for Oracle NL-to-SQL in which trust is anchored to observable database behavior rather than model prose alone.
+A schema-aware prompt builder constrains generation to a documented table set; retrieval-augmented generation (RAG) supplies book excerpts and, when available, validated question--SQL pairs from an append-only query log.
+Before presentation to the user, generated read-only SQL undergoes static checks against a machine-readable schema reference and optional on-server execution; the interface surfaces a structured verification verdict (static issues, parse/execute outcome, row counts, timing) and records explicit user feedback.
+For offline benchmarking, an evaluation harness executes human-authored baseline SQL and model-generated SQL on the same Oracle instance, compares result sets under multiple equivalence notions, and records \texttt{EXPLAIN~PLAN} cost and latency deltas.
+This design separates \emph{generation} from \emph{grounding}: hallucinations are detected when they contradict the schema, the executor, or (in batch evaluation) gold-intent result semantics---not when a language model merely sounds confident.
+\end{abstract}
+
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{System under study}
+The studied system is a Node.js HTTP service that exposes NL-to-SQL generation (\texttt{POST /generate-sql}), optional Oracle execution via \texttt{oracledb}, and a browser lab UI.
+Generation modes include lookup from curated question--SQL rules, LLM-only, and hybrid (lookup then LLM fallback).
+The LLM is accessed through an OpenAI-compatible chat-completions endpoint; prompts embed fixed TPC-H-style table and column naming rules so that generated \texttt{SELECT} and \texttt{WITH\,\ldots\,SELECT} statements are intended to be copy-paste runnable on the lab schema.
+
+\subsection{Retrieval-augmented generation (RAG)}
+RAG combines three grounded sources: (i) a static \texttt{schema-reference.json} consumed by the UI and validation layer; (ii) optional full-text retrieval over an indexed course book EPUB (\texttt{book-index.js}) injected into generate and explain prompts when enabled; (iii) an optional query log (\texttt{data/query-log.jsonl}) of past \emph{verified} successful executions and user-supplied corrections, selected by lightweight lexical overlap with the current question and injected as short exemplar pairs.
+RAG is treated as \emph{context}, not ground truth: the model is instructed to ignore off-topic passages and never to invent identifiers absent from the schema.
+
+\subsection{Execution-grounded verification (online)}
+For interactive use, the client may request \texttt{verify\_with\_oracle=true} on generation.
+The server then (a) runs static analysis: referenced tables after \texttt{FROM}/\texttt{JOIN} are checked against the schema reference, with allowances for common Oracle builtins (e.g., \texttt{DUAL}) and for \texttt{WITH}-clause names; prefixed identifiers matching TPC-H column patterns are checked against the declared column set.
+(b) If execution is enabled and credentials are present, the generated statement is executed once on Oracle (row cap aligned with the lab UI); parse and runtime errors, empty results, row counts, and elapsed time are returned in a structured \texttt{verification} object together with a qualitative risk summary synthesizing static and execution signals.
+The UI may reuse returned rows to avoid duplicate round-trips when previews are included.
+User thumbs-up/down and optional corrected SQL are appended to \texttt{data/sql-feedback.jsonl}; negative feedback with a correction is also written back to the query log to strengthen future retrieval.
+
+\subsection{Batch evaluation against gold SQL (offline)}
+Offline rigor uses a Python orchestrator (\texttt{experiments/run\_sql\_evaluation.py}) independent of the interactive path.
+For each benchmark tuple (natural-language question, human-written SQL), the harness executes the baseline SQL on Oracle, then requests generated SQL from the HTTP API, executes it, and records success, latency, and \texttt{EXPLAIN~PLAN} metadata.
+Equivalence of result sets is assessed with three complementary checks already implemented in the harness: multiset semantic equality (order ignored), exact row-and-order equality, and canonical string equality of normalized row tuples.
+Disagreements and errors are exported for qualitative coding (\texttt{export\_failure\_cases.py}); aggregate metrics and plots are produced from the emitted JSON (\texttt{visualize\_results.py}).
+\emph{All quantitative claims in the camera-ready paper must be computed from a named evaluation JSON artifact (timestamp, configuration, model ID); we do not state accuracy or cost figures here because they are run-specific.}
+
+\subsection{Threats to validity and scope}
+The static checker is syntactic and heuristic (it is not a full SQL semantic analyzer).
+Online verification without gold SQL cannot prove \emph{intent} correctness---only schema consistency, executability, and coarse signals such as emptiness or runtime errors.
+Batch semantic match requires gold SQL aligned with question intent; mismatches in the gold set limit conclusion strength.
+Finally, LLM and Oracle versions, session parameters, and data skew must be fixed and reported for reproducibility.

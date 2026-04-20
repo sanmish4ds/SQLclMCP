@@ -118,6 +118,8 @@ data/*.epub
 data/.fetched_book.epub
 data/cra-sessions.jsonl
 data/cra-sessions.*.jsonl
+data/query-log.jsonl
+data/sql-feedback.jsonl
 
 # Miscellaneous
 .cache/

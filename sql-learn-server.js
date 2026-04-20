@@ -59,6 +59,12 @@ const {
   formatContextForPrompt,
 } = require('./book-index');
 const { createCraTelemetryFromEnv } = require('./cra-telemetry');
+const {
+  staticSchemaCheck,
+  formatQueryLogRagUserMessage,
+  appendJsonl,
+  synthesizeVerdict,
+} = require('./hallucination-grounding');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
@@ -138,6 +144,10 @@ const config = {
   bookContextInExplain: process.env.BOOK_CONTEXT_IN_EXPLAIN !== 'false',
   /** When book is loaded, search it before /generate-sql LLM; cite chapter when on-topic (disable: BOOK_CONTEXT_IN_GENERATE=false). */
   bookContextInGenerate: process.env.BOOK_CONTEXT_IN_GENERATE !== 'false',
+  /** Inject similar past successful NL→SQL pairs into the LLM prompt (disable: QUERY_LOG_RAG=false). */
+  queryLogRagEnabled: process.env.QUERY_LOG_RAG !== 'false',
+  queryLogPath: path.join(__dirname, 'data', 'query-log.jsonl'),
+  feedbackLogPath: path.join(__dirname, 'data', 'sql-feedback.jsonl'),
 };
 
 let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
@@ -479,7 +489,7 @@ function pickBookContextForQuestion(question, { maxChunks = 4, searchLimit = 18 
   return { chunks, book_citations, book_context_used: chunks.length > 0 };
 }
 
-async function generateSqlWithLLM(question) {
+async function generateSqlWithLLM(question, opts = {}) {
   const emptyBookMeta = { book_citations: [], book_context_used: false };
 
   if (!config.enableLLMSqlGeneration) {
@@ -575,6 +585,13 @@ async function generateSqlWithLLM(question) {
   }
 
   const messages = [{ role: 'system', content: tutorSystem }];
+  const ragMsg = opts.queryLogUserMessage || null;
+  if (ragMsg) {
+    messages.push({
+      role: 'user',
+      content: ragMsg,
+    });
+  }
   if (bookUserMessage) {
     messages.push({ role: 'user', content: bookUserMessage });
   }
@@ -940,7 +957,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   }
 }
 
-async function generateSql(question, mode = 'hybrid') {
+async function generateSql(question, mode = 'hybrid', opts = {}) {
   const noBook = { book_citations: [], book_context_used: false };
 
   if (mode === 'lookup') {
@@ -954,8 +971,13 @@ async function generateSql(question, mode = 'hybrid') {
     };
   }
 
+  let queryLogUserMessage = opts.queryLogUserMessage;
+  if (queryLogUserMessage === undefined && config.queryLogRagEnabled) {
+    queryLogUserMessage = formatQueryLogRagUserMessage(question, config.queryLogPath, { limit: 3 });
+  }
+
   if (mode === 'llm') {
-    return generateSqlWithLLM(question);
+    return generateSqlWithLLM(question, { ...opts, queryLogUserMessage });
   }
 
   // hybrid: exact rule match only, then LLM (handles interview + open-ended questions)
@@ -963,7 +985,76 @@ async function generateSql(question, mode = 'hybrid') {
   if (hit.sql) {
     return { sql: hit.sql, tutor_response: null, source: hit.source, error: null, ...noBook };
   }
-  return generateSqlWithLLM(question);
+  return generateSqlWithLLM(question, { ...opts, queryLogUserMessage });
+}
+
+async function runOracleVerifySelect(sql, includeResults) {
+  const t0 = Date.now();
+  if (!config.enableExecuteSql || !oracledb || !config.dbDsn || !config.dbUser || !config.dbPassword) {
+    return {
+      success: false,
+      configured: false,
+      error: 'Oracle execution is not enabled or not configured on this server.',
+      row_count: 0,
+      latency_ms: 0,
+    };
+  }
+  const maxRows = includeResults ? 500 : 1;
+  const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
+  if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;
+  let conn;
+  try {
+    conn = await oracledb.getConnection(connConfig);
+    const r = await conn.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows });
+    const rows = r.rows || [];
+    const meta = r.metaData ? r.metaData.map(m => m.name) : [];
+    const out = {
+      success: true,
+      configured: true,
+      row_count: rows.length,
+      latency_ms: Date.now() - t0,
+      column_count: meta.length,
+      results_included: !!includeResults,
+    };
+    if (includeResults) {
+      out.columns = meta;
+      out.rows = rows;
+    } else if (rows.length >= 1) {
+      out.row_count_note = 'non_empty_truncated_preview';
+    }
+    return out;
+  } catch (err) {
+    return {
+      success: false,
+      configured: true,
+      error: err.message || String(err),
+      row_count: 0,
+      latency_ms: Date.now() - t0,
+    };
+  } finally {
+    if (conn) { try { await conn.close(); } catch (_) {} }
+  }
+}
+
+async function buildExecutionGroundedVerification(safeSql, verifyOracle, includeResults) {
+  const projectRoot = __dirname;
+  const staticReport = safeSql
+    ? staticSchemaCheck(safeSql, projectRoot)
+    : { ok: true, issues: [], risk: 'low', tables_referenced: [] };
+  let executionReport = null;
+  if (verifyOracle) {
+    if (!safeSql || !isSafeSingleSelect(safeSql)) {
+      executionReport = { attempted: false, reason: safeSql ? 'not_single_select' : 'no_sql' };
+    } else {
+      const ex = await runOracleVerifySelect(safeSql, includeResults);
+      executionReport = { attempted: true, ...ex };
+    }
+  }
+  return {
+    static: staticReport,
+    execution: executionReport,
+    verdict: synthesizeVerdict(staticReport, executionReport),
+  };
 }
 
 // ── ElevenLabs podcast TTS (guided lesson “Listen”) — API key stays on server ──
@@ -1727,6 +1818,61 @@ const requestHandler = (request, response) => {
     return;
   }
 
+  // POST /sql-feedback — thumbs / corrections (execution-grounded feedback loop)
+  if (pathname === '/sql-feedback' && request.method === 'POST') {
+    let body = '';
+    request.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > MAX_REQUEST_BODY_BYTES) {
+        response.writeHead(413);
+        response.end(JSON.stringify({ success: false, error: 'Request too large' }));
+        try { request.destroy(); } catch (_) {}
+      }
+    });
+    request.on('end', () => {
+      try {
+        const rl = rateLimitOk(request);
+        if (!rl.ok) {
+          response.writeHead(429, { 'Retry-After': String(rl.retryAfterSec) });
+          response.end(JSON.stringify({ success: false, error: 'Rate limited', retry_after_seconds: rl.retryAfterSec }));
+          return;
+        }
+        const data = JSON.parse(body || '{}');
+        const helpful = data.helpful === true ? true : data.helpful === false ? false : null;
+        if (helpful === null) {
+          response.writeHead(400);
+          response.end(JSON.stringify({ success: false, error: 'Set helpful to true or false' }));
+          return;
+        }
+        const entry = {
+          ts: new Date().toISOString(),
+          helpful,
+          question: String(data.question || '').slice(0, 4000),
+          generated_sql: String(data.generated_sql || '').slice(0, 12000),
+          corrected_sql: data.corrected_sql ? String(data.corrected_sql).slice(0, 12000) : null,
+          oracle_error: data.oracle_error ? String(data.oracle_error).slice(0, 4000) : null,
+          channel: data.channel ? String(data.channel).slice(0, 200) : null,
+        };
+        appendJsonl(config.feedbackLogPath, entry);
+        if (helpful === false && entry.corrected_sql && entry.question) {
+          appendJsonl(config.queryLogPath, {
+            ts: entry.ts,
+            question: entry.question,
+            sql: entry.corrected_sql,
+            row_count: null,
+            source: 'user_correction',
+          });
+        }
+        response.writeHead(200);
+        response.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        response.writeHead(400);
+        response.end(JSON.stringify({ success: false, error: e.message || String(e) }));
+      }
+    });
+    return;
+  }
+
   // POST /generate-sql
   if (pathname === '/generate-sql' && request.method === 'POST') {
     let body = '';
@@ -1775,15 +1921,19 @@ const requestHandler = (request, response) => {
           return;
         }
 
-        // Guardrail 2: duplicate-question cache (cost saver).
+        const verifyOracle = data.verify_with_oracle === true;
+        const verifyIncludeResults = verifyOracle && data.verify_include_results !== false;
+
+        // Guardrail 2: duplicate-question cache (cost saver). Verification is applied after cache hit.
         const normQ = normalizeQuestion(question);
-        const cacheKey = `generate|${mode}|${normQ}`;
+        const cacheKey = `generate|${mode}|${normQ}|ql:${config.queryLogRagEnabled ? 1 : 0}`;
         const cached = cacheGet(cacheKey);
         if (cached) {
-          response.writeHead(200);
-          response.end(JSON.stringify({
+          let safeSqlHit = cached.value.generated_sql || '';
+          if (safeSqlHit && !isSafeSingleSelect(safeSqlHit)) safeSqlHit = '';
+          const outHit = {
             question,
-            generated_sql: cached.value.generated_sql || null,
+            generated_sql: safeSqlHit || null,
             tutor_response: cached.value.tutor_response || null,
             source: cached.value.source || 'cache',
             mode,
@@ -1794,7 +1944,22 @@ const requestHandler = (request, response) => {
             book_citations: cached.value.book_citations || [],
             cra_soft_notices: cached.value.cra_soft_notices || [],
             cra_signals: cached.value.cra_signals || null,
-          }));
+          };
+          if (verifyOracle && safeSqlHit) {
+            outHit.verification = await buildExecutionGroundedVerification(safeSqlHit, true, verifyIncludeResults);
+            const ex = outHit.verification.execution;
+            if (ex && ex.attempted && ex.success) {
+              appendJsonl(config.queryLogPath, {
+                ts: new Date().toISOString(),
+                question,
+                sql: safeSqlHit,
+                row_count: ex.row_count,
+                source: 'verify_with_oracle_cached',
+              });
+            }
+          }
+          response.writeHead(200);
+          response.end(JSON.stringify(outHit));
           return;
         }
 
@@ -1848,8 +2013,27 @@ const requestHandler = (request, response) => {
         if (softList.length) payloadOut.cra_soft_notices = softList;
         const snap = craSignalSnapshot(craEvent);
         if (snap) payloadOut.cra_signals = snap;
-        // Cache only successful non-empty outputs.
-        if (payloadOut.generated_sql || payloadOut.tutor_response) cacheSet(cacheKey, payloadOut);
+
+        if (verifyOracle && safeSql) {
+          payloadOut.verification = await buildExecutionGroundedVerification(safeSql, true, verifyIncludeResults);
+          const ex = payloadOut.verification.execution;
+          if (ex && ex.attempted && ex.success) {
+            appendJsonl(config.queryLogPath, {
+              ts: new Date().toISOString(),
+              question,
+              sql: safeSql,
+              row_count: ex.row_count,
+              source: 'verify_with_oracle',
+            });
+          }
+        }
+
+        // Cache core generation only (verification is always fresh when requested).
+        if (payloadOut.generated_sql || payloadOut.tutor_response) {
+          const forCache = { ...payloadOut };
+          delete forCache.verification;
+          cacheSet(cacheKey, forCache);
+        }
 
         response.writeHead(200);
         response.end(JSON.stringify(payloadOut));
@@ -2419,7 +2603,8 @@ async function startServer() {
     console.log(`  GET  /health          - Server health check`);
     console.log(`  GET  /cra-telemetry-status - CRA session telemetry status (opt-in)`);
     console.log(`  POST /reload-rules    - Reload SQL rules from experiments/sql-practice-rules.json`);
-    console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
+    console.log(`  POST /sql-feedback     - User feedback on generated SQL (logs to data/sql-feedback.jsonl)`);
+    console.log(`  POST /generate-sql    - Generate SQL (SQL_GENERATION_MODE=${config.sqlGenerationMode}; optional verify_with_oracle)`);
     console.log(`  POST /generate-batch  - Batch SQL generation (SQL_GENERATION_MODE=${config.sqlGenerationMode})`);
     if (bookIndex.loaded) {
       console.log(`  GET  /book/search     - Search "${bookIndex.meta.title}" (${bookIndex.meta.chunkCount} chunks)`);
