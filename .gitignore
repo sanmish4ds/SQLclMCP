@@ -121,6 +121,9 @@ data/cra-sessions.*.jsonl
 data/query-log.jsonl
 data/sql-feedback.jsonl
 
+# IEEE Access / full paper tree (LaTeX, figures, build script, ZIP — keep local only)
+paper/
+
 # Miscellaneous
 .cache/
 .pytest_cache/

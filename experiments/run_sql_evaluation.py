@@ -296,7 +296,7 @@ def _check_mcp_and_llm(mcp_url: str, mcp_mode: str) -> str | None:
     if mcp_mode in ("llm", "hybrid") and not llm_enabled:
         reasons = []
         if not health.get("llm_model"):
-            reasons.append("LLM_API_KEY missing or invalid in .env")
+            reasons.append("LLM_API_KEY missing or invalid in .env (for Ollama set LLM_SKIP_AUTH=true and LLM_API_URL=http://127.0.0.1:11434/v1/chat/completions)")
         reasons.append("ENABLE_LLM_SQL_GEN must be 'true' in .env")
         reasons.append("Restart MCP server after changing .env")
         return "LLM is required but disabled. Possible causes: " + "; ".join(reasons)

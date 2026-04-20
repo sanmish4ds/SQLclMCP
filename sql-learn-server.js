@@ -124,6 +124,11 @@ const walletPath = rawWalletPath ? path.resolve(rawWalletPath) : null;
 if (walletPath) process.env.TNS_ADMIN = walletPath; // Oracle native layer looks for tnsnames.ora here
 ensureSqlnetWalletDirectory(walletPath);
 
+function envTruthy(val) {
+  const v = String(val == null ? '' : val).trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 const config = {
   httpPort: Number(process.env.PORT || process.env.HTTP_PORT || 3000),
   dbHost: process.env.DB_HOST || null,
@@ -137,6 +142,8 @@ const config = {
   enableExecuteSql: process.env.EXECUTE_SQL_ENABLED === 'true',
   llmApiUrl: process.env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions',
   llmApiKey: process.env.LLM_API_KEY || '',
+  /** Ollama / local OpenAI-compatible servers often need no API key — set LLM_SKIP_AUTH=true (or OLLAMA=true). */
+  llmSkipAuth: envTruthy(process.env.LLM_SKIP_AUTH) || envTruthy(process.env.OLLAMA),
   llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
   llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS || 15000),
   sqlGenerationMode: normalizeSqlGenerationMode(process.env.SQL_GENERATION_MODE),
@@ -149,6 +156,17 @@ const config = {
   queryLogPath: path.join(__dirname, 'data', 'query-log.jsonl'),
   feedbackLogPath: path.join(__dirname, 'data', 'sql-feedback.jsonl'),
 };
+
+function llmCredentialsReady() {
+  return !!(config.llmApiKey || config.llmSkipAuth);
+}
+
+/** Headers for OpenAI-compatible chat completions (OpenAI, Ollama /v1, vLLM, etc.). */
+function llmRequestHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (config.llmApiKey) h.Authorization = `Bearer ${config.llmApiKey}`;
+  return h;
+}
 
 let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
 
@@ -501,12 +519,12 @@ async function generateSqlWithLLM(question, opts = {}) {
       ...emptyBookMeta,
     };
   }
-  if (!config.llmApiKey) {
+  if (!llmCredentialsReady()) {
     return {
       sql: null,
       tutor_response: null,
       source: 'llm_disabled',
-      error: 'LLM_API_KEY is missing',
+      error: 'LLM_API_KEY is missing (set LLM_SKIP_AUTH=true for Ollama / local servers with no key)',
       ...emptyBookMeta,
     };
   }
@@ -609,10 +627,7 @@ async function generateSqlWithLLM(question, opts = {}) {
   try {
     const response = await fetch(config.llmApiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.llmApiKey}`,
-      },
+      headers: llmRequestHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -668,8 +683,13 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
   if (!config.enableLLMSqlGeneration) {
     return { explanation: null, source: 'llm_disabled', error: 'LLM explanations are disabled', book_citations: [] };
   }
-  if (!config.llmApiKey) {
-    return { explanation: null, source: 'llm_disabled', error: 'LLM_API_KEY is missing', book_citations: [] };
+  if (!llmCredentialsReady()) {
+    return {
+      explanation: null,
+      source: 'llm_disabled',
+      error: 'LLM_API_KEY is missing (set LLM_SKIP_AUTH=true for Ollama / local servers with no key)',
+      book_citations: [],
+    };
   }
 
   const sqlClean = String(sql || '').trim().replace(/;+\s*$/, '');
@@ -726,10 +746,7 @@ async function explainSqlWithLLM(sql, contextQuestion = '', explainOpts = {}) {
   try {
     const response = await fetch(config.llmApiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.llmApiKey}`,
-      },
+      headers: llmRequestHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -796,11 +813,11 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
       ...noRefs,
     };
   }
-  if (!config.llmApiKey) {
+  if (!llmCredentialsReady()) {
     return {
       markdown: null,
       source: 'llm_disabled',
-      error: 'LLM_API_KEY is not set',
+      error: 'LLM_API_KEY is not set (set LLM_SKIP_AUTH=true for Ollama / local servers with no key)',
       ...noRefs,
     };
   }
@@ -910,10 +927,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
   try {
     const res = await fetch(config.llmApiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.llmApiKey}`,
-      },
+      headers: llmRequestHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
@@ -1385,7 +1399,7 @@ const requestHandler = (request, response) => {
         book_reload: 'POST /book/reload',
         guided_curriculum: 'GET /guided-curriculum.json — interactive path (same file ships in app/ for Netlify)',
         guided_expand_chapter:
-          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 3000, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN + LLM_API_KEY',
+          'POST /guided-expand-chapter — body: { "chapter_id": "…", "level": "…" } — self-contained markdown lesson; env: GUIDED_EXPAND_MAX_TOKENS (default 3000, cap 4096), GUIDED_EXPAND_TIMEOUT_MS (default 90000); book_context_used always false; requires ENABLE_LLM_SQL_GEN and (LLM_API_KEY or LLM_SKIP_AUTH=true for Ollama)',
         guided_podcast_tts_status:
           'GET /guided-podcast-tts-status — JSON { enabled, voice_id, model_id, dialogue_enabled, dialogue_voice_id, … }',
         guided_podcast_tts:
@@ -1662,7 +1676,8 @@ const requestHandler = (request, response) => {
         : null,
       loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
       llm_enabled: config.enableLLMSqlGeneration,
-      guided_chapter_llm_ready: !!(config.enableLLMSqlGeneration && config.llmApiKey),
+      guided_chapter_llm_ready: !!(config.enableLLMSqlGeneration && llmCredentialsReady()),
+      llm_skip_auth: !!config.llmSkipAuth,
       llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
       sql_generation_mode: config.sqlGenerationMode,
       execute_sql_available: execOk,
@@ -2592,7 +2607,11 @@ async function startServer() {
   server.listen(config.httpPort, listenHost, () => {
     console.log(`[${APP_DISPLAY_NAME}] HTTP API listening on http://${listenHost}:${config.httpPort}`);
     console.log(`[${APP_DISPLAY_NAME}] Database: ${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`);
-    console.log(`[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel})`);
+    const llmEp = config.llmApiUrl.replace(/\?.*$/, '');
+    console.log(
+      `[${APP_DISPLAY_NAME}] LLM enabled: ${config.enableLLMSqlGeneration} (model: ${config.llmModel}, skip_auth: ${config.llmSkipAuth})`,
+    );
+    console.log(`[${APP_DISPLAY_NAME}] LLM endpoint: ${llmEp}`);
     if (craTelemetry.enabled || craTelemetry.softGuardsEnabled) {
       const file = craTelemetry.enabled ? ` → ${craTelemetry.logFile}` : '';
       const so = craTelemetry.logStdout ? ' + stdout ([CRA_TELEMETRY] in process logs)' : '';
