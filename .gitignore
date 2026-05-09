@@ -155,3 +155,4 @@ papers/
 # Add sensitive files here
 # config/secrets.yml
 # .env.production
+experiments/results/sql_evaluation_20260509_155052.json
