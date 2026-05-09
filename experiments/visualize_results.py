@@ -95,8 +95,12 @@ def _tier_rows(results, tier):
 
 def graph_01(data, out):
     baseline = data.get("baseline_results", [])
-    counts   = {t: len(_tier_rows(baseline, t)) for t in COMPLEXITY_TIERS}
+    # Fall back to mcp_results if no baseline (mcp-only run)
+    source = baseline if baseline else data.get("mcp_results", [])
+    counts   = {t: len(_tier_rows(source, t)) for t in COMPLEXITY_TIERS}
     total    = sum(counts.values())
+    if total == 0:
+        print("  [Graph 01] No result data, skipping."); return
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 5))
 
@@ -131,9 +135,10 @@ def graph_01(data, out):
 
 def graph_02(data, out):
     baseline = data.get("baseline_results", [])
+    source = baseline if baseline else data.get("mcp_results", [])
     # Build category from question text (first 3 words as proxy)
     cats = {}
-    for r in baseline:
+    for r in source:
         q = r.get("question", "")
         words = q.split()
         cat = " ".join(words[:3]).lower().rstrip("?")

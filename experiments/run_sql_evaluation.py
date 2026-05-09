@@ -28,10 +28,17 @@ from pathlib import Path
 
 import oracledb
 import requests
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+    load_dotenv(Path(__file__).parent.parent / ".env.local", override=True)
+except ImportError:
+    pass  # python-dotenv not installed; rely on shell env
 
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-TEST_QUESTIONS_FILE = SCRIPT_DIR / "sql-practice-rules.json"
+DEFAULT_QUESTIONS_FILE = SCRIPT_DIR / "sql-practice-rules.json"
+TEST_QUESTIONS_FILE: Path  # set in run() from --questions-file arg
 RESULTS_DIR = SCRIPT_DIR / "results"
 HTTP_SERVER_JS = PROJECT_ROOT / "sql-learn-server.js"
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -103,7 +110,19 @@ def extract_string_match(a_rows, b_rows):
 
 class Database:
     def __init__(self, user, password, dsn):
-        self.conn = oracledb.connect(user=user, password=password, dsn=dsn)
+        wallet_loc = os.getenv("ORACLE_WALLET_PATH") or os.getenv("TNS_ADMIN")
+        wallet_pwd = os.getenv("ORACLE_WALLET_PWD")
+        if wallet_loc:
+            kwargs = dict(
+                user=user, password=password, dsn=dsn,
+                config_dir=wallet_loc,
+                wallet_location=wallet_loc,
+            )
+            if wallet_pwd:
+                kwargs["wallet_password"] = wallet_pwd
+            self.conn = oracledb.connect(**kwargs)
+        else:
+            self.conn = oracledb.connect(user=user, password=password, dsn=dsn)
 
     def execute(self, sql):
         try:
@@ -168,19 +187,33 @@ class MCPClient:
         except Exception:
             return False
 
-    def generate_sql(self, question, mode):
-        try:
-            r = requests.post(
-                f"{self.url}/generate-sql",
-                json={"question": question, "mode": mode},
-                timeout=30,
-            )
-            if r.status_code == 200:
-                return r.json().get("generated_sql"), None
-            payload = r.json() if r.content else {}
-            return None, payload.get("error", f"HTTP {r.status_code}")
-        except Exception as exc:
-            return None, str(exc)
+    def generate_sql(self, question, mode, _max_retries=6):
+        delay = 5.0
+        for attempt in range(_max_retries):
+            try:
+                r = requests.post(
+                    f"{self.url}/generate-sql",
+                    json={"question": question, "mode": mode},
+                    timeout=60,
+                )
+                if r.status_code == 200:
+                    return r.json().get("generated_sql"), None
+                payload = r.json() if r.content else {}
+                err = payload.get("error", f"HTTP {r.status_code}")
+                # Retry on rate limit
+                if "rate" in err.lower() or r.status_code in (429, 503):
+                    if attempt < _max_retries - 1:
+                        time.sleep(delay)
+                        delay = min(delay * 2, 60)
+                        continue
+                return None, err
+            except Exception as exc:
+                if attempt < _max_retries - 1:
+                    time.sleep(delay)
+                    delay = min(delay * 2, 60)
+                    continue
+                return None, str(exc)
+        return None, "Rate limited (max retries exceeded)"
 
     def get_health(self):
         """Fetch full health payload for LLM status check."""
@@ -317,8 +350,9 @@ def expected_sql(test):
     return None
 
 
-def load_tests(question_ids, complexities):
-    with open(TEST_QUESTIONS_FILE, "r", encoding="utf-8") as f:
+def load_tests(question_ids, complexities, questions_file=None):
+    path = Path(questions_file) if questions_file else TEST_QUESTIONS_FILE
+    with open(path, "r", encoding="utf-8") as f:
         payload = json.load(f)
 
     tests = payload.get("test_questions", payload.get("sql_practice_rules", payload))
@@ -841,7 +875,7 @@ def run(args):
 
     qids = parse_ids(args.question_ids)
     complexities = parse_complexities(args.complexity)
-    tests = load_tests(qids, complexities)
+    tests = load_tests(qids, complexities, questions_file=getattr(args, "questions_file", None))
 
     if args.max_questions is not None:
         if args.max_questions <= 0:
@@ -941,6 +975,10 @@ def main():
                     "RQ3 optimization, RQ4 robustness (baseline vs generated SQL)"
     )
     parser.add_argument(
+        "--questions-file", default=None,
+        help="Path to questions JSON file (default: experiments/sql-practice-rules.json)",
+    )
+    parser.add_argument(
         "--question-ids", default="",
         help="Comma-separated question IDs to run (default: all)",
     )
@@ -972,6 +1010,10 @@ def main():
     parser.add_argument("--db-user",     default=os.getenv("DB_USER",     "mcp_dev"))
     parser.add_argument("--db-password", default=os.getenv("DB_PASSWORD", "mcp_pass123"))
     parser.add_argument("--db-dsn",      default=os.getenv("DB_DSN",      "localhost:1521/FREE"))
+    parser.add_argument("--wallet-path",  default=os.getenv("ORACLE_WALLET_PATH", ""),
+                        help="Oracle wallet directory (ADB)")
+    parser.add_argument("--wallet-password", default=os.getenv("ORACLE_WALLET_PWD", ""),
+                        help="Oracle wallet password (ADB)")
 
     args = parser.parse_args()
     run(args)
