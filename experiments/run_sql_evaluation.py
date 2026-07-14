@@ -177,8 +177,9 @@ class Database:
 # ── MCP Client ────────────────────────────────────────────────────────────────
 
 class MCPClient:
-    def __init__(self, url):
+    def __init__(self, url, schema_hint=True):
         self.url = url.rstrip("/")
+        self.schema_hint = schema_hint
 
     def health(self):
         try:
@@ -191,9 +192,12 @@ class MCPClient:
         delay = 5.0
         for attempt in range(_max_retries):
             try:
+                body = {"question": question, "mode": mode}
+                if not self.schema_hint:
+                    body["schema_hint"] = False
                 r = requests.post(
                     f"{self.url}/generate-sql",
-                    json={"question": question, "mode": mode},
+                    json=body,
                     timeout=60,
                 )
                 if r.status_code == 200:
@@ -901,7 +905,7 @@ def run(args):
 
     mcp = None
     if args.run_mode in ("mcp", "compare"):
-        mcp = MCPClient(args.mcp_url)
+        mcp = MCPClient(args.mcp_url, schema_hint=not args.no_schema_hint)
         if not mcp.health():
             print(f"\n{r_}ERROR: MCP server is not healthy at {args.mcp_url}{res}")
             db.close()
@@ -991,6 +995,10 @@ def main():
         "--run-mode", default="compare",
         choices=["baseline", "mcp", "compare"],
         help="baseline: baseline only | mcp: MCP only | compare: both (default: compare)",
+    )
+    parser.add_argument(
+        "--no-schema-hint", action="store_true",
+        help="Send requests without the static schema hint (ablation study)",
     )
     parser.add_argument(
         "--no-explain", action="store_true",

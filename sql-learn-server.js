@@ -529,7 +529,8 @@ async function generateSqlWithLLM(question, opts = {}) {
     };
   }
 
-  const schemaHint = [
+  const includeSchemaHint = opts.noSchemaHint !== true;
+  const schemaHint = includeSchemaHint ? [
     'CRITICAL: The user Oracle database has ONLY these eight tables—no Sales, Employees, Products, or other invented names.',
     'Every ```sql example the user might run MUST use only: REGION, NATION, CUSTOMER, ORDERS, LINEITEM, SUPPLIER, PART, PARTSUPP.',
     'TPC-H columns (exact spellings; Oracle rejects wrong names):',
@@ -547,20 +548,22 @@ async function generateSqlWithLLM(question, opts = {}) {
     'Rank orders by total → FROM ORDERS … ORDER BY O_TOTALPRICE DESC.',
     'Oracle: FETCH FIRST n ROWS ONLY (not LIMIT). EXTRACT has no QUARTER — use CEIL(EXTRACT(MONTH FROM d)/3) or TO_CHAR(d,\'Q\').',
     'Prefer year filters as date ranges: d >= DATE \'YYYY-01-01\' AND d < ADD_MONTHS(DATE \'YYYY-01-01\',12).',
-  ].join(' ');
+  ].join(' ') : '';
 
   const tutorSystem = [
     'You are an expert SQL tutor for technical interviews and Oracle SQL. The user may ask ANYTHING about SQL:',
     'concepts (joins, keys, indexes, window functions, CTEs, etc.), comparisons, or questions about their practice database.',
     '',
-    'Schema-bound examples (non-negotiable):',
-    'The app connects to Oracle with ONLY the TPC-H tables listed below. The user often copies ```sql straight into the database.',
-    'Therefore EVERY ```sql block you output must run on that schema: use ONLY those eight tables and their real column names.',
-    'Never use placeholder tables (Sales, Employees, orders lowercase, products, etc.). If you need a minimal demo with no base table,',
-    'you may use only `SELECT … FROM dual` with literals—but prefer a realistic TPC-H example instead.',
-    'For interview topics (e.g. RANK vs DENSE_RANK, window frames), illustrate with TPC-H: e.g. rank CUSTOMER by C_ACCTBAL,',
-    'or LINEITEM rows by L_EXTENDEDPRICE, or ORDERS by O_TOTALPRICE—always FETCH FIRST … ROWS ONLY for samples.',
-    '',
+    ...(includeSchemaHint ? [
+      'Schema-bound examples (non-negotiable):',
+      'The app connects to Oracle with ONLY the TPC-H tables listed below. The user often copies ```sql straight into the database.',
+      'Therefore EVERY ```sql block you output must run on that schema: use ONLY those eight tables and their real column names.',
+      'Never use placeholder tables (Sales, Employees, orders lowercase, products, etc.). If you need a minimal demo with no base table,',
+      'you may use only `SELECT … FROM dual` with literals—but prefer a realistic TPC-H example instead.',
+      'For interview topics (e.g. RANK vs DENSE_RANK, window frames), illustrate with TPC-H: e.g. rank CUSTOMER by C_ACCTBAL,',
+      'or LINEITEM rows by L_EXTENDEDPRICE, or ORDERS by O_TOTALPRICE—always FETCH FIRST … ROWS ONLY for samples.',
+      '',
+    ] : []),
     'How to respond:',
     '1) Markdown: ## / ### headings, - bullets, **bold**, `code` for identifiers.',
     '2) Multi-line SQL only inside ```sql fences—never loose SQL after paragraphs.',
@@ -568,16 +571,18 @@ async function generateSqlWithLLM(question, opts = {}) {
     '4) No placeholders (no YOUR_TABLE, <id>, …, TODO). No multi-statement batches. **No DDL/DML** (INSERT/UPDATE/DELETE/MERGE/CREATE/…) inside ```sql** — explain those in prose; still give a runnable SELECT that illustrates the idea.',
     '5) When a query is needed: put **exactly one** primary lab query in the **last** ```sql block; no prose inside that fence.',
     '6) Conceptual answers: any ```sql must still be runnable TPC-H SELECT/WITH—never generic or fake schemas.',
-    '7) Use only columns from the schema reference; never invent table or column names.',
-    '',
-    'Schema reference:\n',
-    schemaHint,
+    ...(includeSchemaHint ? [
+      '7) Use only columns from the schema reference; never invent table or column names.',
+      '',
+      'Schema reference:\n',
+      schemaHint,
+    ] : []),
   ].join(' ');
 
   const userQ = String(question || '').trim();
-  const userWithSchemaReminder =
-    userQ +
-    '\n\n[Assistant: Every ```sql block must be one runnable Oracle SELECT or WITH … SELECT on TPC-H only—copy-paste ready, no DDL/DML, no placeholders.]';
+  const userWithSchemaReminder = includeSchemaHint
+    ? userQ + '\n\n[Assistant: Every ```sql block must be one runnable Oracle SELECT or WITH … SELECT on TPC-H only—copy-paste ready, no DDL/DML, no placeholders.]'
+    : userQ;
 
   const useBook =
     config.bookContextInGenerate &&
@@ -973,6 +978,7 @@ async function expandGuidedChapterWithLLM(chapterId, level) {
 
 async function generateSql(question, mode = 'hybrid', opts = {}) {
   const noBook = { book_citations: [], book_context_used: false };
+  const noSchemaHint = opts.noSchemaHint === true;
 
   if (mode === 'lookup') {
     const hit = lookupSql(question);
@@ -991,7 +997,7 @@ async function generateSql(question, mode = 'hybrid', opts = {}) {
   }
 
   if (mode === 'llm') {
-    return generateSqlWithLLM(question, { ...opts, queryLogUserMessage });
+    return generateSqlWithLLM(question, { ...opts, queryLogUserMessage, noSchemaHint });
   }
 
   // hybrid: exact rule match only, then LLM (handles interview + open-ended questions)
@@ -999,7 +1005,7 @@ async function generateSql(question, mode = 'hybrid', opts = {}) {
   if (hit.sql) {
     return { sql: hit.sql, tutor_response: null, source: hit.source, error: null, ...noBook };
   }
-  return generateSqlWithLLM(question, { ...opts, queryLogUserMessage });
+  return generateSqlWithLLM(question, { ...opts, queryLogUserMessage, noSchemaHint });
 }
 
 async function runOracleVerifySelect(sql, includeResults) {
@@ -1938,6 +1944,7 @@ const requestHandler = (request, response) => {
 
         const verifyOracle = data.verify_with_oracle === true;
         const verifyIncludeResults = verifyOracle && data.verify_include_results !== false;
+        const noSchemaHint = data.schema_hint === false;
 
         // Guardrail 2: duplicate-question cache (cost saver). Verification is applied after cache hit.
         const normQ = normalizeQuestion(question);
@@ -1978,7 +1985,7 @@ const requestHandler = (request, response) => {
           return;
         }
 
-        const result = await generateSql(question, mode);
+        const result = await generateSql(question, mode, { noSchemaHint });
 
         // Guardrail 3: enforce single runnable SELECT/WITH…SELECT output.
         let safeSql = result.sql || '';
