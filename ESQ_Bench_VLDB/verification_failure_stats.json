@@ -1,0 +1,11 @@
+{
+  "n": 1000,
+  "ex_pct": 51.6,
+  "sd_on_ex_pct": 95.9,
+  "failure_modes": {
+    "projection_mismatch": 20,
+    "semantic_or_filter": 310,
+    "ordering_or_pagination": 61,
+    "exec_error": 93
+  }
+}

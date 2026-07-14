@@ -1,0 +1,73 @@
+{
+  "suite": "verification_1000",
+  "questions": 1000,
+  "engine": "mysql",
+  "schema_tables": 412,
+  "baselines": {
+    "B0": {
+      "context_bytes_mean": 6218,
+      "context_bytes_p50": 3563,
+      "context_reduction_vs_B0_pct": 0.0,
+      "prune_ms_mean": 0.0,
+      "prune_ms_p50": 0.0,
+      "prune_ms_p95": 0.0,
+      "graph_mem_bytes_mean": 6218,
+      "graph_mem_bytes_p50": 3563,
+      "middleware_ms_mean": 5.223,
+      "middleware_ms_p50": 4.849,
+      "middleware_ms_p95": 7.385,
+      "plan_safety_compliance": 0.7634,
+      "plan_checked": 875
+    },
+    "B1": {
+      "context_bytes_mean": 1720,
+      "context_bytes_p50": 2252,
+      "context_reduction_vs_B0_pct": 72.33,
+      "prune_ms_mean": 0.0,
+      "prune_ms_p50": 0.0,
+      "prune_ms_p95": 0.0,
+      "graph_mem_bytes_mean": 1720,
+      "graph_mem_bytes_p50": 2252,
+      "middleware_ms_mean": 4.851,
+      "middleware_ms_p50": 4.753,
+      "middleware_ms_p95": 6.883,
+      "plan_safety_compliance": 0.7634,
+      "plan_checked": 875
+    },
+    "B2": {
+      "context_bytes_mean": 491,
+      "context_bytes_p50": 505,
+      "context_reduction_vs_B0_pct": 92.1,
+      "prune_ms_mean": 0.499,
+      "prune_ms_p50": 0.391,
+      "prune_ms_p95": 1.236,
+      "graph_mem_bytes_mean": 1147,
+      "graph_mem_bytes_p50": 1165,
+      "middleware_ms_mean": 5.412,
+      "middleware_ms_p50": 5.357,
+      "middleware_ms_p95": 7.6,
+      "plan_safety_compliance": 0.7634,
+      "plan_checked": 875
+    },
+    "B3": {
+      "context_bytes_mean": 491,
+      "context_bytes_p50": 505,
+      "context_reduction_vs_B0_pct": 92.1,
+      "prune_ms_mean": 0.499,
+      "prune_ms_p50": 0.391,
+      "prune_ms_p95": 1.236,
+      "graph_mem_bytes_mean": 1147,
+      "graph_mem_bytes_p50": 1165,
+      "middleware_ms_mean": 5.265,
+      "middleware_ms_p50": 5.194,
+      "middleware_ms_p95": 7.394,
+      "plan_safety_compliance": 0.7728,
+      "plan_checked": 832
+    }
+  },
+  "context_scaling_delta_bytes": {
+    "B1_mean": 1720,
+    "B2_mean": 491,
+    "reduction_pct": 71.45
+  }
+}

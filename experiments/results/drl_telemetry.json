@@ -1,0 +1,1439 @@
+{
+  "schema_tables": 412,
+  "schema_edges": 548,
+  "schema_load_ms": 6.082,
+  "questions": 95,
+  "prune_ms_mean": 1.746,
+  "prune_ms_p50": 1.682,
+  "prune_ms_p95": 2.037,
+  "graph_mem_bytes_mean": 1171,
+  "plan_safety_rate": 0.0,
+  "sd_op_rate_on_ex": 0.0,
+  "records": [
+    {
+      "id": "t1a-001",
+      "prune_ms": 1.994,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "customers",
+        "product_categories",
+        "products",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-002",
+      "prune_ms": 1.78,
+      "mem_bytes": 1138,
+      "selected_tables": [
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-003",
+      "prune_ms": 1.704,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-004",
+      "prune_ms": 2.082,
+      "mem_bytes": 1092,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "instructors",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-005",
+      "prune_ms": 1.727,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-006",
+      "prune_ms": 1.711,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-007",
+      "prune_ms": 1.643,
+      "mem_bytes": 1190,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-008",
+      "prune_ms": 1.661,
+      "mem_bytes": 1190,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-009",
+      "prune_ms": 2.008,
+      "mem_bytes": 1248,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-010",
+      "prune_ms": 1.607,
+      "mem_bytes": 1248,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-011",
+      "prune_ms": 1.618,
+      "mem_bytes": 1138,
+      "selected_tables": [
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-012",
+      "prune_ms": 1.679,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-013",
+      "prune_ms": 1.775,
+      "mem_bytes": 1266,
+      "selected_tables": [
+        "countries",
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-014",
+      "prune_ms": 1.97,
+      "mem_bytes": 1306,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-015",
+      "prune_ms": 1.684,
+      "mem_bytes": 1279,
+      "selected_tables": [
+        "customers",
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-016",
+      "prune_ms": 1.6,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "customers",
+        "product_categories",
+        "products",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-017",
+      "prune_ms": 1.642,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-018",
+      "prune_ms": 2.015,
+      "mem_bytes": 1138,
+      "selected_tables": [
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-019",
+      "prune_ms": 1.711,
+      "mem_bytes": 1248,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-020",
+      "prune_ms": 1.646,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-021",
+      "prune_ms": 1.65,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-022",
+      "prune_ms": 1.858,
+      "mem_bytes": 1295,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "product_categories"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-023",
+      "prune_ms": 2.08,
+      "mem_bytes": 1138,
+      "selected_tables": [
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-024",
+      "prune_ms": 1.625,
+      "mem_bytes": 1190,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-025",
+      "prune_ms": 1.636,
+      "mem_bytes": 1076,
+      "selected_tables": [
+        "customers",
+        "inventory",
+        "product_categories",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-026",
+      "prune_ms": 1.696,
+      "mem_bytes": 1145,
+      "selected_tables": [
+        "billing_accounts",
+        "orders",
+        "payments",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-027",
+      "prune_ms": 2.228,
+      "mem_bytes": 1125,
+      "selected_tables": [
+        "product_catalog",
+        "product_categories",
+        "products",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-028",
+      "prune_ms": 1.763,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "customers",
+        "product_categories",
+        "products",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-029",
+      "prune_ms": 1.702,
+      "mem_bytes": 1091,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "inventory",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-030",
+      "prune_ms": 1.684,
+      "mem_bytes": 1168,
+      "selected_tables": [
+        "customers",
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-031",
+      "prune_ms": 1.709,
+      "mem_bytes": 1076,
+      "selected_tables": [
+        "customers",
+        "inventory",
+        "product_categories",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-032",
+      "prune_ms": 2.038,
+      "mem_bytes": 1145,
+      "selected_tables": [
+        "billing_accounts",
+        "orders",
+        "payments",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-033",
+      "prune_ms": 1.691,
+      "mem_bytes": 1076,
+      "selected_tables": [
+        "customers",
+        "inventory",
+        "product_categories",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-034",
+      "prune_ms": 1.652,
+      "mem_bytes": 1266,
+      "selected_tables": [
+        "countries",
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-035",
+      "prune_ms": 1.714,
+      "mem_bytes": 1176,
+      "selected_tables": [
+        "customers",
+        "inventory",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-036",
+      "prune_ms": 2.01,
+      "mem_bytes": 1279,
+      "selected_tables": [
+        "customers",
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-037",
+      "prune_ms": 1.726,
+      "mem_bytes": 1194,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-038",
+      "prune_ms": 1.625,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-039",
+      "prune_ms": 1.634,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "customers",
+        "product_categories",
+        "products",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-040",
+      "prune_ms": 1.713,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-041",
+      "prune_ms": 1.928,
+      "mem_bytes": 1207,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-042",
+      "prune_ms": 1.61,
+      "mem_bytes": 1138,
+      "selected_tables": [
+        "inventory",
+        "order_lines",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-043",
+      "prune_ms": 1.66,
+      "mem_bytes": 1229,
+      "selected_tables": [
+        "customer_addresses",
+        "customer_types",
+        "customers",
+        "orders",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-044",
+      "prune_ms": 1.65,
+      "mem_bytes": 1248,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-045",
+      "prune_ms": 1.676,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-046",
+      "prune_ms": 1.955,
+      "mem_bytes": 1249,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "orders",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-047",
+      "prune_ms": 1.638,
+      "mem_bytes": 1162,
+      "selected_tables": [
+        "customers",
+        "order_lines",
+        "orders",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-048",
+      "prune_ms": 1.713,
+      "mem_bytes": 1295,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "order_lines",
+        "orders",
+        "product_categories"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1a-049",
+      "prune_ms": 1.643,
+      "mem_bytes": 1190,
+      "selected_tables": [
+        "order_lines",
+        "orders",
+        "product_categories",
+        "products",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-001",
+      "prune_ms": 1.831,
+      "mem_bytes": 1106,
+      "selected_tables": [
+        "customers",
+        "departments",
+        "instructors",
+        "product_categories",
+        "programs"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-002",
+      "prune_ms": 1.743,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-003",
+      "prune_ms": 1.6,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-004",
+      "prune_ms": 1.645,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-005",
+      "prune_ms": 1.7,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-006",
+      "prune_ms": 1.892,
+      "mem_bytes": 1214,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "regions",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-007",
+      "prune_ms": 1.655,
+      "mem_bytes": 1213,
+      "selected_tables": [
+        "enrollments",
+        "programs",
+        "regions",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-008",
+      "prune_ms": 1.657,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-009",
+      "prune_ms": 1.66,
+      "mem_bytes": 1021,
+      "selected_tables": [
+        "course_prerequisites",
+        "courses",
+        "departments",
+        "product_categories",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-010",
+      "prune_ms": 1.741,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-011",
+      "prune_ms": 1.963,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-012",
+      "prune_ms": 1.646,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-013",
+      "prune_ms": 1.636,
+      "mem_bytes": 1244,
+      "selected_tables": [
+        "customers",
+        "enrollments",
+        "product_categories",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-014",
+      "prune_ms": 1.659,
+      "mem_bytes": 988,
+      "selected_tables": [
+        "classrooms",
+        "departments",
+        "instructors",
+        "programs",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-015",
+      "prune_ms": 1.651,
+      "mem_bytes": 997,
+      "selected_tables": [
+        "course_prerequisites",
+        "courses",
+        "product_categories",
+        "regions",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-016",
+      "prune_ms": 1.981,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-017",
+      "prune_ms": 1.639,
+      "mem_bytes": 1001,
+      "selected_tables": [
+        "classrooms",
+        "courses",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-018",
+      "prune_ms": 1.581,
+      "mem_bytes": 1017,
+      "selected_tables": [
+        "product_categories",
+        "regions",
+        "sections",
+        "terms",
+        "warehouses"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-019",
+      "prune_ms": 1.592,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "departments",
+        "instructors",
+        "product_categories",
+        "regions",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-020",
+      "prune_ms": 1.832,
+      "mem_bytes": 1218,
+      "selected_tables": [
+        "customers",
+        "enrollments",
+        "product_categories",
+        "programs",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-021",
+      "prune_ms": 1.65,
+      "mem_bytes": 1214,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "regions",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-022",
+      "prune_ms": 1.639,
+      "mem_bytes": 1214,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "regions",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-023",
+      "prune_ms": 1.698,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-024",
+      "prune_ms": 1.969,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "course_prerequisites",
+        "courses",
+        "departments",
+        "instructors",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-025",
+      "prune_ms": 1.679,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-026",
+      "prune_ms": 1.665,
+      "mem_bytes": 1238,
+      "selected_tables": [
+        "courses",
+        "departments",
+        "instructors",
+        "programs",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-027",
+      "prune_ms": 1.654,
+      "mem_bytes": 1105,
+      "selected_tables": [
+        "classrooms",
+        "courses",
+        "instructors",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-028",
+      "prune_ms": 1.963,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "departments",
+        "instructors",
+        "product_categories",
+        "regions",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-029",
+      "prune_ms": 1.721,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-030",
+      "prune_ms": 1.764,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-031",
+      "prune_ms": 1.644,
+      "mem_bytes": 1212,
+      "selected_tables": [
+        "customer_addresses",
+        "customers",
+        "product_catalog",
+        "product_categories",
+        "products"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-032",
+      "prune_ms": 1.669,
+      "mem_bytes": 1027,
+      "selected_tables": [
+        "courses",
+        "product_categories",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-033",
+      "prune_ms": 1.959,
+      "mem_bytes": 1218,
+      "selected_tables": [
+        "customers",
+        "enrollments",
+        "product_categories",
+        "programs",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-034",
+      "prune_ms": 1.822,
+      "mem_bytes": 988,
+      "selected_tables": [
+        "classrooms",
+        "departments",
+        "instructors",
+        "programs",
+        "regions"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-035",
+      "prune_ms": 1.659,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-036",
+      "prune_ms": 1.649,
+      "mem_bytes": 1042,
+      "selected_tables": [
+        "course_prerequisites",
+        "courses",
+        "departments",
+        "regions",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-037",
+      "prune_ms": 1.744,
+      "mem_bytes": 1099,
+      "selected_tables": [
+        "departments",
+        "instructors",
+        "product_categories",
+        "regions",
+        "sections"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-038",
+      "prune_ms": 2.037,
+      "mem_bytes": 1056,
+      "selected_tables": [
+        "courses",
+        "enrollments",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-039",
+      "prune_ms": 1.649,
+      "mem_bytes": 1171,
+      "selected_tables": [
+        "departments",
+        "enrollments",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-040",
+      "prune_ms": 1.615,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-041",
+      "prune_ms": 1.615,
+      "mem_bytes": 1027,
+      "selected_tables": [
+        "courses",
+        "product_categories",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-042",
+      "prune_ms": 2.384,
+      "mem_bytes": 1056,
+      "selected_tables": [
+        "courses",
+        "enrollments",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-043",
+      "prune_ms": 1.682,
+      "mem_bytes": 1218,
+      "selected_tables": [
+        "customers",
+        "enrollments",
+        "product_categories",
+        "programs",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-044",
+      "prune_ms": 1.619,
+      "mem_bytes": 1244,
+      "selected_tables": [
+        "customers",
+        "enrollments",
+        "product_categories",
+        "sections",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-045",
+      "prune_ms": 1.615,
+      "mem_bytes": 1188,
+      "selected_tables": [
+        "enrollments",
+        "product_categories",
+        "programs",
+        "regions",
+        "students"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    },
+    {
+      "id": "t1b-046",
+      "prune_ms": 1.648,
+      "mem_bytes": 1027,
+      "selected_tables": [
+        "courses",
+        "product_categories",
+        "regions",
+        "sections",
+        "terms"
+      ],
+      "plan_safe": false,
+      "plan_error": "no connection",
+      "exec_ms": null
+    }
+  ]
+}
