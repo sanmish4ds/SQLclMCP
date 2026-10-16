@@ -162,6 +162,8 @@ class CraTelemetry {
     source,
     success,
     eventType,
+    blocked,
+    cached,
   }) {
     const sid = String(sessionId || '').trim().slice(0, 128);
     if (!sid) return null;
@@ -223,6 +225,8 @@ class CraTelemetry {
       mode: mode || null,
       source: source || null,
       success: !!success,
+      blocked: blocked ? String(blocked).slice(0, 64) : null,
+      cached: !!cached,
       injection_signal: inj,
       S1,
       S2,

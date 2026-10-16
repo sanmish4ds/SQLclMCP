@@ -178,6 +178,44 @@ const guardrails = createGuardrailsClient();
 /** /api/invoke run-sql: allow INSERT/UPDATE/DELETE/DDL (autoCommit) only when explicitly opted in. */
 const LAB_ALLOW_DML = envTruthy(process.env.LAB_ALLOW_DML);
 
+/**
+ * Record one CRA turn (no-op without cra_session_id) and return the response fields
+ * { cra_soft_notices, cra_signals } computed for *this* session's turn.
+ */
+function craTurnResponseFields(craMeta, turn) {
+  if (!craMeta || !craMeta.sessionId) return {};
+  const ev = craTelemetry.recordTurn({
+    ...turn,
+    sessionId: craMeta.sessionId,
+    declaredIntent: craMeta.declaredIntent,
+    channel: craMeta.channel || turn.channel || 'api',
+  });
+  const out = {};
+  const soft = craSoftNoticesFromEvent(ev);
+  if (soft.length) out.cra_soft_notices = soft;
+  const snap = craSignalSnapshot(ev);
+  if (snap) out.cra_signals = snap;
+  return out;
+}
+
+/**
+ * Blocked attempts still count toward session risk: recorded as a refusal turn so S1 sees the
+ * question, the injection flag sees its wording, and S3 sees the refusal → compliance gradient.
+ */
+function craBlockedTurnFields(craMeta, { question, code, message, mode, channel, eventChannel }) {
+  return craTurnResponseFields(craMeta, {
+    question,
+    tutorResponse: `[guardrails] Request not allowed (${code}): ${message || ''}`,
+    sql: '',
+    mode,
+    source: 'guardrails',
+    success: false,
+    eventType: 'guardrail_block',
+    blocked: code,
+    channel: channel || eventChannel,
+  });
+}
+
 function guardrailBlockedBody(g, extra = {}) {
   return {
     ...extra,
@@ -1943,18 +1981,22 @@ const requestHandler = (request, response) => {
 
         // Guardrail 1: cheap pre-checks to avoid unnecessary LLM calls.
         if (injectionLike(question)) {
+          const error = 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.';
           response.writeHead(400);
           response.end(JSON.stringify({
-            error: 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.',
+            error,
             blocked: 'injection_like',
+            ...craBlockedTurnFields(craMeta, { question, code: 'injection_like', message: error, mode }),
           }));
           return;
         }
         if (sensitiveLike(question)) {
+          const error = 'Do not paste secrets or personal data. Use synthetic placeholders.';
           response.writeHead(400);
           response.end(JSON.stringify({
-            error: 'Do not paste secrets or personal data. Use synthetic placeholders.',
+            error,
             blocked: 'sensitive_like',
+            ...craBlockedTurnFields(craMeta, { question, code: 'sensitive_like', message: error, mode }),
           }));
           return;
         }
@@ -1980,8 +2022,19 @@ const requestHandler = (request, response) => {
             cache_age_ms: cached.ageMs,
             book_context_used: !!cached.value.book_context_used,
             book_citations: cached.value.book_citations || [],
-            cra_soft_notices: cached.value.cra_soft_notices || [],
-            cra_signals: cached.value.cra_signals || null,
+            cra_soft_notices: [],
+            cra_signals: null,
+            // Cache hits are still turns of *this* session (never replay another session's signals).
+            ...craTurnResponseFields(craMeta, {
+              question,
+              tutorResponse: cached.value.tutor_response || '',
+              sql: safeSqlHit || '',
+              mode,
+              source: cached.value.source || 'cache',
+              success: true,
+              eventType: 'generate_sql',
+              cached: true,
+            }),
           };
           if (verifyOracle && safeSqlHit) {
             outHit.verification = await buildExecutionGroundedVerification(safeSqlHit, true, verifyIncludeResults);
@@ -2005,7 +2058,10 @@ const requestHandler = (request, response) => {
         const gIn = await guardrails.checkInput(question);
         if (!gIn.allowed) {
           response.writeHead(gIn.unavailable ? 503 : 400);
-          response.end(JSON.stringify(guardrailBlockedBody(gIn, { question })));
+          response.end(JSON.stringify(guardrailBlockedBody(gIn, {
+            question,
+            ...(gIn.unavailable ? {} : craBlockedTurnFields(craMeta, { question, code: gIn.code, message: gIn.message, mode })),
+          })));
           return;
         }
 
@@ -2022,7 +2078,12 @@ const requestHandler = (request, response) => {
           const gOut = await guardrails.checkOutput({ question, sql: safeSql, text: result.tutor_response || '' });
           if (!gOut.allowed) {
             response.writeHead(gOut.unavailable ? 503 : 422);
-            response.end(JSON.stringify(guardrailBlockedBody(gOut, { question, source: result.source, mode })));
+            response.end(JSON.stringify(guardrailBlockedBody(gOut, {
+              question,
+              source: result.source,
+              mode,
+              ...(gOut.unavailable ? {} : craBlockedTurnFields(craMeta, { question, code: gOut.code, message: gOut.message, mode })),
+            })));
             return;
           }
           if (gOut.status === 'modified' && result.tutor_response && typeof gOut.text === 'string') {
@@ -2091,6 +2152,9 @@ const requestHandler = (request, response) => {
         if (payloadOut.generated_sql || payloadOut.tutor_response) {
           const forCache = { ...payloadOut };
           delete forCache.verification;
+          // CRA signals are per-session; cache hits recompute them.
+          delete forCache.cra_soft_notices;
+          delete forCache.cra_signals;
           cacheSet(cacheKey, forCache);
         }
 
@@ -2129,31 +2193,26 @@ const requestHandler = (request, response) => {
         const useBookContext = data.use_book_context !== false;
         const craMeta = craClientMetaFromBody(data);
 
+        const craQuestion = question || sql.slice(0, 400);
+        const explainBlocked = (code, message) =>
+          craBlockedTurnFields(craMeta, { question: craQuestion, code, message, mode: 'explain', eventChannel: 'explain_sql' });
+
         if (injectionLike(question)) {
+          const error = 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.';
           response.writeHead(400);
-          response.end(JSON.stringify({
-            success: false,
-            error: 'Request looks like prompt-injection. Rephrase as a normal SQL learning question.',
-            blocked: 'injection_like',
-          }));
+          response.end(JSON.stringify({ success: false, error, blocked: 'injection_like', ...explainBlocked('injection_like', error) }));
           return;
         }
         if (sensitiveLike(question)) {
+          const error = 'Do not paste secrets or personal data. Use synthetic placeholders.';
           response.writeHead(400);
-          response.end(JSON.stringify({
-            success: false,
-            error: 'Do not paste secrets or personal data. Use synthetic placeholders.',
-            blocked: 'sensitive_like',
-          }));
+          response.end(JSON.stringify({ success: false, error, blocked: 'sensitive_like', ...explainBlocked('sensitive_like', error) }));
           return;
         }
         if (sql && !isSafeSingleSelect(sql)) {
+          const error = 'Explain only supports a single SELECT (or WITH … SELECT).';
           response.writeHead(400);
-          response.end(JSON.stringify({
-            success: false,
-            error: 'Explain only supports a single SELECT (or WITH … SELECT).',
-            blocked: 'unsafe_sql',
-          }));
+          response.end(JSON.stringify({ success: false, error, blocked: 'unsafe_sql', ...explainBlocked('unsafe_sql', error) }));
           return;
         }
 
@@ -2164,7 +2223,10 @@ const requestHandler = (request, response) => {
           const gIn = await guardrails.checkInput(sql ? `${question}\n\nSQL to explain:\n${sql}` : question);
           if (!gIn.allowed) {
             response.writeHead(gIn.unavailable ? 503 : 400);
-            response.end(JSON.stringify(guardrailBlockedBody(gIn, { success: false })));
+            response.end(JSON.stringify(guardrailBlockedBody(gIn, {
+              success: false,
+              ...(gIn.unavailable ? {} : explainBlocked(gIn.code, gIn.message)),
+            })));
             return;
           }
         }
@@ -2177,8 +2239,19 @@ const requestHandler = (request, response) => {
             book_citations: cached.value.book_citations || [],
             cached: true,
             cache_age_ms: cached.ageMs,
-            cra_soft_notices: cached.value.cra_soft_notices || [],
-            cra_signals: cached.value.cra_signals || null,
+            cra_soft_notices: [],
+            cra_signals: null,
+            ...craTurnResponseFields(craMeta, {
+              question: craQuestion,
+              tutorResponse: cached.value.explanation || '',
+              sql,
+              mode: 'explain',
+              source: cached.value.source || 'cache',
+              success: true,
+              eventType: 'explain_sql',
+              cached: true,
+              channel: 'explain_sql',
+            }),
           }));
           return;
         }
@@ -2188,7 +2261,11 @@ const requestHandler = (request, response) => {
           const gOut = await guardrails.checkOutput({ question: question || sql, sql: '', text: r.explanation });
           if (!gOut.allowed) {
             response.writeHead(gOut.unavailable ? 503 : 422);
-            response.end(JSON.stringify(guardrailBlockedBody(gOut, { success: false, source: r.source })));
+            response.end(JSON.stringify(guardrailBlockedBody(gOut, {
+              success: false,
+              source: r.source,
+              ...(gOut.unavailable ? {} : explainBlocked(gOut.code, gOut.message)),
+            })));
             return;
           }
           if (gOut.status === 'modified' && typeof gOut.text === 'string') r.explanation = gOut.text;
@@ -2223,11 +2300,12 @@ const requestHandler = (request, response) => {
           source: r.source,
           book_citations: r.book_citations || [],
         };
+        // CRA signals are per-session; cache only the explanation and recompute signals on hits.
+        cacheSet(cacheKey, { ...explainOut });
         const softEx = craSoftNoticesFromEvent(craExplainEvent);
         if (softEx.length) explainOut.cra_soft_notices = softEx;
         const snapEx = craSignalSnapshot(craExplainEvent);
         if (snapEx) explainOut.cra_signals = snapEx;
-        cacheSet(cacheKey, explainOut);
         response.writeHead(200);
         response.end(JSON.stringify({
           success: true,
