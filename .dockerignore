@@ -6,3 +6,8 @@ experiments/results
 .env
 .env.*
 !.env.example
+
+# Guardrails sidecar local env
+guardrails/.venv
+**/__pycache__
+.pytest_cache

@@ -65,6 +65,7 @@ const {
   appendJsonl,
   synthesizeVerdict,
 } = require('./hallucination-grounding');
+const { sqlFirewall, createGuardrailsClient } = require('./guardrails-client');
 let oracledb;
 try { oracledb = require('oracledb'); } catch (_) { oracledb = null; }
 
@@ -172,6 +173,20 @@ let bookIndex = { loaded: false, chunks: [], meta: null, error: null };
 
 const craTelemetry = createCraTelemetryFromEnv(__dirname);
 
+/** NVIDIA NeMo Guardrails sidecar (guardrails/server.py); no-op unless GUARDRAILS_URL is set. */
+const guardrails = createGuardrailsClient();
+/** /api/invoke run-sql: allow INSERT/UPDATE/DELETE/DDL (autoCommit) only when explicitly opted in. */
+const LAB_ALLOW_DML = envTruthy(process.env.LAB_ALLOW_DML);
+
+function guardrailBlockedBody(g, extra = {}) {
+  return {
+    ...extra,
+    error: g.message || 'Blocked by guardrails.',
+    blocked: g.code || 'guardrails',
+    guardrails: { engine: 'nemoguardrails', rail: g.rail || null, sql: g.sql || null },
+  };
+}
+
 // ── Guardrails (practical, cost-aware) ───────────────────────────────────────
 const MAX_REQUEST_BODY_BYTES = Math.min(
   512 * 1024,
@@ -272,14 +287,9 @@ function isSafeSingleSelect(sql) {
   const s = String(sql || '').trim();
   if (!s) return false;
   if (s.includes(';')) return false;
-  const head = s.slice(0, 1200).toLowerCase();
-  // Must start with SELECT or WITH.
-  if (!/^\s*(with|select)\b/.test(head)) return false;
-  // Block obvious non-read-only / procedural statements.
-  if (/\b(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|commit|rollback|begin|declare)\b/i.test(head)) {
-    return false;
-  }
-  return true;
+  // Full-text scan (strings/comments ignored): DML/DDL, PL/SQL, WITH FUNCTION, FOR UPDATE,
+  // DB links, DBMS_/UTL_ packages, system catalogs. See guardrails-client.js.
+  return sqlFirewall(s).allowed;
 }
 
 /** CRA-style soft notices (non-blocking). Thresholds are coarse; tune via env. */
@@ -1446,6 +1456,15 @@ const requestHandler = (request, response) => {
         }
         const r = await expandGuidedChapterWithLLM(chapterId, level);
         if (r.markdown) {
+          const gOut = await guardrails.checkOutput({ question: `Guided lesson ${chapterId} (${level})`, sql: '', text: r.markdown });
+          if (!gOut.allowed) {
+            response.writeHead(gOut.unavailable ? 503 : 422, { 'Content-Type': 'application/json; charset=utf-8' });
+            response.end(JSON.stringify(guardrailBlockedBody(gOut, { success: false, source: r.source })));
+            return;
+          }
+          if (gOut.status === 'modified' && typeof gOut.text === 'string') r.markdown = gOut.text;
+        }
+        if (r.markdown) {
           response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
           response.end(JSON.stringify({
             success: true,
@@ -1666,46 +1685,50 @@ const requestHandler = (request, response) => {
   // GET /health
   if (pathname === '/health' && request.method === 'GET') {
     const execOk = !!(config.enableExecuteSql && oracledb);
-    response.writeHead(200);
-    response.end(JSON.stringify({
-      status: 'ok',
-      server: APP_DISPLAY_NAME,
-      database: `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`,
-      db_connection: (execOk && config.dbUser && config.dbDsn)
-        ? `${config.dbUser}@${config.dbDsn}`
-        : null,
-      loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
-      llm_enabled: config.enableLLMSqlGeneration,
-      guided_chapter_llm_ready: !!(config.enableLLMSqlGeneration && llmCredentialsReady()),
-      llm_skip_auth: !!config.llmSkipAuth,
-      llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
-      sql_generation_mode: config.sqlGenerationMode,
-      execute_sql_available: execOk,
-      guided_podcast_elevenlabs: !!ELEVENLABS_API_KEY,
-      guided_podcast_dialogue: !!(
-        ELEVENLABS_API_KEY &&
-        ELEVENLABS_DIALOGUE_VOICE_ID &&
-        ELEVENLABS_VOICE_ID !== ELEVENLABS_DIALOGUE_VOICE_ID
-      ),
-      guided_podcast_dialogue_collision: !!(
-        ELEVENLABS_API_KEY &&
-        ELEVENLABS_DIALOGUE_VOICE_ID &&
-        ELEVENLABS_VOICE_ID === ELEVENLABS_DIALOGUE_VOICE_ID
-      ),
-      guided_listen_elevenlabs_only: ELEVENLABS_GUIDED_LISTEN_ONLY,
-      cra_telemetry_enabled: craTelemetry.enabled,
-      cra_soft_guards_enabled: !!craTelemetry.softGuardsEnabled,
-      cra_telemetry_stdout: !!craTelemetry.logStdout,
-      book: bookIndex.loaded
-        ? {
-            loaded: true,
-            title: bookIndex.meta.title,
-            author: bookIndex.meta.author,
-            chunks: bookIndex.meta.chunkCount,
-          }
-        : { loaded: false, error: bookIndex.error || null },
-      timestamp: new Date().toISOString(),
-    }));
+    (guardrails.enabled ? guardrails.status() : Promise.resolve({ enabled: false })).then((guardrailsStatus) => {
+      response.writeHead(200);
+      response.end(JSON.stringify({
+        status: 'ok',
+        server: APP_DISPLAY_NAME,
+        database: `${config.dbUser}@${config.dbHost}:${config.dbPort}/${config.dbSid}`,
+        db_connection: (execOk && config.dbUser && config.dbDsn)
+          ? `${config.dbUser}@${config.dbDsn}`
+          : null,
+        loaded_rules: Object.keys(SQL_GENERATION_RULES).length,
+        llm_enabled: config.enableLLMSqlGeneration,
+        guided_chapter_llm_ready: !!(config.enableLLMSqlGeneration && llmCredentialsReady()),
+        llm_skip_auth: !!config.llmSkipAuth,
+        llm_model: config.enableLLMSqlGeneration ? config.llmModel : null,
+        sql_generation_mode: config.sqlGenerationMode,
+        execute_sql_available: execOk,
+        guided_podcast_elevenlabs: !!ELEVENLABS_API_KEY,
+        guided_podcast_dialogue: !!(
+          ELEVENLABS_API_KEY &&
+          ELEVENLABS_DIALOGUE_VOICE_ID &&
+          ELEVENLABS_VOICE_ID !== ELEVENLABS_DIALOGUE_VOICE_ID
+        ),
+        guided_podcast_dialogue_collision: !!(
+          ELEVENLABS_API_KEY &&
+          ELEVENLABS_DIALOGUE_VOICE_ID &&
+          ELEVENLABS_VOICE_ID === ELEVENLABS_DIALOGUE_VOICE_ID
+        ),
+        guided_listen_elevenlabs_only: ELEVENLABS_GUIDED_LISTEN_ONLY,
+        cra_telemetry_enabled: craTelemetry.enabled,
+        cra_soft_guards_enabled: !!craTelemetry.softGuardsEnabled,
+        cra_telemetry_stdout: !!craTelemetry.logStdout,
+        guardrails: guardrailsStatus,
+        lab_allow_dml: LAB_ALLOW_DML,
+        book: bookIndex.loaded
+          ? {
+              loaded: true,
+              title: bookIndex.meta.title,
+              author: bookIndex.meta.author,
+              chunks: bookIndex.meta.chunkCount,
+            }
+          : { loaded: false, error: bookIndex.error || null },
+        timestamp: new Date().toISOString(),
+      }));
+    });
     return;
   }
 
@@ -1978,12 +2001,33 @@ const requestHandler = (request, response) => {
           return;
         }
 
+        // Guardrail 2b: NeMo input rails (PII/secrets, injection heuristics, LLM topic/jailbreak check).
+        const gIn = await guardrails.checkInput(question);
+        if (!gIn.allowed) {
+          response.writeHead(gIn.unavailable ? 503 : 400);
+          response.end(JSON.stringify(guardrailBlockedBody(gIn, { question })));
+          return;
+        }
+
         const result = await generateSql(question, mode);
 
         // Guardrail 3: enforce single runnable SELECT/WITH…SELECT output.
         let safeSql = result.sql || '';
         if (safeSql && !isSafeSingleSelect(safeSql)) {
           safeSql = '';
+        }
+
+        // Guardrail 4: NeMo output rails (SQL firewall, unsafe ```sql fence redaction, secret leaks, XSS, LLM self-check).
+        if (safeSql || result.tutor_response) {
+          const gOut = await guardrails.checkOutput({ question, sql: safeSql, text: result.tutor_response || '' });
+          if (!gOut.allowed) {
+            response.writeHead(gOut.unavailable ? 503 : 422);
+            response.end(JSON.stringify(guardrailBlockedBody(gOut, { question, source: result.source, mode })));
+            return;
+          }
+          if (gOut.status === 'modified' && result.tutor_response && typeof gOut.text === 'string') {
+            result.tutor_response = gOut.text;
+          }
         }
 
         let craEvent = null;
@@ -2115,6 +2159,15 @@ const requestHandler = (request, response) => {
 
         const cacheKey = `explain|${useBookContext ? 'book1' : 'book0'}|${normalizeQuestion(question || '')}|${normalizeQuestion(sql || '')}`;
         const cached = cacheGet(cacheKey);
+        if (!cached && question.trim()) {
+          // Include the SQL so short follow-ups ("what does this do?") are judged in context.
+          const gIn = await guardrails.checkInput(sql ? `${question}\n\nSQL to explain:\n${sql}` : question);
+          if (!gIn.allowed) {
+            response.writeHead(gIn.unavailable ? 503 : 400);
+            response.end(JSON.stringify(guardrailBlockedBody(gIn, { success: false })));
+            return;
+          }
+        }
         if (cached) {
           response.writeHead(200);
           response.end(JSON.stringify({
@@ -2131,6 +2184,15 @@ const requestHandler = (request, response) => {
         }
 
         const r = await explainSqlWithLLM(sql, question, { useBookContext });
+        if (r.explanation) {
+          const gOut = await guardrails.checkOutput({ question: question || sql, sql: '', text: r.explanation });
+          if (!gOut.allowed) {
+            response.writeHead(gOut.unavailable ? 503 : 422);
+            response.end(JSON.stringify(guardrailBlockedBody(gOut, { success: false, source: r.source })));
+            return;
+          }
+          if (gOut.status === 'modified' && typeof gOut.text === 'string') r.explanation = gOut.text;
+        }
         let craExplainEvent = null;
         if (craMeta.sessionId) {
           craExplainEvent = craTelemetry.recordTurn({
@@ -2187,8 +2249,22 @@ const requestHandler = (request, response) => {
   // POST /execute-sql — run SELECT only (opt-in via EXECUTE_SQL_ENABLED; DB must be reachable)
   if (pathname === '/execute-sql' && request.method === 'POST') {
     let body = '';
-    request.on('data', chunk => { body += chunk.toString(); });
+    request.on('data', chunk => {
+      body += chunk.toString();
+      if (body.length > MAX_REQUEST_BODY_BYTES) {
+        response.writeHead(413);
+        response.end(JSON.stringify({ success: false, error: 'Request too large' }));
+        try { request.destroy(); } catch (_) {}
+      }
+    });
     request.on('end', async () => {
+      if (response.writableEnded) return;
+      const rl = rateLimitOk(request);
+      if (!rl.ok) {
+        response.writeHead(429, { 'Retry-After': String(rl.retryAfterSec) });
+        response.end(JSON.stringify({ success: false, error: 'Rate limited', retry_after_seconds: rl.retryAfterSec }));
+        return;
+      }
       if (!config.enableExecuteSql || !oracledb || !config.dbDsn || !config.dbUser || !config.dbPassword) {
         response.writeHead(503, { 'Content-Type': 'application/json' });
         response.end(JSON.stringify({
@@ -2206,12 +2282,14 @@ const requestHandler = (request, response) => {
           response.end(JSON.stringify({ success: false, error: 'No SQL provided' }));
           return;
         }
-        const upper = sql.toUpperCase();
-        if (!upper.startsWith('SELECT') && !upper.startsWith('WITH')) {
+        const fw = sqlFirewall(sql);
+        if (!fw.allowed) {
           response.writeHead(400);
           response.end(JSON.stringify({
             success: false,
-            error: 'Only SELECT (and WITH … SELECT) queries are allowed for execution.',
+            error: 'Only a single read-only SELECT (or WITH … SELECT) on the practice schema can run.',
+            blocked: 'unsafe_sql',
+            violations: fw.violations,
           }));
           return;
         }
@@ -2267,6 +2345,7 @@ const requestHandler = (request, response) => {
         const results = await Promise.all(
           questions.map(async (q) => {
             const generated = await generateSql(q, mode);
+            if (generated.sql && !isSafeSingleSelect(generated.sql)) generated.sql = null;
             return {
               question: q,
               generated_sql: generated.sql,
@@ -2434,6 +2513,30 @@ const requestHandler = (request, response) => {
             error: 'Only SELECT / WITH, or supported DDL/DML statements, are permitted.',
           }));
           return;
+        }
+        if (isMutating && !LAB_ALLOW_DML) {
+          response.writeHead(403);
+          response.end(JSON.stringify({
+            success: false,
+            tool,
+            error: 'DDL/DML is disabled on this lab database (read-only). Set LAB_ALLOW_DML=true on the server to allow it.',
+            blocked: 'dml_disabled',
+          }));
+          return;
+        }
+        if (isSelect) {
+          const fw = sqlFirewall(sql);
+          if (!fw.allowed) {
+            response.writeHead(400);
+            response.end(JSON.stringify({
+              success: false,
+              tool,
+              error: 'Query blocked by the SQL firewall: ' + fw.violations.join(', '),
+              blocked: 'unsafe_sql',
+              violations: fw.violations,
+            }));
+            return;
+          }
         }
         const connConfig = { user: config.dbUser, password: config.dbPassword, connectString: config.dbDsn };
         if (config.dbWalletPath) connConfig.configDir = config.dbWalletPath;

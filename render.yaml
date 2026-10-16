@@ -43,6 +43,24 @@ services:
         value: /app/wallet
       - key: ORACLE_WALLET_PATH
         value: /app/wallet
+      # NeMo Guardrails sidecar (service "easynlsql-guardrails" below).
+      # GUARDRAILS_URL: set to that service's URL, e.g. https://easynlsql-guardrails.onrender.com
+      - key: GUARDRAILS_URL
+        sync: false
+      - key: GUARDRAILS_TOKEN
+        fromService:
+          type: web
+          name: easynlsql-guardrails
+          envVarKey: GUARDRAILS_TOKEN
+      # open (default): if the sidecar is down, fall back to local checks; closed: reject with 503
+      - key: GUARDRAILS_FAIL_MODE
+        value: open
+      # Render free instances cold-start in ~30-60s; keep timeout short so a sleeping sidecar fails open fast.
+      - key: GUARDRAILS_TIMEOUT_MS
+        value: "8000"
+      # /api/invoke run-sql DDL/DML (autoCommit). Off = read-only lab.
+      - key: LAB_ALLOW_DML
+        value: "false"
       # Optional: ElevenLabs podcast TTS for guided “Listen” (POST /guided-podcast-tts)
       # - ELEVENLABS_API_KEY
       # - ELEVENLABS_GUIDED_LISTEN_ONLY=true (optional; no browser speech fallback for Listen)
@@ -58,3 +76,24 @@ services:
       # - DB_HOST, DB_PORT, DB_SID (optional, for /health display)
       # - ORACLE_WALLET_ZIP_B64 (base64 of your Autonomous DB wallet zip)
       # - APP_DISPLAY_NAME (optional UI/API label; default Easy NL2SQL)
+
+  # NVIDIA NeMo Guardrails sidecar: input/output rails for the Node API (guardrails/server.py).
+  - type: web
+    name: easynlsql-guardrails
+    runtime: docker
+    repo: https://github.com/sanmish4ds/SQLclMCP
+    plan: free
+    branch: main
+    healthCheckPath: /health
+    dockerfilePath: ./guardrails/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: GUARDRAILS_TOKEN
+        generateValue: true
+      - key: GUARDRAILS_LLM_CHECKS
+        value: "true"
+      - key: GUARDRAILS_MODEL
+        value: gpt-4o-mini
+      # Set in Dashboard (same key as the Node service): LLM_API_KEY, optional LLM_API_URL
+      - key: LLM_API_KEY
+        sync: false
