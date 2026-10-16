@@ -1,0 +1,8 @@
+# Pinned versions tested on Python 3.12 (2026-10-16). Install: pip install -r guardrails/requirements.txt
+nemoguardrails==0.24.1
+langchain-openai==1.7.2
+langchain-core==1.6.12
+fastapi==0.143.3
+uvicorn==0.54.0
+sqlglot==30.23.0
+yara-python==4.5.4

@@ -156,3 +156,7 @@ papers/
 # config/secrets.yml
 # .env.production
 experiments/results/sql_evaluation_20260509_155052.json
+
+# NeMo Guardrails sidecar
+guardrails/.venv/
+.pytest_cache/

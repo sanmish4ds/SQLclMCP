@@ -1,0 +1,40 @@
+# NeMo Guardrails config for Easy NL2SQL (https://easynlsql.netlify.app).
+# The model below is only used by the LLM "self check" rails; SQL generation
+# itself stays in sql-learn-server.js. server.py overrides model/base_url from
+# GUARDRAILS_MODEL / LLM_MODEL and LLM_API_URL at startup.
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+    parameters:
+      temperature: 0
+
+instructions:
+  - type: general
+    content: |
+      You are the safety layer of Easy NL2SQL, an SQL tutor for an Oracle TPC-H
+      practice schema (REGION, NATION, CUSTOMER, SUPPLIER, PART, ORDERS,
+      LINEITEM, PARTSUPP).
+
+rails:
+  config:
+    injection_detection:
+      injections:
+        - xss
+        - template
+      action: reject
+
+  # Order matters: cheap deterministic rails run first and short-circuit, so
+  # the LLM self-check is only paid for inputs that pass them.
+  input:
+    flows:
+      - check sensitive input
+      - check prompt injection heuristics
+      - self check input
+
+  output:
+    flows:
+      - check sql output safety
+      - check sensitive output
+      - injection detection
+      - self check output

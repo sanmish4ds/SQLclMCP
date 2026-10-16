@@ -1,0 +1,42 @@
+# Custom Colang 1.0 rails for Easy NL2SQL. Actions live in actions.py.
+
+define bot refuse sensitive data
+  "Please don't paste personal data or secrets (emails, phone numbers, card numbers, keys, passwords). Use synthetic placeholders such as 'user@example.com' instead."
+
+define bot refuse prompt injection
+  "That looks like an attempt to override the tutor's instructions. Please rephrase it as a normal SQL learning question."
+
+define bot refuse unsafe sql
+  "The generated SQL was blocked: only a single read-only SELECT (or WITH … SELECT) on the practice schema is allowed."
+
+define bot refuse sensitive output
+  "The answer was withheld because it contained what looks like personal data or a secret."
+
+define bot refuse to respond
+  "I can only help with SQL and database learning questions about the practice schema. Please rephrase your question."
+
+define flow check sensitive input
+  $r = execute check_sensitive_text(text=$user_message)
+  if $r.is_blocked
+    bot refuse sensitive data
+    stop
+
+define flow check prompt injection heuristics
+  $r = execute check_prompt_injection(text=$user_message)
+  if $r.is_blocked
+    bot refuse prompt injection
+    stop
+
+define flow check sql output safety
+  $r = execute check_sql_output()
+  if $r.is_blocked
+    bot refuse unsafe sql
+    stop
+  else if $r.is_transform
+    $bot_message = $r.transform_text["bot_message"]
+
+define flow check sensitive output
+  $r = execute check_sensitive_text(text=$bot_message, source="output")
+  if $r.is_blocked
+    bot refuse sensitive output
+    stop
